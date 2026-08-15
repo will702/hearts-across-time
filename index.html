@@ -1047,6 +1047,89 @@ function drawChars(c,mode,cam){if(cam===undefined)cam=G.cam; // mode: 'walk' (du
     c.restore();
   }
 }
+/* ============================================================
+   COVER / LAYAR JUDUL — poster sinematik: emblem jam pasir
+   bercahaya + cincin waktu, ensemble Arthur lintas era
+   mengapit Elena, judul berhierarki, pil MULAI berdenyut
+   ============================================================ */
+function drawHourglass(c,x,y,s,t){
+  const mot=OPTS.reduceMotion?0:1;
+  c.save();c.translate(x,y);c.scale(s,s);c.lineJoin='round';c.lineCap='round';
+  c.shadowColor='rgba(226,90,70,.8)';c.shadowBlur=9+4*mot*Math.sin(t*2.2);
+  c.strokeStyle='#F5F0E8';c.lineWidth=2.2;
+  c.beginPath();c.moveTo(-12,-16);c.lineTo(12,-16);c.moveTo(-12,16);c.lineTo(12,16);c.stroke(); // palang atas-bawah
+  c.beginPath();c.moveTo(-9,-16);c.lineTo(9,-16);c.lineTo(1.7,-1.6);c.lineTo(-1.7,-1.6);c.closePath(); // rongga atas
+  c.moveTo(-9,16);c.lineTo(9,16);c.lineTo(1.7,1.6);c.lineTo(-1.7,1.6);c.closePath();c.stroke(); // rongga bawah
+  // pasir merah: arus terus menetes, timbunan naik-turun mengikuti siklus (motif loop)
+  const ph=mot?1-Math.abs((t*.36)%2-1):.5;
+  c.fillStyle='#E05555';c.shadowColor='#E05555';c.shadowBlur=7;
+  const hp=2.5+9*ph;c.beginPath();c.moveTo(-hp*.6,15);c.lineTo(hp*.6,15);c.lineTo(0,15-hp);c.closePath();c.fill();
+  c.globalAlpha=.85;c.fillRect(-.9,-1.6,1.8,14);
+  for(let i=0;i<3;i++){const yy=-1+((t*(8+2*i)+i*5.3)%15);c.beginPath();c.arc((i-1)*1.1,yy,1,0,TAU);c.fill();}
+  c.restore();
+}
+function drawTimeRing(c,x,y,r,t){
+  const mot=OPTS.reduceMotion?0:1;
+  c.save();c.translate(x,y);
+  c.strokeStyle='rgba(245,240,232,.16)';c.lineWidth=1.2;
+  c.setLineDash([3,7]);c.lineDashOffset=-t*9*mot;c.beginPath();c.arc(0,0,r,0,TAU);c.stroke();
+  c.strokeStyle='rgba(224,85,85,.26)';c.setLineDash([2,12]);c.lineDashOffset=t*13*mot;c.beginPath();c.arc(0,0,r-22,0,TAU);c.stroke();
+  c.setLineDash([]);
+  const a=t*.5*mot; // dua spark mengorbit saling berlawanan arah
+  c.fillStyle='#F0CD82';c.shadowColor='#F0CD82';c.shadowBlur=8;c.beginPath();c.arc(Math.cos(a)*r,Math.sin(a)*r,2.4,0,TAU);c.fill();
+  c.fillStyle='#E05555';c.shadowColor='#E05555';c.shadowBlur=7;c.beginPath();c.arc(-Math.cos(a)*(r-22),-Math.sin(a)*(r-22),1.9,0,TAU);c.fill();
+  c.restore();
+}
+function drawCover(c){
+  const mot=OPTS.reduceMotion?0:1,t=T;
+  // latar 2088 bergeser pelan + hujan abu + motes emas/merah naik dari bawah
+  bg2088(c,mot?t*9:0,t,0);
+  spawnParts('2088');
+  if(Math.random()<.05)parts.push({x:Math.random()*W,y:H+8,vx:(Math.random()-.5)*10,vy:-15-Math.random()*22,l:0,ml:6+Math.random()*4,r:1+Math.random()*1.6,col:Math.random()<.5?'rgba(240,205,130,.85)':'rgba(224,85,85,.8)',pulse:1});
+  drawParts(c,1/60);
+  // backlight emas di balik Elena (dia pusat komposisi)
+  const bl=c.createRadialGradient(W/2,404,10,W/2,404,160);bl.addColorStop(0,'rgba(240,205,130,.20)');bl.addColorStop(1,'rgba(240,205,130,0)');
+  c.fillStyle=bl;c.beginPath();c.arc(W/2,404,160,0,TAU);c.fill();
+  // ensemble: Arthur dari tiap era (muda 1944, buron & dewasa 1968, tua 1999) menoleh ke Elena
+  const row=[{k:'muda',x:150,s:.80,f:1,e:'neutral'},{k:'buron',x:298,s:.90,f:1,e:'angry'},
+             {k:'dewasa',x:662,s:.90,f:-1,e:'neutral'},{k:'tua',x:810,s:.76,f:-1,e:'warm'}];
+  for(const a of row){c.save();c.translate(a.x,GROUND);c.scale(a.s*a.f,a.s);groundShadow(c,1,.32);drawArthur(c,a.k,t+a.x*.01,a.e);c.restore();}
+  c.save();c.translate(W/2,GROUND);groundShadow(c,1.1,.4);drawElena(c,t,0,false,'neutral',{vial:true});c.restore();
+  // tirai gelap sinematik atas & bawah (teks tetap terbaca, kaki ensemble menyatu ke gelap)
+  let g=c.createLinearGradient(0,0,0,250);g.addColorStop(0,'rgba(10,8,6,.9)');g.addColorStop(.6,'rgba(10,8,6,.42)');g.addColorStop(1,'rgba(10,8,6,0)');c.fillStyle=g;c.fillRect(0,0,W,250);
+  g=c.createLinearGradient(0,392,0,H);g.addColorStop(0,'rgba(10,8,6,0)');g.addColorStop(.4,'rgba(10,8,6,.74)');g.addColorStop(1,'rgba(10,8,6,.92)');c.fillStyle=g;c.fillRect(0,392,W,H-392);
+  grade(c,'2088');
+  // emblem + cincin waktu + blok judul
+  drawTimeRing(c,W/2,150,84,t);
+  drawHourglass(c,W/2,58,1,t);
+  c.textAlign='center';
+  const pul=mot?.5+.5*Math.sin(t*1.6):.5;
+  c.fillStyle='rgba(245,240,232,.82)';c.font='16px Georgia,serif';c.fillText('H E A R T S',W/2,120);
+  c.save();c.shadowColor=`rgba(194,59,59,${.45+.35*pul})`;c.shadowBlur=22+10*pul;
+  const tg=c.createLinearGradient(0,132,0,188);tg.addColorStop(0,'#F8F3E9');tg.addColorStop(1,'#D9A28F');c.fillStyle=tg;
+  c.font='bold 54px Georgia,serif';c.fillText('ACROSS TIME',W/2,182);c.restore();
+  c.fillStyle='#E05555';c.font='italic 18px Georgia,serif';c.fillText('— BREAK THE LOOP —',W/2,214);
+  c.fillStyle='rgba(240,205,130,.6)';c.font='12px "Trebuchet MS",sans-serif';
+  c.fillText('1944  ▸  1968  ▸  1999  ▸  2088  ⟲',W/2,244);
+  // pil MULAI berdenyut + info pojok bawah (penghitung ending kiri, lanjut siklus kanan)
+  const bw=322,bh=40,bx=W/2-bw/2,by=452,py=by+bh/2+1;
+  c.save();c.shadowColor=`rgba(194,59,59,${.3+.3*pul})`;c.shadowBlur=16+10*pul;
+  c.fillStyle='rgba(20,14,12,.74)';rr(c,bx,by,bw,bh,20);c.fill();c.restore();
+  c.strokeStyle=`rgba(245,240,232,${.3+.28*pul})`;c.lineWidth=1.6;rr(c,bx,by,bw,bh,20);c.stroke();
+  c.textBaseline='middle';c.fillStyle='#F5F0E8';c.font='bold 14.5px "Trebuchet MS",sans-serif';
+  const s0='TEKAN ENTER / SENTUH UNTUK MULAI';c.fillText(s0,W/2,py);
+  c.globalAlpha=.4+.5*pul;c.fillStyle='#E05555';c.fillText('▶',W/2-c.measureText(s0).width/2-16,py);c.globalAlpha=1;
+  const nE=END_TOTAL.filter(k=>SAVE.endings&&SAVE.endings[k]).length;
+  c.textAlign='left';c.font='12px "Trebuchet MS",sans-serif';
+  c.fillStyle=nE>=END_TOTAL.length?'rgba(240,205,130,.95)':'rgba(245,240,232,.55)';
+  c.fillText('⏳ ENDING '+nE+'/'+END_TOTAL.length+(SAVE.endings&&SAVE.endings.true?'  ★ SEJATI':''),26,py);
+  if(SAVE.game){c.textAlign='right';c.fillStyle='rgba(255,217,168,.9)';c.fillText('⟲ LANJUT SIKLUS — tekan L ('+SAVE.game.era+')',W-26,py);}
+  c.textAlign='center';c.fillStyle='rgba(245,240,232,.48)';c.font='11.5px "Trebuchet MS",sans-serif';
+  c.fillText('← → / A D gerak  •  ENTER dialog  •  tahan CTRL lewati teks  •  ESC jeda',W/2,510);
+  c.fillStyle='rgba(245,240,232,.32)';c.font='10.5px "Trebuchet MS",sans-serif';
+  c.fillText('2D Narrative Puzzle • Psychological Time-Loop • COMPFEST Indie Game Jam • berdasarkan GDD “FIKS IDE”',W/2,527);
+  c.textBaseline='alphabetic';
+}
 function render(){
   ctx.save();
   if(G.shakeT>0&&!OPTS.reduceMotion){const a=G.shakeA*G.shakeT;ctx.translate((Math.random()-.5)*a,(Math.random()-.5)*a);}
@@ -1063,31 +1146,7 @@ function render(){
     if(pr>0){ctx.fillStyle='#C25A5A';rr(ctx,W/2-160,H/2+38,Math.max(14,320*pr),14,7);ctx.fill();}
   }
   else if(G.state==='title'){
-    bg2088(ctx,0,T,0);drawParts(ctx,1/60);spawnParts('2088');
-    ctx.save();ctx.translate(W*0.5,GROUND+2);groundShadow(ctx);drawElena(ctx,T,0,false,'sad');ctx.restore();
-    grade(ctx,'2088');
-    // judul
-    ctx.textAlign='center';
-    ctx.save();ctx.translate(W/2,168);
-    const pul=.5+.5*Math.sin(T*1.4);
-    ctx.shadowColor=`rgba(194,59,59,${.5+pul*.4})`;ctx.shadowBlur=26;
-    ctx.fillStyle='#F5F0E8';ctx.font='bold 58px Georgia,serif';ctx.fillText('HEARTS ACROSS TIME',0,0);
-    ctx.shadowBlur=0;ctx.fillStyle='#C23B3B';ctx.font='italic 21px Georgia,serif';ctx.fillText('— Break The Loop —',0,44);
-    ctx.restore();
-    ctx.fillStyle='rgba(245,240,232,.85)';ctx.font='17px "Trebuchet MS",sans-serif';
-    ctx.fillText((Math.floor(T*2)%2===0)?'▶ TEKAN ENTER / SENTUH UNTUK MULAI':'  TEKAN ENTER / SENTUH UNTUK MULAI  ',W/2,340);
-    if(SAVE.game){ctx.fillStyle='rgba(255,217,168,.9)';ctx.font='15px "Trebuchet MS",sans-serif';
-      ctx.fillText('⟲ LANJUTKAN SIKLUS — tekan L ('+SAVE.game.era+')',W/2,372);}
-    // penanda koleksi ending — motifasi replay (juga untuk juri jam)
-    {const nE=END_TOTAL.filter(k=>SAVE.endings&&SAVE.endings[k]).length;
-      ctx.fillStyle=nE>=END_TOTAL.length?'rgba(240,205,130,.9)':'rgba(245,240,232,.5)';
-      ctx.font='13px "Trebuchet MS",sans-serif';
-      ctx.fillText('⏳ ENDING TERUNGKAP: '+nE+'/'+END_TOTAL.length+(SAVE.endings&&SAVE.endings.true?'  ★ sejati':''),W/2,420);}
-    ctx.fillStyle='rgba(245,240,232,.5)';ctx.font='12.5px "Trebuchet MS",sans-serif';
-    ctx.fillText('Gerak: ← → / A D  •  Dialog: ENTER  •  Lewati teks: tahan CTRL  •  Jeda: ESC',W/2,470);
-    ctx.fillText('2D Narrative Puzzle • Psychological Time-Loop • COMPFEST Indie Game Jam',W/2,492);
-    ctx.fillStyle='rgba(245,240,232,.35)';ctx.font='11px "Trebuchet MS",sans-serif';
-    ctx.fillText('Berdasarkan Game Design Document "FIKS IDE" — Hearts Across Time',W/2,512);
+    drawCover(ctx);
   }
   else if(G.state==='prologue'){
     bg2088(ctx,0,T,.25);drawParts(ctx,1/60);spawnParts('2088');
