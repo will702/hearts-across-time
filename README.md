@@ -36,14 +36,25 @@ atau untuk deploy itch.io: zip `index.html` → upload sebagai **HTML5 game** (9
 
 ## 🎨 Catatan Aset
 
-Model image-generation (GLM / antigravity) tidak tersedia di lingkungan build ini, jadi seluruh visual
-digambar prosedural di atas canvas dengan **palet yang diambil langsung dari referensi visual** yang dianalisis:
+Seluruh karakter & latar **sudah berupa PNG lukis asli** di `assets/` (gaya watercolor-storybook mengikuti
+referensi: garis pensil grafit sketsa + wash cat air, palet muted). Digenerate dengan
+`google/gemini-3.1-flash-image-preview` via OpenRouter, lalu diproses offline (chroma-key magenta w/
+hue estimation + flood-fill, re-anchor kaki bottom-center, seamless tiling cross-fade) lewat skrip yang
+disertakan: `scripts/gen_image.py`, `scripts/gen_exprs.py`, `scripts/gen_bgs.py`,
+`scripts/build_sheets.py`, `scripts/compose_all.py` (butuh `OPENROUTER_API_KEY` di `.env` + `.venv` berisi
+`requests pillow numpy` untuk regenerasi). Fallback prosedural tetap utuh — hapus PNG mana pun dan game
+otomatis menggambarnya lagi lewat kode.
 
-- Elena — **adaptasi GIF referensi** (dianalisis per-piksel + AI vision): rambut **ash-blonde** `#D2C49E` belah tengah, poni lurus dua tirai, rambut belakang sepanjang tulang belikat ujung ikal ke dalam; jas lab putih terbuka (gaun **dusty-rose** `#C4897F` mengintip + hem di bawah jas), lengan bahu puffed → pergelangan ramping tangan keluar; **boot kulit pucat** `#EFE2D4` ber-strap gelap `#5C3A1E` sol rata; wajah kecil di dalam volume rambut (proporsi 1:3), alis ash-brown, blush tipis permanen, bayangan lembut bawah dagu & poni
-- Kotak narator krem `#F5F0E8` berbingkai hitam tipis, persis gaya komik referensi
-- 4 latar parallax 3-layer: parit 1944, bunker buronan/lab militer 1968 (berbeda per rute!), ruang kapsul 1999, kota rusak 2088
+- Elena — rambut ash-blonde belah tengah, jas lab putih di atas gaun dusty-rose, boot kulit pucat strap gelap;
+  4 frame jalan asli (sel F1–F3) + 7 variasi ekspresi
+- Arthur muda (seragam medis + helm + vial hijau), dewasa (jas lab + kacamata), buron (jaket coklat + satchel),
+  tua (kardigan + tongkat) — masing-masing 8 baris ekspresi konsisten satu pose
+- 10 latar parallax lukis: puing 2088 (far/mid/near), parit 1944 (far/mid), bunker 1968A (far/mid),
+  lab 1968B (far/mid), ruang kriogenik 1999 (far). Kapsul 1999 tetap **prosedural-animasi** (gelembung,
+  cairan, label ARTHUR PROJECT) — keputusan sengaja agar centerpiece tetap hidup
 
-Keuntungan: file tunggal ±81 KB, loading instan, dan setiap sprite bisa di-tweak lewat konstanta `PAL` di source.
+Sprite & latar masih bisa di-tweak: regenerasi sel lewat skrip di atas, atau tweak konstanta `PAL`
+untuk fallback prosedural.
 
 ## 🖼 Memakai Aset PNG Buatan Sendiri (opsional, tanpa pindah engine)
 

@@ -212,9 +212,10 @@ function drawCharSheet(c,id,expr,phase,moving,opt={}){ // false => pemanggil pak
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!im||!cfg||!im.width)return false;
   const cols=Math.max(1,Math.floor(im.width/cfg.fw)),rows=Math.max(1,Math.floor(im.height/cfg.fh));
   let row=EXPR_ROWS.indexOf(expr);if(row<0||row>=rows)row=0;
-  let col=0;if(moving&&cols>1)col=Math.floor(phase/(Math.PI/2))%cols;
+  let col=0;if(moving&&cols>1){const seq=cols>3?[1,2,3,2]:null;col=seq?seq[Math.floor(phase/(Math.PI/2))%4]:Math.floor(phase/(Math.PI/2))%cols;} // siklus langkah halus: w1→w2→w3→w2
   const s=(cfg.h||112)/cfg.fh,dw=cfg.fw*s,dh=cfg.fh*s;
   if(opt.tremble)c.translate(Math.sin(T*31)*.9,0);
+  else if(moving)c.translate(Math.sin(phase*2)*.8,-Math.abs(Math.sin(phase))*2.4); // bob langkah utk sheet
   if(cfg.pixel){c.save();c.imageSmoothingEnabled=false;}
   c.drawImage(im,col*cfg.fw,row*cfg.fh,cfg.fw,cfg.fh,-dw/2,-dh,dw,dh);
   if(cfg.pixel)c.restore();

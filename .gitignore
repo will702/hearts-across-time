@@ -2,3 +2,7 @@
 node_modules/
 .refs/
 *.log
+.env
+.venv/
+assets/gen/
+qa/
