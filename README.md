@@ -43,7 +43,61 @@ digambar prosedural di atas canvas dengan **palet yang diambil langsung dari ref
 - Kotak narator krem `#F5F0E8` berbingkai hitam tipis, persis gaya komik referensi
 - 4 latar parallax 3-layer: parit 1944, bunker buronan/lab militer 1968 (berbeda per rute!), ruang kapsul 1999, kota rusak 2088
 
-Keuntungan: file tunggal ±70 KB, loading instan, dan setiap sprite bisa di-tweak lewat konstanta `PAL` di source.
+Keuntungan: file tunggal ±81 KB, loading instan, dan setiap sprite bisa di-tweak lewat konstanta `PAL` di source.
+
+## 🖼 Memakai Aset PNG Buatan Sendiri (opsional, tanpa pindah engine)
+
+Game punya **lapisan aset bawaan**: letakkan PNG di folder `assets/` dan game otomatis
+memakainya. File yang tidak ada → otomatis fallback ke gambar prosedural, jadi bisa
+mengganti sebagian saja (mis. cuma sprite Elena) tanpa menyentuh kode sama sekali.
+
+### Sprite karakter — `assets/<id>_sheet.png`
+
+Grid **4 kolom × 8 baris**, sel 150×210 px (konfigurasi di `ASSET_MANIFEST`):
+
+| | Kolom | Isi |
+|---|---|---|
+| **Kolom** | F0 | idle (berdiri) |
+| | F1–F3 | siklus jalan (diputar otomatis mengikuti fase langkah) |
+| **Baris** | r0–r7 | `neutral, smile, sad, shock, angry, mad, warm, happy` (urutan `EXPR_ROWS`) |
+
+Jangkar: **tengah-bawah** (kaki menyentuh tepi bawah sel). Tinggi tampil di layar
+diatur lewat `h` (default 112 px) — art boleh resolusi berapa pun, otomatis diskalakan.
+ID sheet: `elena`, `arthur_muda`, `arthur_dewasa`, `arthur_buron`, `arthur_tua`.
+Template berukuran siap-pakai tersedia: `assets/*_TEMPLATE.png` (ada manekin panduan
+proporsi chibi + label baris/kolom). Pixel art? tambah `pixel:true` di manifest agar
+nearest-neighbor (tanpa blur).
+
+### Latar parallax — `assets/bg<era>_<layer>.png`
+
+| Era | far | mid | near |
+|---|---|---|---|
+| 2088 | `bg2088_far` (.1) | `bg2088_mid` (.3) | `bg2088_near` (.85) |
+| 1944 | `bg1944_far` (.14) | `bg1944_mid` (.45) | — (tanah prosedural) |
+| 1968 bunker (rute A) | `bg1968A_far` (.2) | `bg1968A_mid` (.5) | — |
+| 1968 lab (rute B) | `bg1968B_far` (.2) | `bg1968B_mid` (.5) | — |
+| 1999 | `bg1999_far` (.12) | `bg1999_mid` (.45) | — |
+
+Aturan gambar: **tile horizontal seamless** (lebar bebas, saran 960–1920 px),
+jangkar bawah, angka kurung = faktor parallax. Langit & grading tetap prosedural.
+
+### Deploy itch.io
+
+Setelah menambah aset, zip **wajib** berisi `index.html` + `assets/` (bukan lagi
+satu file). Tanpa aset pun zip index.html saja tetap jalan penuh.
+
+## ⚙️ Phaser atau tetap Canvas?
+
+**Verdict: tetap Canvas untuk game ini.** Game sudah selesai & teruji, tidak butuh
+fisika/tumbukan/tilemap, draw call < 60 per frame (Canvas 2D 60fps santai), dan
+lapisan aset di atas sudah mencakup loader + spritesheet + fallback — 90% manfaat
+Phaser untuk kasus ini dengan risiko migrasi nol.
+
+**Pindah ke Phaser layak untuk proyek berikutnya** jika butuh: fisika platformer,
+tilemap Tiled, ratusan animasi dalam atlas, post-processing WebGL (bloom/CRT),
+atau integrasi Spine/DragonBones. Peta migrasi bila kelak diperlukan:
+`NODES`/dialog tetap utuh → `render()` jadi Scene, parallax → `TileSprite` +
+`scrollFactor`, `PAL` → tint/tintFill, audio WebAudio bisa dipertahankan apa adanya.
 
 ## 🎵 Musik & Audio (v2 — Leitmotif System)
 
@@ -81,14 +135,15 @@ mem-fade musik ke 0, dan musik **duck otomatis ±6 dB saat teks dialog sedang me
 ## 🛠 Struktur Kode (dalam `index.html`)
 
 ```
-PAL            — palet warna terpusat
+PAL / ASSET_MANIFEST — palet warna terpusat + daftar aset PNG opsional (fallback prosedural)
+AS / drawCharSheet / bgLayerImg — loader aset + penggambar spritesheet/parallax PNG
 groundShadow   — bayangan lembut kaki karakter
 drawElena / drawArthur — sprite chibi prosedural (ekspresi: neutral/smile/sad/shock/angry/mad/warm + air mata/keringat)
 bg1944 / bg1968 / bg1999 / bg2088 — parallax 3-layer deterministik (seeded rand) + searchlight/god rays/neon/api
 NODES          — seluruh dialog & percabangan (mirror dari file .yarn)
 SONGS / MUS    — sequencer musik leitmotif (pad/bass/musicbox/bell/tick + delay & reverb)
 SFX / setAmbience / setSong / duckMusic — audio prosedural WebAudio (SFX + ambience + musik per era)
-update/render  — state machine: title → prologue → walk → dialog → vortex → glitch → endcard
+update/render  — state machine: load → title → prologue → walk → dialog → vortex → glitch → endcard
 ```
 
 ## 🧪 Sudah Diuji Otomatis (Playwright headless)
@@ -96,6 +151,7 @@ update/render  — state machine: title → prologue → walk → dialog → vor
 - Rute golden penuh: Prologue → Empati×2 → 1B → 2B2 → Ikhlas → **True Ending** (0 error)
 - Rute gagal: Logika×2 → 1A → 2A1 → TIMELINE COLLAPSE → **glitch loop** → kembali ke 1944 dengan intro loop
 - Verifikasi audio: AnalyserNode memastikan musik benar2 bersuara, scheduler 5 lagu maju, ducking bus bekerja
+- Verifikasi aset: dummy spritesheet PNG dimuat & digambar (jalur `drawCharSheet`), fallback prosedural saat file hilang
 - QA visual per-scene via AI vision: karakter, bubble, kapsul, glitch, endcard — semua lolos
 
 *"Sampai bertemu di masa depan."*
