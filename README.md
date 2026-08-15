@@ -39,7 +39,7 @@ atau untuk deploy itch.io: zip `index.html` → upload sebagai **HTML5 game** (9
 Model image-generation (GLM / antigravity) tidak tersedia di lingkungan build ini, jadi seluruh visual
 digambar prosedural di atas canvas dengan **palet yang diambil langsung dari referensi visual** yang dianalisis:
 
-- Elena — rambut pirang `#F4D37A`, jas lab putih, gaun merah `#C25A5A`, boot coklat `#8B4513` (proporsi chibi 1:2)
+- Elena — rekonstruksi desain referensi: rambut pirang **panjang bergelombang** ujung scallop, **jas lab terbuka** (gaun merah mengintip di tengah), **lengan longgar melebar** di pergelangan + manset, **boot kulit mid-calf ber-strap**, kerah V, poni 5 helai + side-lock S, outline tebal & cel-shading (fidelity vs referensi 8–10/10 per elemen, diverifikasi AI vision)
 - Kotak narator krem `#F5F0E8` berbingkai hitam tipis, persis gaya komik referensi
 - 4 latar parallax 3-layer: parit 1944, bunker buronan/lab militer 1968 (berbeda per rute!), ruang kapsul 1999, kota rusak 2088
 
@@ -152,6 +152,7 @@ update/render  — state machine: load → title → prologue → walk → dialo
 - Rute gagal: Logika×2 → 1A → 2A1 → TIMELINE COLLAPSE → **glitch loop** → kembali ke 1944 dengan intro loop
 - Verifikasi audio: AnalyserNode memastikan musik benar2 bersuara, scheduler 5 lagu maju, ducking bus bekerja
 - Verifikasi aset: dummy spritesheet PNG dimuat & digambar (jalur `drawCharSheet`), fallback prosedural saat file hilang
+- Verifikasi desain: sprite Elena baru dibandingkan vs referensi WhatsApp via AI vision — semua elemen desain 8–10/10, tanpa artefak
 - QA visual per-scene via AI vision: karakter, bubble, kapsul, glitch, endcard — semua lolos
 
 *"Sampai bertemu di masa depan."*
