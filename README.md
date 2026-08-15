@@ -39,7 +39,7 @@ atau untuk deploy itch.io: zip `index.html` → upload sebagai **HTML5 game** (9
 Model image-generation (GLM / antigravity) tidak tersedia di lingkungan build ini, jadi seluruh visual
 digambar prosedural di atas canvas dengan **palet yang diambil langsung dari referensi visual** yang dianalisis:
 
-- Elena — rekonstruksi desain referensi: rambut pirang **panjang bergelombang** ujung scallop, **jas lab terbuka** (gaun merah mengintip di tengah), **lengan longgar melebar** di pergelangan + manset, **boot kulit mid-calf ber-strap**, kerah V, poni 5 helai + side-lock S, outline tebal & cel-shading (fidelity vs referensi 8–10/10 per elemen, diverifikasi AI vision)
+- Elena — **adaptasi GIF referensi** (dianalisis per-piksel + AI vision): rambut **ash-blonde** `#D2C49E` belah tengah, poni lurus dua tirai, rambut belakang sepanjang tulang belikat ujung ikal ke dalam; jas lab putih terbuka (gaun **dusty-rose** `#C4897F` mengintip + hem di bawah jas), lengan bahu puffed → pergelangan ramping tangan keluar; **boot kulit pucat** `#EFE2D4` ber-strap gelap `#5C3A1E` sol rata; wajah kecil di dalam volume rambut (proporsi 1:3), alis ash-brown, blush tipis permanen, bayangan lembut bawah dagu & poni
 - Kotak narator krem `#F5F0E8` berbingkai hitam tipis, persis gaya komik referensi
 - 4 latar parallax 3-layer: parit 1944, bunker buronan/lab militer 1968 (berbeda per rute!), ruang kapsul 1999, kota rusak 2088
 
@@ -152,7 +152,7 @@ update/render  — state machine: load → title → prologue → walk → dialo
 - Rute gagal: Logika×2 → 1A → 2A1 → TIMELINE COLLAPSE → **glitch loop** → kembali ke 1944 dengan intro loop
 - Verifikasi audio: AnalyserNode memastikan musik benar2 bersuara, scheduler 5 lagu maju, ducking bus bekerja
 - Verifikasi aset: dummy spritesheet PNG dimuat & digambar (jalur `drawCharSheet`), fallback prosedural saat file hilang
-- Verifikasi desain: sprite Elena baru dibandingkan vs referensi WhatsApp via AI vision — semua elemen desain 8–10/10, tanpa artefak
+- Verifikasi desain: GIF diekstrak (2 frame unik), palet diukur per-piksel (rambut `#D8CCA8`, gaun `#C28279`, boot `#F1E6DC`+strap `#44240A`, skin `#F0E4D8`), sprite baru diverifikasi cocok (median boot `#F0E4D4` exact) + QA vision fitur lengkap tanpa artefak
 - QA visual per-scene via AI vision: karakter, bubble, kapsul, glitch, endcard — semua lolos
 
 *"Sampai bertemu di masa depan."*

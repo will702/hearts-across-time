@@ -166,9 +166,9 @@ let T=0; // waktu global detik
 /* ============================================================
    SPRITE CHIBI — palet dari referensi
    ============================================================ */
-const PAL={hairE:'#F4D37A',hairEs:'#D9B25E',skin:'#F8D7C0',skinS:'#EDBEA2',
-  coat:'#FFFFFF',coatS:'#E6E1D6',dress:'#C25A5A',dressS:'#A34848',boot:'#8B4513',bootS:'#6E3710',
-  eye:'#3A2F2F',line:'#1E1710',
+const PAL={hairE:'#D2C49E',hairEs:'#ACA07E',skin:'#F0E4D8',skinS:'#E2D0BE',
+  coat:'#FFFFFF',coatS:'#E6E1D6',dress:'#C4897F',dressS:'#AA766D',boot:'#EFE2D4',bootS:'#5C3A1E',
+  eye:'#4A3226',line:'#1E1710',browE:'#8E8361',
   uniOlive:'#8B7355',uniOliveS:'#6E5A44',helmet:'#767468',helmetS:'#5C5A50',
   labBlue:'#5B7A99',pants:'#4A4A52',jacket:'#6E5A44',hairA:'#7A5B3A',
   gray:'#E4E2DA',cardigan:'#A89B82',shirtOld:'#C9C2B4',cane:'#8B4513',
@@ -231,7 +231,7 @@ function bgLayerImg(c,id,factor,camX){ // tile horizontal, jangkar bawah; false 
 
 function outline(c=ctx,w=2.5){c.strokeStyle=PAL.line;c.lineWidth=w;c.lineJoin='round';c.lineCap='round';}
 // mata + ekspresi (pandangan 3/4 ke arah facing)
-function drawFace(c,expr,blink,t,col=PAL.eye,blush=false){
+function drawFace(c,expr,blink,t,col=PAL.eye,blush=false,browCol=PAL.line){
   const eyeH=(expr==='shock'||expr==='mad')?5.2:expr==='closed'?0.6:3.4;
   const drawEye=(dx)=>{
     c.fillStyle='#FFF';rr(c,dx-4.4,-4.6,8.8,9.2,4.2);c.fill();
@@ -245,7 +245,7 @@ function drawFace(c,expr,blink,t,col=PAL.eye,blush=false){
   drawEye(-7.4);drawEye(7.4);
   // alis
   c.strokeStyle=PAL.line;c.lineWidth=1.8;
-  const brow=(dx,a)=>{c.save();c.translate(dx,-8.4);c.rotate(a);c.beginPath();c.moveTo(-3.4,0);c.quadraticCurveTo(0,-1.6,3.4,0);c.stroke();c.restore();};
+  const brow=(dx,a)=>{c.save();c.translate(dx,-8.4);c.rotate(a);c.strokeStyle=browCol;c.beginPath();c.moveTo(-3.4,0);c.quadraticCurveTo(0,-1.6,3.4,0);c.stroke();c.restore();};
   if(expr==='angry'||expr==='mad'){brow(-7.4,.38);brow(7.4,-.38);}
   else if(expr==='sad'){brow(-7.4,-.3);brow(7.4,.3);}
   else{brow(-7.4,-.08);brow(7.4,.08);}
@@ -258,91 +258,106 @@ function drawFace(c,expr,blink,t,col=PAL.eye,blush=false){
   else if(expr==='mad'){c.moveTo(-3.6,my+1);for(let i=-2.4;i<=2.6;i+=1.6)c.lineTo(i,my+(i%3.2<1.6?-1:1));}
   else{c.moveTo(-2.4,my);c.lineTo(2.4,my);}
   c.stroke();
-  if(blush){c.fillStyle='rgba(226,120,110,.4)';c.beginPath();c.ellipse(-10.6,5.6,3,1.7,0,0,TAU);c.ellipse(10.6,5.6,3,1.7,0,0,TAU);c.fill();}
+  if(blush){const a=blush==='soft'?.20:.4;c.fillStyle=`rgba(226,120,110,${a})`;c.beginPath();c.ellipse(-10.6,5.6,3,1.7,0,0,TAU);c.ellipse(10.6,5.6,3,1.7,0,0,TAU);c.fill();}
   if(expr==='sad'){const ty=6.5+((t*7)%6);c.fillStyle='rgba(150,200,235,.85)';c.beginPath();c.ellipse(11.6,ty,1.5,2.3,0,0,TAU);c.fill();}
   if(expr==='shock'){c.fillStyle='rgba(150,205,240,.9)';c.beginPath();c.ellipse(-12.4,-5.5+(t*5)%3,1.6,2.4,.3,0,TAU);c.fill();}
 }
 function limb(c,x1,y1,x2,y2,w,col){c.strokeStyle=col;c.lineWidth=w;c.lineCap='round';c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();outline(c,1.4);c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();}
 function groundShadow(c,w=1,a=.28){const g=c.createRadialGradient(0,0,2,0,0,26);g.addColorStop(0,`rgba(10,8,6,${a})`);g.addColorStop(1,'rgba(10,8,6,0)');c.save();c.translate(0,4);c.scale(w,.3);c.fillStyle=g;c.beginPath();c.arc(0,0,26,0,TAU);c.fill();c.restore();}
 
-/* --- ELENA (rekonstruksi desain referensi: pirang bergelombang, jas lab longgar terbuka, gaun merah, boot strap) --- */
+/* --- ELENA (adaptasi GIF referensi: ash-blonde belah tengah, gaun dusty-rose, boot pucat strap gelap, proporsi 1:3) --- */
 function drawElena(c,t,phase,moving,expr='neutral',opt={}){
   if(drawCharSheet(c,'elena',expr,phase,moving,opt)){if(opt.vial)drawVialOverlay(c,ASSET_MANIFEST.elena);return;}
   const bob=moving?Math.abs(Math.sin(phase))*2.6:Math.sin(t*2)*0.9;
   const sw=moving?Math.sin(phase):Math.sin(t*1.4)*.1;
-  const sway=moving?Math.sin(phase)*.05:Math.sin(t*1.3)*.018; // fisika rambut/gaun sederhana
+  const sway=moving?Math.sin(phase)*.05:Math.sin(t*1.3)*.018;
   c.save();c.translate(0,-bob);
-  if(moving&&opt.lean)c.rotate(opt.lean); // condong maju saat melangkah
-  // rambut belakang panjang bergelombang (di belakang badan, ujung scallop) — ikut ayun langkah
-  c.save();c.rotate(sway*.7);c.translate(0,-62);
+  if(moving&&opt.lean)c.rotate(opt.lean);
+  // rambut belakang: sepanjang tulang belikat, ujung ikal ke DALAM (referensi GIF)
+  c.save();c.rotate(sway*.7);c.translate(0,-59);
   c.fillStyle=PAL.hairEs;c.beginPath();
-  c.moveTo(-21,-16);
-  c.quadraticCurveTo(-25,4,-24,32);
-  c.quadraticCurveTo(-24,40,-19,34);c.quadraticCurveTo(-17,44,-11,38);c.quadraticCurveTo(-8,48,-2,40);
-  c.quadraticCurveTo(2,50,8,40);c.quadraticCurveTo(12,46,17,36);c.quadraticCurveTo(21,42,24,32);
-  c.quadraticCurveTo(25,4,21,-16);
-  c.quadraticCurveTo(18,-24,0,-24);c.quadraticCurveTo(-18,-24,-21,-16);c.closePath();c.fill();
-  outline(c,2.6);c.stroke();
-  c.strokeStyle=PAL.hairE;c.lineWidth=1.8; // garis gelombang dalam rambut
-  c.beginPath();c.moveTo(-17,6);c.quadraticCurveTo(-15,18,-17,30);c.moveTo(17,6);c.quadraticCurveTo(15,18,17,30);c.moveTo(0,-14);c.quadraticCurveTo(-2,8,0,30);c.stroke();
+  c.moveTo(-16,-14);
+  c.quadraticCurveTo(-19,4,-18,20);
+  c.quadraticCurveTo(-16,26,-11,22);c.quadraticCurveTo(-9,28,-4,23);c.quadraticCurveTo(-1,29,4,23);c.quadraticCurveTo(8,27,11,21);c.quadraticCurveTo(15,25,18,19);
+  c.quadraticCurveTo(19,4,16,-14);
+  c.quadraticCurveTo(14,-22,0,-22);c.quadraticCurveTo(-14,-22,-16,-14);c.closePath();c.fill();
+  outline(c,2.2);c.stroke();
+  c.strokeStyle=PAL.hairE;c.lineWidth=1.6;
+  c.beginPath();c.moveTo(-13,2);c.quadraticCurveTo(-14,12,-12,20);c.moveTo(13,2);c.quadraticCurveTo(14,12,12,20);c.stroke();
   c.restore();
-  // kaki
+  // kaki (proporsi 1:3 — kaki sedikit lebih panjang)
   const l1=sw*9,l2=-sw*9;
-  limb(c,-4,-24,-4+l1,-4,6.5,PAL.skin);limb(c,4,-24,4+l2,-4,6.5,PAL.skin);
-  // boot kulit mid-calf + tali strap (referensi)
-  const boot=(lx)=>{c.save();c.translate(lx,0);c.fillStyle=PAL.boot;rr(c,-5.8,-19,11.6,19.4,3.6);c.fill();outline(c,2.4);rr(c,-5.8,-19,11.6,19.4,3.6);c.stroke();
-    c.fillStyle=PAL.bootS;rr(c,-5.8,-12,11.6,3,1.2);c.fill(); // strap band
-    c.fillStyle='#D9B25E';c.beginPath();c.arc(0,-10.5,1.3,0,TAU);c.fill(); // buckle
-    c.strokeStyle=PAL.bootS;c.lineWidth=1.2;c.beginPath();c.moveTo(-4.4,-2);c.lineTo(4.4,-2);c.stroke();c.restore();};
+  limb(c,-4,-27,-4+l1,-3,6,PAL.skin);limb(c,4,-27,4+l2,-3,6,PAL.skin);
+  // boot kulit pucat mid-calf + strap gelap + sol rata (referensi)
+  const boot=(lx)=>{c.save();c.translate(lx,0);c.fillStyle=PAL.boot;rr(c,-5.6,-17,11.2,17,3.4);c.fill();outline(c,2.2);rr(c,-5.6,-17,11.2,17,3.4);c.stroke();
+    c.strokeStyle=PAL.bootS;c.lineWidth=1.7;c.beginPath();c.moveTo(-4.8,-10);c.lineTo(4.8,-10);c.stroke(); // satu strap tipis
+    c.lineWidth=2.4;c.beginPath();c.moveTo(-5,-1.2);c.lineTo(5,-1.2);c.stroke(); // sol rata
+    c.restore();};
   boot(-4+l1);boot(4+l2);
-  // gaun merah A-line sleeveless (terlihat di celah jas terbuka) — ujuran ikut ayun langkah
+  // gaun dusty-rose A-line — hem mengintip di bawah jas
   const hsw=sw*6;
-  c.fillStyle=PAL.dress;c.beginPath();c.moveTo(-9,-52);c.lineTo(9,-52);c.lineTo(13+hsw,-25);c.lineTo(-13+hsw,-25);c.closePath();c.fill();
-  c.fillStyle=PAL.dressS;c.beginPath();c.moveTo(3,-52);c.lineTo(9,-52);c.lineTo(13+hsw,-25);c.lineTo(6+hsw,-25);c.closePath();c.fill();
-  outline(c,2.6);c.beginPath();c.moveTo(-9,-52);c.lineTo(9,-52);c.lineTo(13+hsw,-25);c.lineTo(-13+hsw,-25);c.closePath();c.stroke();
-  c.strokeStyle='rgba(255,220,220,.5)';c.lineWidth=1.6;c.beginPath();c.moveTo(-13+hsw,-26.6);c.lineTo(13+hsw,-26.6);c.stroke();
-  // lengan belakang jas — longgar, melebar di pergelangan (referensi)
+  c.fillStyle=PAL.dress;c.beginPath();c.moveTo(-9,-55);c.lineTo(9,-55);c.lineTo(14+hsw,-22);c.lineTo(-14+hsw,-22);c.closePath();c.fill();
+  c.fillStyle=PAL.dressS;c.beginPath();c.moveTo(3,-55);c.lineTo(9,-55);c.lineTo(14+hsw,-22);c.lineTo(6+hsw,-22);c.closePath();c.fill();
+  outline(c,2.4);c.beginPath();c.moveTo(-9,-55);c.lineTo(9,-55);c.lineTo(14+hsw,-22);c.lineTo(-14+hsw,-22);c.closePath();c.stroke();
+  // bayangan lembut bawah dagu (referensi: soft shading)
+  c.fillStyle='rgba(160,110,100,.18)';c.beginPath();c.ellipse(0,-52,7.5,2.2,0,0,TAU);c.fill();
+  // lengan belakang: bahu puffed -> pergelangan ramping, tangan keluar (referensi)
   c.fillStyle=PAL.coatS;c.beginPath();
-  c.moveTo(-8,-51);c.lineTo(-15-sw*4,-37);c.lineTo(-8-sw*4,-33.6);c.lineTo(-2.5,-48.6);c.closePath();c.fill();
-  outline(c,2.2);c.beginPath();c.moveTo(-8,-51);c.lineTo(-15-sw*4,-37);c.lineTo(-8-sw*4,-33.6);c.lineTo(-2.5,-48.6);c.closePath();c.stroke();
-  c.fillStyle=PAL.skin;c.beginPath();c.arc(-11.5-sw*4,-33.6,3.1,0,TAU);c.fill();outline(c,1.6);c.stroke();
-  // jas lab terbuka: dua panel kiri-kanan, gaun merah mengintip di tengah
+  c.moveTo(-7.5,-53);c.quadraticCurveTo(-12,-47,-10.5-sw*3.5,-36);c.lineTo(-6-sw*3.5,-34);c.quadraticCurveTo(-8,-45,-3.5,-51.5);c.closePath();c.fill();
+  outline(c,2);c.beginPath();c.moveTo(-7.5,-53);c.quadraticCurveTo(-12,-47,-10.5-sw*3.5,-36);c.lineTo(-6-sw*3.5,-34);c.quadraticCurveTo(-8,-45,-3.5,-51.5);c.closePath();c.stroke();
+  c.fillStyle=PAL.skin;c.beginPath();c.arc(-8.3-sw*3.5,-32.4,3,0,TAU);c.fill();outline(c,1.6);c.stroke();
+  // jas lab terbuka: dua panel menggantung longgar, gaun mengintip di tengah
   c.fillStyle=PAL.coat;
-  c.beginPath();c.moveTo(-12,-56);c.lineTo(-3,-47);c.lineTo(-4,-26);c.lineTo(-14,-26);c.closePath();c.fill();
-  c.beginPath();c.moveTo(12,-56);c.lineTo(3,-47);c.lineTo(4,-26);c.lineTo(14,-26);c.closePath();c.fill();
-  outline(c,2.8);
-  c.beginPath();c.moveTo(-12,-56);c.lineTo(-3,-47);c.lineTo(-4,-26);c.lineTo(-14,-26);c.closePath();c.stroke();
-  c.beginPath();c.moveTo(12,-56);c.lineTo(3,-47);c.lineTo(4,-26);c.lineTo(14,-26);c.closePath();c.stroke();
-  c.strokeStyle=PAL.coatS;c.lineWidth=1.5; // lipitan dalam panel
-  c.beginPath();c.moveTo(-9.6,-50);c.lineTo(-11,-28);c.moveTo(9.6,-50);c.lineTo(11,-28);c.stroke();
-  // kerah jas V kecil
-  c.fillStyle=PAL.coatS;c.beginPath();c.moveTo(-6,-56);c.lineTo(0,-50.5);c.lineTo(-8.5,-52.5);c.closePath();c.fill();
-  c.beginPath();c.moveTo(6,-56);c.lineTo(0,-50.5);c.lineTo(8.5,-52.5);c.closePath();c.fill();
-  // lengan depan jas — longgar melebar + manset
-  const fx=11.5+sw*4;
+  c.beginPath();c.moveTo(-12,-59);c.lineTo(-3.5,-48);c.lineTo(-4.5,-26);c.lineTo(-14.5,-26);c.closePath();c.fill();
+  c.beginPath();c.moveTo(12,-59);c.lineTo(3.5,-48);c.lineTo(4.5,-26);c.lineTo(14.5,-26);c.closePath();c.fill();
+  outline(c,2.4);
+  c.beginPath();c.moveTo(-12,-59);c.lineTo(-3.5,-48);c.lineTo(-4.5,-26);c.lineTo(-14.5,-26);c.closePath();c.stroke();
+  c.beginPath();c.moveTo(12,-59);c.lineTo(3.5,-48);c.lineTo(4.5,-26);c.lineTo(14.5,-26);c.closePath();c.stroke();
+  c.strokeStyle=PAL.coatS;c.lineWidth=1.4;
+  c.beginPath();c.moveTo(-9.8,-52);c.lineTo(-11,-28);c.moveTo(9.8,-52);c.lineTo(11,-28);c.stroke();
+  // kerah V kecil
+  c.fillStyle=PAL.coatS;c.beginPath();c.moveTo(-6,-59);c.lineTo(0,-53);c.lineTo(-8.5,-55);c.closePath();c.fill();
+  c.beginPath();c.moveTo(6,-59);c.lineTo(0,-53);c.lineTo(8.5,-55);c.closePath();c.fill();
+  // lengan depan: puffed bahu -> ramping, tangan keluar
+  const fx=8.3+sw*3.5;
   c.fillStyle=PAL.coat;c.beginPath();
-  c.moveTo(8,-51);c.lineTo(fx+3.5,-37);c.lineTo(fx-3.5,-33.6);c.lineTo(2.5,-48.6);c.closePath();c.fill();
-  outline(c,2.2);c.beginPath();c.moveTo(8,-51);c.lineTo(fx+3.5,-37);c.lineTo(fx-3.5,-33.6);c.lineTo(2.5,-48.6);c.closePath();c.stroke();
-  c.strokeStyle=PAL.coatS;c.lineWidth=1.5;c.beginPath();c.moveTo(fx+3.4,-37.4);c.lineTo(fx-3.4,-34);c.stroke(); // manset
-  c.fillStyle=PAL.skin;c.beginPath();c.arc(fx,-33.4,3.1,0,TAU);c.fill();outline(c,1.6);c.stroke();
+  c.moveTo(7.5,-53);c.quadraticCurveTo(12,-47,fx+2.2,-36);c.lineTo(fx-2.2,-34);c.quadraticCurveTo(8,-45,3.5,-51.5);c.closePath();c.fill();
+  outline(c,2);c.beginPath();c.moveTo(7.5,-53);c.quadraticCurveTo(12,-47,fx+2.2,-36);c.lineTo(fx-2.2,-34);c.quadraticCurveTo(8,-45,3.5,-51.5);c.closePath();c.stroke();
+  c.fillStyle=PAL.skin;c.beginPath();c.arc(fx,-32.4,3,0,TAU);c.fill();outline(c,1.6);c.stroke();
   if(opt.vial){ // vial serum biru (ending)
-    c.save();c.translate(fx,-31);
+    c.save();c.translate(fx,-30.2);
     c.fillStyle=PAL.vialB;c.shadowColor=PAL.vialB;c.shadowBlur=10;rr(c,-2.6,-7,5.2,10,2.4);c.fill();c.shadowBlur=0;outline(c,1.4);rr(c,-2.6,-7,5.2,10,2.4);c.stroke();c.restore();}
   // kepala
-  c.save();c.translate(0,-56);c.rotate(moving?Math.sin(phase)*.02:Math.sin(t*1.6)*.012);
+  c.save();c.translate(0,-59);c.rotate(moving?Math.sin(phase)*.02:Math.sin(t*1.6)*.012);
   // wajah
-  c.fillStyle=PAL.skin;c.beginPath();c.ellipse(0,-6,17.5,16.5,0,0,TAU);c.fill();outline(c,2.6);c.stroke();
-  // poni bergelombang 5 helai + kilau
+  c.fillStyle=PAL.skin;c.beginPath();c.ellipse(0,-5.5,15.5,14.5,0,0,TAU);c.fill();outline(c,2.4);c.stroke();
+  // poni: belah tengah jelas — dua tirai rambut turun dari puncak tengah (referensi)
   c.fillStyle=PAL.hairE;c.beginPath();
-  c.moveTo(-18,-8);c.quadraticCurveTo(-17,-25,0,-25);c.quadraticCurveTo(17,-25,18,-8);
-  c.quadraticCurveTo(14,-15,10,-9.5);c.quadraticCurveTo(7,-17,2,-10.5);c.quadraticCurveTo(-1,-18,-6,-10.5);c.quadraticCurveTo(-10,-16,-13,-9.5);c.quadraticCurveTo(-15,-13,-18,-8);
-  c.closePath();c.fill();outline(c,2.2);c.stroke();
-  c.fillStyle='rgba(255,247,220,.5)';c.beginPath();c.ellipse(-5.5,-18.5,7.5,2.3,-.22,0,TAU);c.fill();
-  // side lock bergelombang S di pelipis
+  c.moveTo(-15.5,-6);
+  c.quadraticCurveTo(-15,-20,-7,-21.5);
+  c.quadraticCurveTo(-3,-19,-1.2,-13.2);
+  c.lineTo(-1.2,-12.2);
+  c.quadraticCurveTo(-4,-13.4,-8,-13);
+  c.quadraticCurveTo(-13,-12,-15.5,-6);
+  c.closePath();c.fill();outline(c,2);c.stroke();
+  c.beginPath();
+  c.moveTo(15.5,-6);
+  c.quadraticCurveTo(15,-20,7,-21.5);
+  c.quadraticCurveTo(3,-19,1.2,-13.2);
+  c.lineTo(1.2,-12.2);
+  c.quadraticCurveTo(4,-13.4,8,-13);
+  c.quadraticCurveTo(13,-12,15.5,-6);
+  c.closePath();c.fill();outline(c,2);c.stroke();
+  c.fillStyle='rgba(255,252,240,.3)';c.beginPath();c.ellipse(-5,-16,5.5,1.8,-.2,0,TAU);c.fill(); // kilau lembut atas kepala
+  // bayangan lembut bawah poni di dahi
+  c.fillStyle='rgba(160,120,100,.14)';c.beginPath();c.ellipse(0,-10.6,10,1.8,0,0,TAU);c.fill();
+  // side lock kurva S sampai rahang
   c.fillStyle=PAL.hairE;
-  c.beginPath();c.moveTo(-17.5,-12);c.quadraticCurveTo(-21,-2,-17.5,8);c.quadraticCurveTo(-15,12,-13.5,8);c.quadraticCurveTo(-16,0,-14.5,-9);c.closePath();c.fill();outline(c,2);c.stroke();
-  c.beginPath();c.moveTo(17.5,-12);c.quadraticCurveTo(21,-2,17.5,8);c.quadraticCurveTo(15,12,13.5,8);c.quadraticCurveTo(16,0,14.5,-9);c.closePath();c.fill();outline(c,2);c.stroke();
-  c.save();c.translate(0,-6);drawFace(c,expr,(T%3.7)<.12,t,PAL.eye,expr==='warm'||expr==='happy');c.restore();
+  c.beginPath();c.moveTo(-15,-10);c.quadraticCurveTo(-18.5,-2,-15.5,7);c.quadraticCurveTo(-13.5,11.5,-12,7.5);c.quadraticCurveTo(-14.5,0,-13,-8);c.closePath();c.fill();outline(c,2);c.stroke();
+  c.beginPath();c.moveTo(15,-10);c.quadraticCurveTo(18.5,-2,15.5,7);c.quadraticCurveTo(13.5,11.5,12,7.5);c.quadraticCurveTo(14.5,0,13,-8);c.closePath();c.fill();outline(c,2);c.stroke();
+  c.save();c.translate(0,-5.5);c.scale(.8,.8);
+  drawFace(c,expr,(T%3.7)<.12,t,PAL.eye,(expr==='warm'||expr==='happy')?true:'soft',PAL.browE);
+  c.restore();
   c.restore();
   c.restore();
 }
