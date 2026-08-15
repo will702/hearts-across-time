@@ -6,3 +6,5 @@ node_modules/
 .venv/
 assets/gen/
 qa/
+__pycache__/
+*.pyc
