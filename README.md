@@ -17,10 +17,14 @@ atau untuk deploy itch.io: zip `index.html` → upload sebagai **HTML5 game** (9
 
 | Aksi | Keyboard | Sentuh |
 |---|---|---|
-| Bergerak | `← →` atau `A D` (lari: `Shift`) | tombol ◀ ▶ |
+| Bergerak | `← →` atau `A D` (lari: `Shift`) | tombol ◀ ▶ (lari: tahan ≫) |
 | Lanjut dialog | `Enter` / `Space` / klik | ketuk layar |
 | Pilih opsi | `↑ ↓` + `Enter`, atau tombol `1` / `2` | ketuk opsi |
+| Backlog dialog | `Tab` / `B` (gulir: `↑ ↓`) | — |
+| Jeda (mixer + aksesibilitas) | `Esc` | ikon ⏸ pojok kanan atas |
 | Bisu-suara | `M` | ikon 🔊 pojok kanan atas |
+
+Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungsi jadi jalan pelan, agar pengulangan siklus tidak repot. Layar judul menampilkan penghitung **⏳ ENDING TERUNGKAP n/6** (5 rute gagal + true ending) yang tersimpan lintas sesi.
 
 ## ✅ Implementasi vs GDD
 
@@ -130,7 +134,7 @@ mem-fade musik ke 0, dan musik **duck otomatis ±6 dB saat teks dialog sedang me
 
 ## ✨ Efek Visual (v2 — Juice Pass)
 
-- **Karakter**: bayangan lembut di kaki, fisika rambut & ayunan gaun mengikuti langkah, condong saat berjalan,
+- **Karakter**: bayangan lembut di kaki, siklus kaki elips ayun/tumpu (kaki tumpu menapak, kaki ayun melengkung), fisika rambut & ayunan gaun dengan follow-through tertinggal dari langkah, condong saat berjalan + pitch badan saat akselerasi,
   kilau rambut ala anime, air mata (ekspresi sedih) & butir keringat (kaget)
 - **Partikel**: fade + gravitasi + shrink; **debu terbang setiap langkah kaki**, bara api berkedip 1944, abu 2088,
   motes biru 1999, jejak energi di pusaran waktu
@@ -151,7 +155,9 @@ AS / drawCharSheet / bgLayerImg — loader aset + penggambar spritesheet/paralla
 groundShadow   — bayangan lembut kaki karakter
 drawElena / drawArthur — sprite chibi prosedural (ekspresi: neutral/smile/sad/shock/angry/mad/warm + air mata/keringat)
 bg1944 / bg1968 / bg1999 / bg2088 — parallax 3-layer deterministik (seeded rand) + searchlight/god rays/neon/api
-NODES          — seluruh dialog & percabangan (mirror dari file .yarn)
+NODES          — seluruh dialog & percabangan (mirror dari file .yarn) + varian déjà-vu sadar-loop
+LOG / drawLog  — backlog 30 baris terakhir (TAB/B); markEnd + END_TOTAL — penghitung ending n/6 di judul
+setPaused / pauseItems — jeda: ducking musik & ambience, slider MASTER/MUSIK/EFEK, ukuran teks, reduceMotion
 SONGS / MUS    — sequencer musik leitmotif (pad/bass/musicbox/bell/tick + delay & reverb)
 SFX / setAmbience / setSong / duckMusic — audio prosedural WebAudio (SFX + ambience + musik per era)
 update/render  — state machine: load → title → prologue → walk → dialog → vortex → glitch → endcard

@@ -47,7 +47,7 @@ function ac(){if(!AU.ctx){AU.ctx=new (window.AudioContext||window.webkitAudioCon
     // graf bus: master -> limiter(kompressor) -> out ; sub-bus: SFX / Ambience / Musik
     const comp=AU.ctx.createDynamicsCompressor();comp.threshold.value=-14;comp.knee.value=18;comp.ratio.value=6;comp.attack.value=.004;comp.release.value=.24;comp.connect(AU.ctx.destination);AU.master.connect(comp);
     AU.sfxBus=AU.ctx.createGain();AU.sfxBus.connect(AU.master);
-    AU.ambBus=AU.ctx.createGain();AU.ambBus.gain.value=.9;AU.ambBus.connect(AU.master);
+    AU.ambBus=AU.ctx.createGain();AU.ambBus.gain.value=.9*(OPTS.volSfx===undefined?1:OPTS.volSfx);AU.ambBus.connect(AU.master);
     AU.musBus=AU.ctx.createGain();AU.musBus.gain.value=.8;AU.musBus.connect(AU.master);
     // reverb (impulse noise buatan) + feedback-delay hanya untuk musik
     AU.verb=AU.ctx.createConvolver();AU.verb.buffer=impulse(AU.ctx,2.6,2.4);const vout=AU.ctx.createGain();vout.gain.value=.5;AU.verb.connect(vout);vout.connect(AU.musBus);
@@ -121,7 +121,7 @@ const AMB_SONG={'title':'theme','2088':'theme','1944':'war','1968':'spy','1999':
 const MUS={name:'',song:null,map:null,step:0,nextT:0};
 function buildMap(s){const m={};s.tracks.forEach(tr=>tr.ev.forEach(e=>{(m[e[0]]=m[e[0]]||[]).push({v:tr.v,notes:Array.isArray(e[1])?e[1]:[e[1]],dur:e[2]||6,vel:e[3]||1});}));return m;}
 function setSong(nm){if(MUS.name===nm)return;MUS.name=nm;MUS.song=SONGS[nm]||null;MUS.map=MUS.song?buildMap(MUS.song):null;MUS.step=0;if(AU.ctx)MUS.nextT=AU.ctx.currentTime+.06;}
-function duckMusic(level,rel){if(!AU.ctx||!AU.musBus)return;const t=AU.ctx.currentTime;try{AU.musBus.gain.cancelScheduledValues(t);AU.musBus.gain.setValueAtTime(AU.musBus.gain.value,t);AU.musBus.gain.linearRampToValueAtTime(.8*level,t+(rel||.4));}catch(e){}}
+function duckMusic(level,rel){if(!AU.ctx||!AU.musBus)return;const t=AU.ctx.currentTime;try{AU.musBus.gain.cancelScheduledValues(t);AU.musBus.gain.setValueAtTime(AU.musBus.gain.value,t);AU.musBus.gain.linearRampToValueAtTime(.8*(OPTS.volMus===undefined?1:OPTS.volMus)*level,t+(rel||.4));}catch(e){}}
 function vMusicbox(f,t,g){const c=AU.ctx;[[1,1],[3.98,.16],[6.1,.05]].forEach(([r,a])=>{const o=c.createOscillator();o.type='sine';o.frequency.value=f*r;const og=c.createGain();og.gain.setValueAtTime(g*a,t);og.gain.exponentialRampToValueAtTime(.0001,t+1.4/Math.sqrt(r));o.connect(og);og.connect(AU.mIn);o.start(t);o.stop(t+1.5);});}
 function vBell(f,t,g){const c=AU.ctx;const car=c.createOscillator();car.type='sine';car.frequency.value=f;const mod=c.createOscillator();mod.type='sine';mod.frequency.value=f*2.4;const mg=c.createGain();mg.gain.setValueAtTime(f*1.6,t);mg.gain.exponentialRampToValueAtTime(f*.02,t+1.1);mod.connect(mg);mg.connect(car.frequency);const bg=c.createGain();bg.gain.setValueAtTime(g,t);bg.gain.exponentialRampToValueAtTime(.0001,t+2.2);car.connect(bg);bg.connect(AU.mIn);car.start(t);mod.start(t);car.stop(t+2.3);mod.stop(t+2.3);}
 function vPad(f,t,dur,g){const c=AU.ctx;const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=850;const vg=c.createGain();vg.gain.setValueAtTime(.0001,t);vg.gain.linearRampToValueAtTime(g,t+.5);vg.gain.setValueAtTime(g,t+dur*.6);vg.gain.linearRampToValueAtTime(.0001,t+dur);lp.connect(vg);vg.connect(AU.mIn);[-4,4].forEach(d2=>{const o=c.createOscillator();o.type='triangle';o.frequency.value=f;o.detune.value=d2;o.connect(lp);o.start(t);o.stop(t+dur+.1);});}
@@ -142,7 +142,7 @@ setInterval(musTick,42);
 
 /* ---------- Input ---------- */
 const keys={},pressed={};
-addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Enter'].includes(e.key))e.preventDefault();if(!keys[e.key])pressed[e.key]=true;keys[e.key]=true;initAudioOnce();});
+addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Enter','Tab'].includes(e.key))e.preventDefault();if(!keys[e.key])pressed[e.key]=true;keys[e.key]=true;initAudioOnce();});
 addEventListener('keyup',e=>{keys[e.key]=false;});
 let ptr={x:0,y:0,down:false,tap:false};
 function cvXY(e){const r=cv.getBoundingClientRect();const cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left,cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top;return{x:cx/r.width*W,y:cy/r.height*H};}
@@ -158,7 +158,7 @@ const advHit=()=>keyOnce(' ')||keyOnce('Enter')||keyOnce('Spacebar');
 
 /* ---------- State global ---------- */
 const S={empathy:0,logic:0,routeB1:'',routeB2:'',loop:0};
-const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:true,vx:0,stride:0,turnT:0},
+const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:true,vx:0,stride:0,turnT:0,acc:0},
   walk:null,dialog:null,cam:0,camTarget:0,caption:'',captionT:0,
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
   era:'2088',shakeT:0,shakeA:0,endCard:null,fadeIn:0,prologueDone:false,
@@ -168,10 +168,15 @@ let T=0; // waktu global detik
 /* ---------- Opsi & penyimpanan (localStorage) ---------- */
 const OPTS=Object.assign({vol:.9,textSpd:1},(()=>{try{return JSON.parse(localStorage.getItem('hat_opts')||'{}')}catch(e){return{}}})());
 function saveOpts(){try{localStorage.setItem('hat_opts',JSON.stringify(OPTS));}catch(e){}}
-const SAVE={seen:{},chosen:{},game:null}; // node terlihat / pilihan pernah dipilih / autosave siklus
+const SAVE={seen:{},chosen:{},game:null,endings:{}}; // node terlihat / pilihan pernah dipilih / autosave siklus / ending terungkap
+const END_TOTAL=['A1','B1','B2lock','rebut','paradox','true']; // 5 rute gagal + true ending
+function markEnd(k){if(!k)return;if(!SAVE.endings)SAVE.endings={};if(!SAVE.endings[k]){SAVE.endings[k]=1;persistSave();}}
 try{Object.assign(SAVE,JSON.parse(localStorage.getItem('hat_save')||'{}'));}catch(e){}
 function persistSave(){try{localStorage.setItem('hat_save',JSON.stringify(SAVE));}catch(e){}}
-function applyVol(){if(AU.master&&!AU.muted)AU.master.gain.value=OPTS.vol;}
+function applyVol(){if(AU.master&&!AU.muted)AU.master.gain.value=OPTS.vol;
+  if(AU.sfxBus)AU.sfxBus.gain.value=OPTS.volSfx===undefined?1:OPTS.volSfx; // slider EFEK
+  if(AU.musBus)duckMusic(D&&D.duckT?.55:.85,.06); // slider MUSIK via duckMusic agar transisi halus
+  if(AU.ctx&&AU.ambBus&&!G.paused){const t=AU.ctx.currentTime;AU.ambBus.gain.cancelScheduledValues(t);AU.ambBus.gain.setValueAtTime(AU.ambBus.gain.value,t);AU.ambBus.gain.linearRampToValueAtTime(.9*(OPTS.volSfx===undefined?1:OPTS.volSfx),t+.15);}}
 
 /* ============================================================
    SPRITE CHIBI — palet dari referensi
@@ -221,12 +226,18 @@ function drawCharSheet(c,id,expr,phase,moving,opt={}){ // false => pemanggil pak
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!im||!cfg||!im.width)return false;
   const cols=Math.max(1,Math.floor(im.width/cfg.fw)),rows=Math.max(1,Math.floor(im.height/cfg.fh));
   let row=EXPR_ROWS.indexOf(expr);if(row<0||row>=rows)row=0;
-  let col=0;if(moving&&cols>1){const seq=cols>3?[1,2,3,2]:null;col=seq?seq[Math.floor(phase/(Math.PI/2))%4]:Math.floor(phase/(Math.PI/2))%cols;} // siklus langkah halus: w1→w2→w3→w2
+  let col=0,col2=-1,blend=0;
+  if(moving&&cols>1){const seq=cols>3?[1,2,3,2]:null,sub=phase/(Math.PI/2),i0=Math.floor(sub),a=sub-i0;
+    const pick=k=>seq?seq[k%4]:k%cols;col=pick(i0);
+    blend=clamp((a-.7)/.3,0,1);if(blend>0)col2=pick(i0+1);} // siklus w1→w2→w3→w2 dgn cross-fade pada 30% akhir tiap substep (anti pop)
   const s=(cfg.h||112)/cfg.fh,dw=cfg.fw*s,dh=cfg.fh*s;
   if(opt.tremble)c.translate(Math.sin(T*31)*.9,0);
-  else if(moving){const st=opt.stride===undefined?1:opt.stride;c.translate(Math.sin(phase*2)*(0.6+0.5*st),-Math.abs(Math.sin(phase))*(1.6+1.4*st));} // bob langkah utk sheet, amplitudo ikut stride
+  else if(moving){const st=opt.stride===undefined?1:opt.stride;c.rotate(Math.sin(phase)*.03*st);c.translate(Math.sin(phase*2-.4)*(0.6+0.5*st),-Math.abs(Math.sin(phase))*(1.6+1.4*st));} // bob langkah: counter-rock 1× + sway 2× melambai
   if(cfg.pixel){c.save();c.imageSmoothingEnabled=false;}
-  c.drawImage(im,col*cfg.fw,row*cfg.fh,cfg.fw,cfg.fh,-dw/2,-dh,dw,dh);
+  if(col2<0)c.drawImage(im,col*cfg.fw,row*cfg.fh,cfg.fw,cfg.fh,-dw/2,-dh,dw,dh);
+  else{ // lebur antar frame
+    c.globalAlpha=1-blend;c.drawImage(im,col*cfg.fw,row*cfg.fh,cfg.fw,cfg.fh,-dw/2,-dh,dw,dh);
+    c.globalAlpha=blend;c.drawImage(im,col2*cfg.fw,row*cfg.fh,cfg.fw,cfg.fh,-dw/2,-dh,dw,dh);c.globalAlpha=1;}
   if(cfg.pixel)c.restore();
   return true;
 }
@@ -282,7 +293,7 @@ function drawElena(c,t,phase,moving,expr='neutral',opt={}){
   const st=opt.stride===undefined?1:opt.stride;
   const bob=moving?Math.abs(Math.sin(phase))*(1.6+1.4*st):Math.sin(t*2)*0.9;
   const sw=moving?Math.sin(phase)*(0.75+0.4*st):Math.sin(t*1.4)*.1;
-  const sway=moving?Math.sin(phase)*.05:Math.sin(t*1.3)*.018;
+  const sway=moving?Math.sin(phase-.9)*.05:Math.sin(t*1.3)*.018; // rambut: follow-through, tertinggal dari langkah
   c.save();c.translate(0,-bob);
   if(moving&&opt.lean)c.rotate(opt.lean);
   // rambut belakang: sepanjang tulang belikat, ujung ikal ke DALAM (referensi GIF)
@@ -297,17 +308,19 @@ function drawElena(c,t,phase,moving,expr='neutral',opt={}){
   c.strokeStyle=PAL.hairE;c.lineWidth=1.6;
   c.beginPath();c.moveTo(-13,2);c.quadraticCurveTo(-14,12,-12,20);c.moveTo(13,2);c.quadraticCurveTo(14,12,12,20);c.stroke();
   c.restore();
-  // kaki (proporsi 1:3 — kaki sedikit lebih panjang)
-  const l1=sw*9,l2=-sw*9;
-  limb(c,-4,-27,-4+l1,-3,6,PAL.skin);limb(c,4,-27,4+l2,-3,6,PAL.skin);
+  // kaki: langkah elips ayun/tumpu — kaki ayun terangkat di tengah silang, kaki tumpu menapak penuh
+  const stA=9*(0.75+0.4*st),stL=3.2*(0.5+0.7*st);
+  const lx1=moving?stA*Math.sin(phase):sw*9,lx2=moving?stA*Math.sin(phase+Math.PI):-sw*9;
+  const ly1=moving?stL*Math.max(0,Math.cos(phase)):0,ly2=moving?stL*Math.max(0,Math.cos(phase+Math.PI)):0;
+  limb(c,-4,-27,-4+lx1,-3-ly1,6,PAL.skin);limb(c,4,-27,4+lx2,-3-ly2,6,PAL.skin);
   // boot kulit pucat mid-calf + strap gelap + sol rata (referensi)
-  const boot=(lx)=>{c.save();c.translate(lx,0);c.fillStyle=PAL.boot;rr(c,-5.6,-17,11.2,17,3.4);c.fill();outline(c,2.2);rr(c,-5.6,-17,11.2,17,3.4);c.stroke();
+  const boot=(lx,ly)=>{c.save();c.translate(lx,-(ly||0));c.fillStyle=PAL.boot;rr(c,-5.6,-17,11.2,17,3.4);c.fill();outline(c,2.2);rr(c,-5.6,-17,11.2,17,3.4);c.stroke();
     c.strokeStyle=PAL.bootS;c.lineWidth=1.7;c.beginPath();c.moveTo(-4.8,-10);c.lineTo(4.8,-10);c.stroke(); // satu strap tipis
     c.lineWidth=2.4;c.beginPath();c.moveTo(-5,-1.2);c.lineTo(5,-1.2);c.stroke(); // sol rata
     c.restore();};
-  boot(-4+l1);boot(4+l2);
+  boot(-4+lx1,ly1);boot(4+lx2,ly2);
   // gaun dusty-rose A-line — hem mengintip di bawah jas
-  const hsw=sw*6;
+  const hsw=moving?Math.sin(phase-.6)*6*(0.75+0.4*st):sw*6; // hem gaun tertinggal sedikit dari langkah (kain mengekor)
   c.fillStyle=PAL.dress;c.beginPath();c.moveTo(-9,-55);c.lineTo(9,-55);c.lineTo(14+hsw,-22);c.lineTo(-14+hsw,-22);c.closePath();c.fill();
   c.fillStyle=PAL.dressS;c.beginPath();c.moveTo(3,-55);c.lineTo(9,-55);c.lineTo(14+hsw,-22);c.lineTo(6+hsw,-22);c.closePath();c.fill();
   outline(c,2.4);c.beginPath();c.moveTo(-9,-55);c.lineTo(9,-55);c.lineTo(14+hsw,-22);c.lineTo(-14+hsw,-22);c.closePath();c.stroke();
@@ -594,10 +607,11 @@ const WHO={elena:{name:'ELENA',chip:'#C25A5A'},arthur:{name:'ARTHUR',chip:'#5B7A
   muda:{name:'ARTHUR',chip:'#7A8456'},dewasa:{name:'ARTHUR',chip:'#5B7A99'},buron:{name:'ARTHUR',chip:'#8A6B4A'},tua:{name:'ARTHUR TUA',chip:'#8A8474'},narrator:{name:'',chip:'#000'}};
 function wrap(c,text,maxW){const words=text.split(' ');const lines=[];let cur='';for(const w of words){const test=cur?cur+' '+w:w;if(c.measureText(test).width>maxW&&cur){lines.push(cur);cur=w;}else cur=test;}if(cur)lines.push(cur);return lines;}
 function drawBubble(c,x,headY,text,who,prog,nameless,pop=1){
-  c.font='15px "Trebuchet MS",sans-serif';
+  const ts=OPTS.textScale||1,lh=Math.round(20*ts);
+  c.font=Math.round(15*ts)+'px "Trebuchet MS",sans-serif';
   const full=who==='narrator'?text:text.slice(0,Math.ceil(text.length*prog));
   const lines=wrap(c,full,340);
-  const bw=Math.max(...lines.map(l=>c.measureText(l).width),60)+30, bh=lines.length*20+16;
+  const bw=Math.max(...lines.map(l=>c.measureText(l).width),60)+30, bh=lines.length*lh+16;
   let bx=clamp(x-bw/2,14,W-bw-14), by=headY-bh-30;if(by<54)by=headY+64;
   c.save();
   const s=easeOB(pop);c.translate(bx+bw/2,by+bh/2);c.scale(s,s);c.translate(-(bx+bw/2),-(by+bh/2));c.shadowColor='rgba(0,0,0,.35)';c.shadowBlur=10;c.shadowOffsetY=3;
@@ -609,22 +623,23 @@ function drawBubble(c,x,headY,text,who,prog,nameless,pop=1){
     const wd=WHO[who];c.font='bold 10.5px "Trebuchet MS",sans-serif';const tw2=c.measureText(wd.name).width+14;
     c.fillStyle=wd.chip;rr(c,bx+10,by-9,tw2,18,8);c.fill();c.fillStyle='#FFF';c.textAlign='center';c.textBaseline='middle';c.fillText(wd.name,bx+10+tw2/2,by+.5);c.textBaseline='alphabetic';}
   c.fillStyle='#1E1710';c.textAlign='left';c.textBaseline='top';
-  lines.forEach((l,i)=>c.fillText(l,bx+15,by+9+i*20));
+  lines.forEach((l,i)=>c.fillText(l,bx+15,by+9+i*lh));
   if(prog<1&&who!=='narrator'){const lx=bx+15+c.measureText(lines[lines.length-1]).width+6;c.fillStyle='#C25A5A';c.fillRect(lx,by+bh-12,5,7);}
   c.restore();
 }
 function drawNarr(c,text,prog,pop=1){
-  c.font='16px "Trebuchet MS",sans-serif';const shown=text.slice(0,Math.ceil(text.length*prog));
-  const lines=wrap(c,shown,640);const bh=lines.length*22+30;const by=H-bh-24,bx=(W-700)/2;
+  const ts=OPTS.textScale||1,lh=Math.round(22*ts);
+  c.font=Math.round(16*ts)+'px "Trebuchet MS",sans-serif';const shown=text.slice(0,Math.ceil(text.length*prog));
+  const lines=wrap(c,shown,640);const bh=lines.length*lh+30;const by=H-bh-24,bx=(W-700)/2;
   c.save();
   const s=easeOB(pop);c.translate(W/2,by+bh/2);c.scale(s,s);c.translate(-W/2,-(by+bh/2));c.shadowColor='rgba(0,0,0,.5)';c.shadowBlur=12;c.shadowOffsetY=3;
   c.fillStyle='#F5F0E8';rr(c,bx,by,700,bh,10);c.fill();c.shadowColor='transparent';
   outline(c,2.4);rr(c,bx,by,700,bh,10);c.stroke();c.restore();
   c.fillStyle='#1E1710';c.textAlign='center';c.textBaseline='top';
   const isBracket=/^\[/.test(shown);
-  c.font=(isBracket?'bold 17px':'16px')+' "Trebuchet MS",sans-serif';
+  c.font=(isBracket?'bold ':'')+Math.round((isBracket?17:16)*ts)+'px "Trebuchet MS",sans-serif';
   if(isBracket)c.fillStyle='#8A3B3B';
-  lines.forEach((l,i)=>c.fillText(l,W/2,by+16+i*22));
+  lines.forEach((l,i)=>c.fillText(l,W/2,by+13+i*lh));
 }
 function drawChoices(c,opts,sel,mx,my,pr=1){
   c.font='15px "Trebuchet MS",sans-serif';
@@ -664,8 +679,14 @@ N('prologue',[
 ]);
 N('n_b1',()=>{
   const ops=[];
-  if(S.loop>0){ops.push(say('elena','Parit ini lagi... Aku terlempar kembali ke 1944!','shock'));
-    ops.push(say('elena','Aku tidak boleh mengulangi kesalahan di siklus sebelumnya.','sad'));}
+  if(S.loop>0){ // déjà-vu bertingkat mengikuti jumlah loop (C4)
+    if(S.loop===1){ops.push(say('elena','Parit ini lagi... Aku terlempar kembali ke 1944!','shock'));
+      ops.push(say('elena','Aku tidak boleh mengulangi kesalahan di siklus sebelumnya.','sad'));}
+    else if(S.loop===2){ops.push(say('elena','Siklus ketiga... aku mulai menghafal setiap batu dan lubang di parit ini.','sad'));
+      ops.push(say('elena','Dan kau... selalu menungguku di titik yang sama, Arthur.','neutral'));}
+    else{ops.push(say('elena','Loop ke-'+S.loop+'. Dunia di luar sini memudar seperti mimpi yang salah sambung.','sad'));
+      ops.push(say('elena','Kali ini aku yang MEMUTUS lingkaran ini. Apapun taruhannya.','angry'));}
+    if(S.loop>=2)ops.push(say('muda','A-aneh... rasanya aku pernah memimpikanmu menatapku persis begitu, nona...','shock'));}
   ops.push(say('muda','S-siapa kau?! Tolong jangan tembak! Aku bukan tentara tempur... aku cuma asisten lab medis!','shock'));
   ops.push(say('muda','Tanganku gemetar... Di luar sana bom berjatuhan, dan komandan menyuruhku membawa tabung racun ini ke garis depan.','sad'));
   ops.push({t:'choice',opts:[
@@ -691,6 +712,7 @@ N('r1b',[say('muda','Kupahami misiku. Aku akan menyusup dan menyempurnakannya da
 
 N('n_b2',()=>{
   const warm=S.empathy>S.logic;const ops=[];
+  if(S.loop>=2)ops.push(say(warm?'dewasa':'buron','Tatapanmu itu... seperti sudah menyaksikan semua ini berulang kali.','shock')); // déjà-vu loop (C4)
   if(warm){ops.push(say('dewasa','Elena...? Liontin itu... kau benar-benar datang kembali setelah 24 tahun!','shock'));
     ops.push(say('dewasa','Setiap malam aku bertahan meneliti, hanya kenangan kehangatanmu yang menjagaku tetap waras.','warm'));}
   else{ops.push(say('buron','Hahaha! Sang \'penyelamat masa depan\' akhirnya menampakkan diri.','angry'));
@@ -775,18 +797,22 @@ N('true_end',[
    RUNNER DIALOG
    ============================================================ */
 const D={node:null,ops:[],i:0,line:null,prog:0,popT:1,choices:null,sel:0,choiceT:0,duckT:false,elExpr:'neutral',arExpr:'neutral',arKind:'muda',ended:false};
-function startNode(id){const n=NODES[id];D.ops=(typeof n==='function')?n():n;D.i=0;D.node=id;SAVE.seen[id]=1;D.line=null;D.choices=null;step();}
+const LOG=[]; // backlog dialog (30 terakhir) — buka dengan TAB/B
+function startNode(id){const n=NODES[id];D.ops=(typeof n==='function')?n():n;D.i=0;D.node=id;SAVE.seen[id]=1;D.line=null;D.choices=null;
+  if(id==='paradox')markEnd('paradox');else if(id==='r3f')markEnd('rebut');else if(id==='true_end')markEnd('true'); // ending via node
+  step();}
 function step(){
   while(D.i<D.ops.length){
     const op=D.ops[D.i++];
     if(op.t==='say'){D.line=op;D.prog=0;D.popT=0;D.ffT=0;G.speak={who:op.who,t:0};
+      LOG.push({who:op.who,text:op.text});if(LOG.length>30)LOG.shift();
       if(op.who==='elena')D.elExpr=op.expr||'neutral';
       else if(op.who==='narrator'){}
       else D.arExpr=op.expr||'neutral';
       return;}
     if(op.t==='choice'){D.choices=op.opts;D.sel=0;D.line=null;D.choiceT=0;D.duckT=false;duckMusic(.5,.4);SFX.select();return;}
     if(op.t==='goto'){startNode(op.id);return;}
-    if(op.t==='fx'){if(op.kind==='boom'){SFX.boom();G.shakeT=.9;G.shakeA=9;G.whiteFlash=1;}if(op.kind==='chime')SFX.chime();continue;}
+    if(op.t==='fx'){if(op.kind==='boom'){SFX.boom();G.shakeT=OPTS.reduceMotion?0:.9;G.shakeA=9;G.whiteFlash=OPTS.reduceMotion?.25:1;}if(op.kind==='chime')SFX.chime();continue;}
     if(op.t==='vortex'){startVortex(op.to,false);return;}
     if(op.t==='ending'){if(op.kind==='loop')startGlitch();else startEndCard();return;}
   }
@@ -801,6 +827,13 @@ function dialogAdvance(){
   if(D.line){if(D.prog<1){D.prog=1;return;}D.line=null;step();return;}
 }
 function updateDialog(dt,mx,my){
+  // backlog: TAB/B buka-tutup; ↑↓ gulir; ESC/klik tutup (kunci semua input dialog lain)
+  if(keyOnce('Tab')||keyOnce('b')||keyOnce('B')){G.logOpen=!G.logOpen;G.logScroll=0;SFX.select();return;}
+  if(G.logOpen){
+    if(keyOnce('ArrowUp')||keyOnce('w'))G.logScroll=(G.logScroll||0)+1;
+    if(keyOnce('ArrowDown')||keyOnce('s'))G.logScroll=Math.max(0,(G.logScroll||0)-1);
+    if(keyOnce('Escape')||ptr.tap){ptr.tap=false;G.logOpen=false;SFX.select();}
+    return;}
   // fast-forward: tahan CTRL/F (atau tombol ⏩ sentuh) — teks yang sudah pernah
   // dilihat dilewati otomatis; teks baru hanya diketik instan
   const ffT=IS_TOUCH&&ptr.down&&Math.hypot(ptr.x-46,ptr.y-(H-44))<28;
@@ -810,7 +843,7 @@ function updateDialog(dt,mx,my){
       if(D.ffT>.07){D.ffT=0;D.line=null;step();return;}}
     else if(ff)D.prog=1;
   }
-  if(D.line&&D.prog<1){D.prog=Math.min(1,D.prog+dt*30*OPTS.textSpd);if(Math.random()<.25)beep(900+Math.random()*500,.015,'square',.012);}
+  if(D.line&&D.prog<1){D.prog=Math.min(1,D.prog+dt*46*OPTS.textSpd/Math.max(24,D.line.text.length));if(Math.random()<.3)beep(900+Math.random()*500,.015,'square',.012);} // ketik per-karakter (46 hps × SPD)
   if(D.line)D.popT=Math.min(1,D.popT+dt*5.5);
   if(G.speak)G.speak.t+=dt;
   // ducking musik: turun saat teks mengetik, naik lagi setelah selesai
@@ -842,7 +875,9 @@ function startVortex(to,rewind){
   G.vortex={to,t:0,rewind,from:rewind?1999:(G.era==='2088'?2088:ERA_CONF[G.era].from)};
   G.state='vortex';setAmbience(null);rewind?SFX.vortexR():SFX.vortexF();
 }
-function startGlitch(){G.state='glitch';G.glitch={t:0,hint:loopHint()};S.loop++;SFX.glitch();setAmbience(null);stopAmb();persistSave();}
+function startGlitch(){G.state='glitch';G.glitch={t:0,hint:loopHint()};
+  markEnd(S.routeB2==='A1'?'A1':S.routeB2==='B1'?'B1':S.routeB2==='B2'?'B2lock':null); // rute A2 tercatat lewat node paradox/r3f
+  S.loop++;SFX.glitch();setAmbience(null);stopAmb();persistSave();}
 // remah roti: setiap kegagalan memberi tahu pemain mengapa loop pecah
 function loopHint(){
   if(S.routeB2==='A1')return '⟩ Petunjuk: kabur membuat penelitian tak pernah selesai — jangan tinggalkan misinya.';
@@ -855,7 +890,7 @@ function startWalk(era){
   G.era=era;G.state='walk';const cfg=ERA_CONF[era];
   G.walk={era,len:1500,arX:1180,ar:era==='1968'?(S.routeB1==='A'?'buron':'dewasa'):cfg.ar,node:cfg.node,
     cap:era==='1968'?(S.routeB1==='A'?'BABAK 2 — BUNKER BAWAH TANAH, 1968':'BABAK 2 — LABORATORIUM MILITER, 1968'):cfg.cap};
-  G.player.x=90;G.player.facingRight=true;G.player.vx=0;G.player.stride=0;G.player.turnT=0;G.caption=G.walk.cap;G.captionT=3.2;parts.length=0;
+  G.player.x=90;G.player.facingRight=true;G.player.vx=0;G.player.stride=0;G.player.turnT=0;G.player.acc=0;G.caption=G.walk.cap;G.captionT=3.2;parts.length=0;
   setAmbience(cfg.amb);
   SAVE.game={era,S:{empathy:S.empathy,logic:S.logic,routeB1:S.routeB1,routeB2:S.routeB2,loop:S.loop}};persistSave(); // autosave
 }
@@ -865,17 +900,28 @@ function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;
 
 /* ---------- update per-state ---------- */
 const SPD=[.5,1,2],SPD_N=['LAMBAT','NORMAL','CEPAT'];
+const TSZ=[1,1.22],TSZ_N=['NORMAL','BESAR'];
 function spdIdx(){const i=SPD.indexOf(OPTS.textSpd);return i<0?1:i;}
+function tszIdx(){const i=TSZ.indexOf(OPTS.textScale);return i<0?0:i;}
+// jeda: beku kan state + musik/ambience turun otomatis (naik lagi saat lanjut)
+function setPaused(on){if(G.paused===on)return;G.paused=on;
+  duckMusic(on?.12:.85,on?.3:.8);
+  if(AU.ambBus&&AU.ctx){const t=AU.ctx.currentTime;AU.ambBus.gain.cancelScheduledValues(t);AU.ambBus.gain.setValueAtTime(AU.ambBus.gain.value,t);
+    AU.ambBus.gain.linearRampToValueAtTime(on?.04:.9*(OPTS.volSfx===undefined?1:OPTS.volSfx),t+.4);}}
 function pauseItems(){return [
-  {label:'▶ LANJUTKAN',act:()=>{G.paused=false;}},
-  {label:'VOLUME  ‹ '+Math.round(OPTS.vol*100)+'% ›',adj:d=>{OPTS.vol=clamp(Math.round((OPTS.vol+d*.1)*10)/10,0,1);applyVol();saveOpts();}},
+  {label:'▶ LANJUTKAN',act:()=>{setPaused(false);}},
+  {label:'VOLUME MASTER  ‹ '+Math.round(OPTS.vol*100)+'% ›',adj:d=>{OPTS.vol=clamp(Math.round((OPTS.vol+d*.1)*10)/10,0,1);applyVol();saveOpts();}},
+  {label:'MUSIK  ‹ '+Math.round((OPTS.volMus===undefined?1:OPTS.volMus)*100)+'% ›',adj:d=>{OPTS.volMus=clamp(Math.round(((OPTS.volMus===undefined?1:OPTS.volMus)+d*.1)*10)/10,0,1);applyVol();saveOpts();}},
+  {label:'EFEK & AMBIENSI  ‹ '+Math.round((OPTS.volSfx===undefined?1:OPTS.volSfx)*100)+'% ›',adj:d=>{OPTS.volSfx=clamp(Math.round(((OPTS.volSfx===undefined?1:OPTS.volSfx)+d*.1)*10)/10,0,1);applyVol();saveOpts();}},
   {label:'KECEPATAN TEKS  ‹ '+SPD_N[spdIdx()]+' ›',adj:d=>{OPTS.textSpd=SPD[(spdIdx()+d+SPD.length)%SPD.length];saveOpts();}},
-  {label:'ULANG DARI 1944',act:()=>{G.paused=false;resetAll();G.fadeIn=1;startVortex('1944',false);}},
-  {label:'KEMBALI KE MENU UTAMA',act:()=>{G.paused=false;G.state='title';G.t=0;setAmbience('title');}},
+  {label:'UKURAN TEKS  ‹ '+TSZ_N[tszIdx()]+' ›',adj:d=>{OPTS.textScale=TSZ[(tszIdx()+d+TSZ.length)%TSZ.length];saveOpts();}},
+  {label:'EFEK SINEMATIK  ‹ '+(OPTS.reduceMotion?'MATI':' ON')+' ›',adj:d=>{OPTS.reduceMotion=!OPTS.reduceMotion;saveOpts();}},
+  {label:'ULANG DARI 1944',act:()=>{setPaused(false);resetAll();G.fadeIn=1;startVortex('1944',false);}},
+  {label:'KEMBALI KE MENU UTAMA',act:()=>{setPaused(false);G.state='title';G.t=0;setAmbience('title');}},
 ];}
 function updatePause(){
   const items=pauseItems();
-  if(keyOnce('Escape')){G.paused=false;SFX.select();return;}
+  if(keyOnce('Escape')){setPaused(false);SFX.select();return;}
   if(keyOnce('ArrowUp')||keyOnce('w')||keyOnce('W')){G.pSel=(G.pSel+items.length-1)%items.length;SFX.select();}
   if(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')){G.pSel=(G.pSel+1)%items.length;SFX.select();}
   if(keyOnce('ArrowLeft')||keyOnce('-')||keyOnce('a')||keyOnce('A')){if(items[G.pSel].adj){items[G.pSel].adj(-1);SFX.select();}}
@@ -894,9 +940,13 @@ function update(dt){
   if(G.skyFlash>0)G.skyFlash-=dt*1.4;
   if(G.shakeT>0)G.shakeT-=dt;
   if(G.captionT>0)G.captionT-=dt;
+  if(G.fadeIn>0)G.fadeIn=Math.max(0,G.fadeIn-dt*1.4); // transisi masuk dari hitam
   const mx=ptr.x,my=ptr.y;
+  // hotspot UI pojok (mute/pause) via klik atau sentuhan — dicek DI SINI karena ptr.tap dibersihkan sebelum render()
+  if(ptr.tap&&Math.hypot(ptr.x-(W-34),ptr.y-26)<20){toggleMute();ptr.tap=false;}
+  else if(ptr.tap&&!G.paused&&(G.state==='walk'||G.state==='dialog'||G.state==='prologue')&&Math.hypot(ptr.x-(W-72),ptr.y-26)<20){ptr.tap=false;setPaused(true);G.pSel=0;SFX.select();}
   if(G.paused){updatePause();}
-  else if(keyOnce('Escape')&&(G.state==='walk'||G.state==='dialog'||G.state==='prologue')){G.paused=true;G.pSel=0;SFX.select();}
+  else if(keyOnce('Escape')&&!G.logOpen&&(G.state==='walk'||G.state==='dialog'||G.state==='prologue')){setPaused(true);G.pSel=0;SFX.select();}
   else switch(G.state){
     case 'load':
       if(AS.ready)G.state='title';
@@ -914,10 +964,12 @@ function update(dt){
       const p=G.player;let dir=0;
       if(keys['ArrowRight']||keys['d']||keys['D'])dir+=1;
       if(keys['ArrowLeft']||keys['a']||keys['A'])dir-=1;
-      // tombol sentuh
+      // tombol sentuh: ◀ ▶ gerak (zona bawah), tombol ≫ = lari
+      const touchRun=IS_TOUCH&&ptr.down&&Math.hypot(ptr.x-(W-36),ptr.y-(H-162))<30;
       if(IS_TOUCH&&ptr.down){if(ptr.x>W-140&&ptr.y>H-130)dir=1;else if(ptr.x<140&&ptr.y>H-130)dir=-1;}
       // model fisika: akselerasi menuju kecepatan target, gesekan saat lepas
-      const top=keys['Shift']?262:150,accel=900,fric=1400;
+      // loop > 0: lari jadi bawaan (Shift / tombol ≫ berbalik jadi jalan pelan)
+      const sprint=keys['Shift']||touchRun,top=(S.loop>0?!sprint:sprint)?262:150,accel=900,fric=1400;
       const prevVx=p.vx;
       if(dir!==0){
         if(dir>0!==p.facingRight){p.facingRight=dir>0;p.turnT=.14;} // squash saat berbalik
@@ -926,16 +978,17 @@ function update(dt){
       }else p.vx-=clamp(p.vx,-fric*dt,fric*dt);
       p.x=clamp(p.x+p.vx*dt,64,G.walk.len-40);
       if((p.x===64&&p.vx<0)||(p.x===G.walk.len-40&&p.vx>0))p.vx=0; // mentok dinding: nolkan dorongan
+      p.acc=lerp(p.acc,(p.vx-prevVx)/Math.max(dt,1e-4),1-Math.pow(.01,dt)); // pitch badan saat akselerasi
       if(dir===0&&Math.abs(prevVx)>140&&Math.abs(p.vx)<10)for(let k=0;k<3;k++)parts.push({x:p.x-G.cam+(Math.random()-.5)*10,y:GROUND-3,vx:(p.facingRight?1:-1)*(14+Math.random()*22)+(Math.random()-.5)*10,vy:-8-Math.random()*16,grav:80,l:0,ml:.45+Math.random()*.2,r:2+Math.random()*2,col:'rgba(170,150,120,.5)',shrink:1}); // debu berhenti keras
       if(p.turnT>0)p.turnT-=dt;
       const old=p.phase;
-      p.phase+=Math.abs(p.vx)*dt*.062; // fase langkah mengikuti gerak nyata (tidak moonwalk di dinding)
+      p.phase+=Math.abs(p.vx)*dt*.105; // irama dikunci longgar ke tanah: 1 siklus (2 langkah) ≈ 60px layar — anti-selip tanpa cadence panik (0 saat mentok dinding → tak moonwalk)
       p.moving=Math.abs(p.vx)>8;
       p.stride=clamp(Math.abs(p.vx)/262,0,1);
       if(p.moving&&Math.floor(old/Math.PI)!==Math.floor(p.phase/Math.PI)){SFX.step();
         for(let k=0;k<2;k++)parts.push({x:p.x-G.cam+(Math.random()-.5)*8,y:GROUND-3,vx:-(Math.sign(p.vx)||1)*(20+Math.random()*24),vy:-10-Math.random()*20,grav:80,l:0,ml:.45+Math.random()*.25,r:2+Math.random()*2,col:'rgba(170,150,120,.5)',shrink:1});}
       G.camTarget=clamp(p.x-300,0,G.walk.len-W);G.cam=lerp(G.cam,G.camTarget,1-Math.pow(.001,dt));
-      spawnParts(G.era==='1968'?(S.routeB1==='A'?'1968':'1968'):'1944');
+      spawnParts(G.era); // partikel mengikuti era aktif (1999: motes biru, bukan abu 1944)
       if(G.era==='1944'){AU.boomTimer-=dt;if(AU.boomTimer<=0){AU.boomTimer=6+Math.random()*7;G.skyFlash=1;noise(1.4,70,.14);}}
       if(p.x>G.walk.arX-175){G.state='dialog';G.camTarget=clamp(G.walk.arX-640,0,G.walk.len-W);
         D.arKind=G.walk.ar;D.arExpr='neutral';D.elExpr='neutral';startNode(G.walk.node);}
@@ -978,13 +1031,13 @@ function drawScene(c,cam){if(cam===undefined)cam=G.cam;const t=T;
 }
 function drawChars(c,mode,cam){if(cam===undefined)cam=G.cam; // mode: 'walk' (dunia) | 'dialog' | 'prologue'
   const t=T,p=G.player;
-  const speaking=G.speak&&D.line&&G.prog<1?G.speak.who:null;
+  const speaking=G.speak&&D.line&&D.prog<1?G.speak.who:null; // pantul saat bicara: prog hidup di D, bukan G
   const bnc=w=>speaking===w?Math.exp(-4.5*G.speak.t)*Math.sin(13*G.speak.t)*3.5:0; // pantul halus karakter yang bicara
   const elScreenX = mode==='walk' ? p.x-cam : (mode==='prologue'? W*0.42 : (G.walk? G.walk.arX-190-cam : W*0.42));
   c.save();c.translate(elScreenX,GROUND-bnc('elena'));groundShadow(c,p.moving&&mode==='walk'?.82:1);
   if(mode==='walk'&&p.turnT>0)c.scale(1-.18*Math.sin(Math.PI*(1-clamp(p.turnT/.14,0,1))),1); // squash berganti arah
   if(!p.facingRight&&mode==='walk')c.scale(-1,1);
-  drawElena(c,t,p.phase,p.moving&&mode==='walk',D.elExpr,{vial:G.state==='endcard'||(G.state==='dialog'&&D.node==='true_end'&&D.i>4),lean:mode==='walk'?(p.vx/262)*.11*(p.facingRight?1:-1):0,stride:mode==='walk'?p.stride:1});
+  drawElena(c,t,p.phase,p.moving&&mode==='walk',D.elExpr,{vial:G.state==='endcard'||(G.state==='dialog'&&D.node==='true_end'&&D.i>4),lean:mode==='walk'?((p.vx/262)*.11+clamp((p.acc||0)/900,-1,1)*.03)*(p.facingRight?1:-1):0,stride:mode==='walk'?p.stride:1});
   c.restore();
   if(G.walk&&G.walk.ar&&(mode==='walk'||mode==='dialog')){
     const ax=G.walk.arX-cam;
@@ -996,7 +1049,7 @@ function drawChars(c,mode,cam){if(cam===undefined)cam=G.cam; // mode: 'walk' (du
 }
 function render(){
   ctx.save();
-  if(G.shakeT>0){const a=G.shakeA*G.shakeT;ctx.translate((Math.random()-.5)*a,(Math.random()-.5)*a);}
+  if(G.shakeT>0&&!OPTS.reduceMotion){const a=G.shakeA*G.shakeT;ctx.translate((Math.random()-.5)*a,(Math.random()-.5)*a);}
   ctx.fillStyle='#0a0806';ctx.fillRect(-20,-20,W+40,H+40);
   if(G.state==='load'){
     ctx.fillStyle='#0a0806';ctx.fillRect(0,0,W,H);
@@ -1025,6 +1078,11 @@ function render(){
     ctx.fillText((Math.floor(T*2)%2===0)?'▶ TEKAN ENTER / SENTUH UNTUK MULAI':'  TEKAN ENTER / SENTUH UNTUK MULAI  ',W/2,340);
     if(SAVE.game){ctx.fillStyle='rgba(255,217,168,.9)';ctx.font='15px "Trebuchet MS",sans-serif';
       ctx.fillText('⟲ LANJUTKAN SIKLUS — tekan L ('+SAVE.game.era+')',W/2,372);}
+    // penanda koleksi ending — motifasi replay (juga untuk juri jam)
+    {const nE=END_TOTAL.filter(k=>SAVE.endings&&SAVE.endings[k]).length;
+      ctx.fillStyle=nE>=END_TOTAL.length?'rgba(240,205,130,.9)':'rgba(245,240,232,.5)';
+      ctx.font='13px "Trebuchet MS",sans-serif';
+      ctx.fillText('⏳ ENDING TERUNGKAP: '+nE+'/'+END_TOTAL.length+(SAVE.endings&&SAVE.endings.true?'  ★ sejati':''),W/2,420);}
     ctx.fillStyle='rgba(245,240,232,.5)';ctx.font='12.5px "Trebuchet MS",sans-serif';
     ctx.fillText('Gerak: ← → / A D  •  Dialog: ENTER  •  Lewati teks: tahan CTRL  •  Jeda: ESC',W/2,470);
     ctx.fillText('2D Narrative Puzzle • Psychological Time-Loop • COMPFEST Indie Game Jam',W/2,492);
@@ -1035,17 +1093,17 @@ function render(){
     bg2088(ctx,0,T,.25);drawParts(ctx,1/60);spawnParts('2088');
     ctx.save();ctx.translate(W*0.42,GROUND);groundShadow(ctx);drawElena(ctx,T,0,false,'sad');ctx.restore();
     grade(ctx,'2088');
-    // denyut vignette merah menyala sinkron dengan SFX detak jantung
-    {const hb=T%2.4;if(hb<.6){const a=Math.sin(hb/.6*Math.PI)*.22;const vg=ctx.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,H*.78);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,`rgba(140,20,20,${a})`);ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);}}
+    // denyut vignette merah menyala sinkron dengan SFX detak jantung (dimatikan oleh reduceMotion)
+    {const hb=T%2.4;if(!OPTS.reduceMotion&&hb<.6){const a=Math.sin(hb/.6*Math.PI)*.22;const vg=ctx.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,H*.78);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,`rgba(140,20,20,${a})`);ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);}}
     if(D.line)drawNarr(ctx,D.line.text,D.prog,D.popT);
     if(!D.choices&&D.line&&D.prog>=1)hintAdvance(ctx);
     drawFFBtn(ctx);
   }
   else if(G.state==='walk'||G.state==='dialog'){
-    const camDrift=G.cam+Math.sin(T*.4)*.9; // nafas kamera halus
+    const camDrift=G.cam+(OPTS.reduceMotion?0:Math.sin(T*.4)*.9); // nafas kamera halus (nonaktif saat reduceMotion)
     drawScene(ctx,camDrift);drawChars(ctx,G.state,camDrift);
     grade(ctx,G.era==='1968'?(S.routeB1==='A'?'1968A':'1968B'):G.era);
-    if(G.skyFlash>0){const a=G.skyFlash;const g=ctx.createLinearGradient(0,0,0,H*.8);g.addColorStop(0,`rgba(255,190,120,${.34*a})`);g.addColorStop(.55,`rgba(255,150,80,${.16*a})`);g.addColorStop(1,'rgba(255,150,80,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H*.8);ctx.fillStyle=`rgba(255,214,150,${.08*a})`;ctx.fillRect(0,0,W,H);}
+    if(G.skyFlash>0&&!OPTS.reduceMotion){const a=G.skyFlash;const g=ctx.createLinearGradient(0,0,0,H*.8);g.addColorStop(0,`rgba(255,190,120,${.34*a})`);g.addColorStop(.55,`rgba(255,150,80,${.16*a})`);g.addColorStop(1,'rgba(255,150,80,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H*.8);ctx.fillStyle=`rgba(255,214,150,${.08*a})`;ctx.fillRect(0,0,W,H);}
     // caption babak
     if(G.captionT>0&&G.state==='walk'){
       const a=Math.min(1,G.captionT)*Math.min(1,(3.2-G.captionT)*2);
@@ -1078,10 +1136,17 @@ function render(){
     // HUD loop
     if(S.loop>0){ctx.save();ctx.font='bold 13px monospace';const j=S.loop>0&&G.state==='walk'&&G.captionT>0?2:0;
       ctx.fillStyle=`rgba(194,59,59,.9)`;ctx.textAlign='left';
-      ctx.fillText('⟲ LOOP '+S.loop,18+j*(Math.random()-.5),26+j*(Math.random()-.5));ctx.restore();}
+      ctx.fillText('⟲ LOOP '+S.loop,18+j*(Math.random()-.5),26+j*(Math.random()-.5));
+      if(G.state==='walk'){ctx.globalAlpha=.62;ctx.font='11px "Trebuchet MS",sans-serif';
+        ctx.fillText('lari otomatis — tahan '+(IS_TOUCH?'≫':'SHIFT')+' untuk jalan pelan',18,42);}
+      ctx.restore();}
     // kontrol sentuh
     if(IS_TOUCH&&G.state==='walk'){ctx.fillStyle='rgba(245,240,232,.25)';
-      [[36,'◀'],[W-36,'▶']].forEach(([x,s])=>{ctx.beginPath();ctx.arc(x,H-70,30,0,TAU);ctx.fill();ctx.fillStyle='rgba(30,23,16,.8)';ctx.font='bold 22px sans-serif';ctx.textAlign='center';ctx.fillText(s,x,H-62);ctx.fillStyle='rgba(245,240,232,.25)';});}
+      [[36,'◀'],[W-36,'▶']].forEach(([x,s])=>{ctx.beginPath();ctx.arc(x,H-70,30,0,TAU);ctx.fill();ctx.fillStyle='rgba(30,23,16,.8)';ctx.font='bold 22px sans-serif';ctx.textAlign='center';ctx.fillText(s,x,H-62);ctx.fillStyle='rgba(245,240,232,.25)';});
+      // tombol lari ≫ (hold) — di atas tombol ▶
+      const rOn=ptr.down&&Math.hypot(ptr.x-(W-36),ptr.y-(H-162))<30;
+      ctx.fillStyle=rOn?'rgba(255,217,168,.5)':'rgba(245,240,232,.25)';ctx.beginPath();ctx.arc(W-36,H-162,28,0,TAU);ctx.fill();
+      ctx.fillStyle='rgba(30,23,16,.85)';ctx.font='bold 19px sans-serif';ctx.textAlign='center';ctx.fillText('≫',W-36,H-155);}
   }
   else if(G.state==='vortex'){
     const v=G.vortex,pr=easeIO(clamp(v.t,0,1));
@@ -1108,7 +1173,7 @@ function render(){
     // angka tahun menghitung (RGB split saat distorsi)
     const y=Math.round(lerp(v.from,ERA_CONF[v.to].from,pr));
     ctx.textAlign='center';ctx.font='bold 64px monospace';
-    const yr=String(y),roff=3+pr*5;
+    const yr=String(y),roff=OPTS.reduceMotion?0:3+pr*5; // RGB-split nonaktif saat reduceMotion
     ctx.globalCompositeOperation='screen';
     ctx.fillStyle='rgba(255,60,60,.8)';ctx.fillText(yr,W/2-roff,H/2+16);
     ctx.fillStyle='rgba(60,200,255,.8)';ctx.fillText(yr,W/2+roff,H/2+16);
@@ -1117,22 +1182,24 @@ function render(){
     ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=24;ctx.fillText(yr,W/2,H/2+16);ctx.shadowBlur=0;
     ctx.font='14px "Trebuchet MS",sans-serif';ctx.fillStyle='rgba(245,240,232,.6)';
     ctx.fillText(v.rewind?'SINYAL REALITAS TERPUTUS — MENGULANG SIKLUS':'MELOMPAT MENEMBUS ARUS WAKTU',W/2,H-64);
-    if(pr>.82){ctx.fillStyle=`rgba(255,255,255,${(pr-.82)/.18})`;ctx.fillRect(0,0,W,H);}
+    if(pr>.82&&!OPTS.reduceMotion){ctx.fillStyle=`rgba(255,255,255,${(pr-.82)/.18})`;ctx.fillRect(0,0,W,H);}
   }
   else if(G.state==='glitch'){
     drawScene(ctx);drawChars(ctx,'dialog');grade(ctx,G.era);
-    // efek glitch strip
+    // efek glitch strip (dimatikan oleh reduceMotion — sisakan teks LOOP & petunjuk)
     const gt=G.glitch.t;
-    for(let i=0;i<14;i++){
-      const sy=Math.random()*H,sh=6+Math.random()*36,off=(Math.random()-.5)*90*(1-gt/2);
-      try{ctx.drawImage(cv,0,sy,W,sh,off,sy,W,sh);}catch(e){}
+    if(!OPTS.reduceMotion){
+      for(let i=0;i<14;i++){
+        const sy=Math.random()*H,sh=6+Math.random()*36,off=(Math.random()-.5)*90*(1-gt/2);
+        try{ctx.drawImage(cv,0,sy,W,sh,off,sy,W,sh);}catch(e){}
+      }
+      // ghosting RGB layar penuh
+      ctx.globalCompositeOperation='screen';ctx.globalAlpha=.2;
+      try{const o2=3*(1-Math.min(gt,1.4)/1.4);ctx.drawImage(cv,o2,0);ctx.drawImage(cv,-o2,0);}catch(e){}
+      ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+      if(Math.random()<.5){ctx.globalCompositeOperation='difference';ctx.fillStyle=`rgba(${Math.random()*255|0},40,60,.5)`;ctx.fillRect(0,Math.random()*H,W,20+Math.random()*80);ctx.globalCompositeOperation='source-over';}
+      for(let i=0;i<26;i++){ctx.fillStyle=`rgba(245,240,232,${Math.random()*.5})`;ctx.fillRect(Math.random()*W,Math.random()*H,30+Math.random()*80,1.6);}
     }
-    // ghosting RGB layar penuh
-    ctx.globalCompositeOperation='screen';ctx.globalAlpha=.2;
-    try{const o2=3*(1-Math.min(gt,1.4)/1.4);ctx.drawImage(cv,o2,0);ctx.drawImage(cv,-o2,0);}catch(e){}
-    ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
-    if(Math.random()<.5){ctx.globalCompositeOperation='difference';ctx.fillStyle=`rgba(${Math.random()*255|0},40,60,.5)`;ctx.fillRect(0,Math.random()*H,W,20+Math.random()*80);ctx.globalCompositeOperation='source-over';}
-    for(let i=0;i<26;i++){ctx.fillStyle=`rgba(245,240,232,${Math.random()*.5})`;ctx.fillRect(Math.random()*W,Math.random()*H,30+Math.random()*80,1.6);}
     if(gt>.3&&gt<1.2&&Math.floor(gt*14)%2===0){
       ctx.textAlign='center';ctx.font='bold 84px monospace';ctx.fillStyle='#E2503C';
       ctx.shadowColor='#E2503C';ctx.shadowBlur=30;ctx.fillText('⟲ LOOP '+S.loop,W/2,H/2);ctx.shadowBlur=0;
@@ -1164,8 +1231,12 @@ function render(){
     }
     if(G.endCard.t>2.6&&Math.floor(T*2)%2===0){ctx.fillStyle='rgba(245,240,232,.75)';ctx.font='14px "Trebuchet MS",sans-serif';ctx.fillText('▶ MAIN LAGI (ENTER / SENTUH)',W/2,452);}
   }
-  // white flash di atas segalanya
-  if(G.whiteFlash>0){ctx.fillStyle=`rgba(255,255,255,${clamp(G.whiteFlash,0,1)})`;ctx.fillRect(0,0,W,H);}
+  // backlog dialog di atas UI, di bawah transisi
+  if(G.logOpen&&!G.paused)drawLog(ctx);
+  // transisi fade-in dari hitam (set G.fadeIn=1 saat berganti adegan besar)
+  if(G.fadeIn>0){ctx.fillStyle=`rgba(10,8,6,${clamp(G.fadeIn,0,1)})`;ctx.fillRect(0,0,W,H);}
+  // white flash di atas segalanya (dibatasi 30% saat reduceMotion)
+  if(G.whiteFlash>0){ctx.fillStyle=`rgba(255,255,255,${clamp(G.whiteFlash,0,OPTS.reduceMotion?.3:1)})`;ctx.fillRect(0,0,W,H);}
   ctx.restore();
   if(G.paused)drawPause(ctx);
   drawMuteBtn(ctx);
@@ -1185,8 +1256,7 @@ function drawPauseBtn(c){
   const x=W-72,y=26;c.save();c.globalAlpha=.65;c.fillStyle='#0a0806';c.beginPath();c.arc(x,y,15,0,TAU);c.fill();
   c.strokeStyle='#F5F0E8';c.lineWidth=1.6;c.beginPath();c.arc(x,y,15,0,TAU);c.stroke();
   c.fillStyle='#F5F0E8';c.font='13px sans-serif';c.textAlign='center';c.textBaseline='middle';
-  c.fillText('⏸',x,y+1);c.restore();c.textBaseline='alphabetic';
-  if(ptr.tap&&Math.hypot(ptr.x-x,ptr.y-y)<20){ptr.tap=false;G.paused=true;G.pSel=0;SFX.select();}
+  c.fillText('⏸',x,y+1);c.restore();c.textBaseline='alphabetic'; // logika tap pindah ke update() (ptr.tap tak pernah hidup di render)
 }
 function drawPause(c){
   c.fillStyle='rgba(6,5,4,.74)';c.fillRect(0,0,W,H);
@@ -1204,12 +1274,35 @@ function drawPause(c){
   c.fillText('ESC: lanjut  •  ↑↓: pilih  •  ←→: ubah  •  ENTER: oke',W/2,by+bh+24);
 }
 function hintAdvance(c){c.fillStyle=`rgba(245,240,232,${.4+.3*Math.sin(T*5)})`;c.font='12px "Trebuchet MS",sans-serif';c.textAlign='center';c.fillText('▼ ENTER / KLIK',W/2,H-10);}
+function drawLog(c){ // overlay backlog — TAB/B; riwayat 30 dialog terakhir
+  const boxW=720,pad=22,bx=(W-boxW)/2,by=48,bh=H-96,lineH=17;
+  c.save();c.fillStyle='rgba(6,5,4,.82)';c.fillRect(0,0,W,H);
+  c.shadowColor='rgba(0,0,0,.5)';c.shadowBlur=14;c.fillStyle='#101010';rr(c,bx,by,boxW,bh,12);c.fill();c.shadowColor='transparent';
+  c.strokeStyle='#F5F0E8';c.lineWidth=2;rr(c,bx,by,boxW,bh,12);c.stroke();
+  c.textAlign='left';c.textBaseline='top';
+  c.fillStyle='#C25A5A';c.font='bold 15px Georgia,serif';c.fillText('— CATATAN DIALOG —',bx+pad,by+13);
+  // rakit baris terbungkus dari riwayat (yang terbaru di bawah)
+  const rows=[];
+  c.font='13.5px "Trebuchet MS",sans-serif';
+  LOG.forEach(e=>{const nm=e.who==='narrator'?'':(WHO[e.who]?WHO[e.who].name:String(e.who).toUpperCase());
+    wrap(c,e.text,boxW-pad*2-94).forEach((ln,k)=>rows.push({nm:k?'':nm,txt:ln,narr:e.who==='narrator'}));});
+  const maxRows=Math.floor((bh-58)/lineH);
+  G.logScroll=clamp(G.logScroll||0,0,Math.max(0,rows.length-maxRows));
+  const end=rows.length-G.logScroll,start=Math.max(0,end-maxRows);
+  let y=by+40;
+  for(let i=start;i<end&&y<by+bh-30;i++){const r=rows[i];
+    if(r.nm){c.fillStyle='#FFD9A8';c.font='bold 10px "Trebuchet MS",sans-serif';c.fillText(r.nm,bx+pad,y+3);c.font='13.5px "Trebuchet MS",sans-serif';}
+    c.fillStyle=r.narr?'rgba(245,240,232,.58)':'rgba(245,240,232,.94)';c.fillText(r.txt,bx+pad+88,y);y+=lineH;}
+  if(!rows.length){c.fillStyle='rgba(245,240,232,.5)';c.fillText('Belum ada dialog terekam.',bx+pad,y);}
+  c.fillStyle='rgba(245,240,232,.45)';c.font='11px "Trebuchet MS",sans-serif';c.textAlign='center';
+  c.fillText('↑↓: gulir  •  TAB / ESC / KLIK: tutup',bx+boxW/2,by+bh-16);
+  c.restore();c.textBaseline='alphabetic';
+}
 function drawMuteBtn(c){
   const x=W-34,y=26;c.save();c.globalAlpha=.65;c.fillStyle='#0a0806';c.beginPath();c.arc(x,y,15,0,TAU);c.fill();
   c.strokeStyle='#F5F0E8';c.lineWidth=1.6;c.beginPath();c.arc(x,y,15,0,TAU);c.stroke();
   c.fillStyle='#F5F0E8';c.font='13px sans-serif';c.textAlign='center';c.textBaseline='middle';
-  c.fillText(AU.muted?'🔇':'🔊',x,y+1);c.restore();c.textBaseline='alphabetic';
-  if(ptr.tap&&Math.hypot(ptr.x-x,ptr.y-y)<20){toggleMute();ptr.tap=false;}
+  c.fillText(AU.muted?'🔇':'🔊',x,y+1);c.restore();c.textBaseline='alphabetic'; // logika tap pindah ke update()
 }
 function toggleMute(){AU.muted=!AU.muted;if(AU.master)AU.master.gain.value=AU.muted?0:OPTS.vol;
   if(!AU.muted){setAmbience(G.state==='title'?'title':(ERA_CONF[G.era]?ERA_CONF[G.era].amb:'2088'));}}
