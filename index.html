@@ -44,11 +44,11 @@ const IS_TOUCH=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 
 /* ---------- Audio prosedural (WebAudio) ---------- */
 const AU={ctx:null,master:null,muted:false,amb:[],boomTimer:0,heartTimer:0};
-function ac(){if(!AU.ctx){AU.ctx=new (window.AudioContext||window.webkitAudioContext)();AU.master=AU.ctx.createGain();AU.master.gain.value=OPTS.vol;
+function ac(){if(!AU.ctx){AU.ctx=new (window.AudioContext||window.webkitAudioContext)();AU.master=AU.ctx.createGain();AU.master.gain.value=vGain(OPTS.vol);
     // graf bus: master -> limiter(kompressor) -> out ; sub-bus: SFX / Ambience / Musik
     const comp=AU.ctx.createDynamicsCompressor();comp.threshold.value=-14;comp.knee.value=18;comp.ratio.value=6;comp.attack.value=.004;comp.release.value=.24;comp.connect(AU.ctx.destination);AU.master.connect(comp);
     AU.sfxBus=AU.ctx.createGain();AU.sfxBus.connect(AU.master);
-    AU.ambBus=AU.ctx.createGain();AU.ambBus.gain.value=.9*(OPTS.volSfx===undefined?1:OPTS.volSfx);AU.ambBus.connect(AU.master);
+    AU.ambBus=AU.ctx.createGain();AU.ambBus.gain.value=.9*vGain(OPTS.volSfx);AU.ambBus.connect(AU.master);
     AU.musBus=AU.ctx.createGain();AU.musBus.gain.value=.8;AU.musBus.connect(AU.master);
     // reverb (impulse noise buatan) + feedback-delay hanya untuk musik
     AU.verb=AU.ctx.createConvolver();AU.verb.buffer=impulse(AU.ctx,2.6,2.4);const vout=AU.ctx.createGain();vout.gain.value=.5;AU.verb.connect(vout);vout.connect(AU.musBus);
@@ -128,7 +128,7 @@ const AMB_SONG={'title':'theme','2088':'theme','1944':'war','1968':'spy','1999':
 const MUS={name:'',song:null,map:null,step:0,nextT:0};
 function buildMap(s){const m={};s.tracks.forEach(tr=>tr.ev.forEach(e=>{(m[e[0]]=m[e[0]]||[]).push({v:tr.v,notes:Array.isArray(e[1])?e[1]:[e[1]],dur:e[2]||6,vel:e[3]||1});}));return m;}
 function setSong(nm){if(MUS.name===nm)return;MUS.name=nm;MUS.song=SONGS[nm]||null;MUS.map=MUS.song?buildMap(MUS.song):null;MUS.step=0;if(AU.ctx)MUS.nextT=AU.ctx.currentTime+.06;}
-function duckMusic(level,rel){if(!AU.ctx||!AU.musBus)return;const t=AU.ctx.currentTime;try{AU.musBus.gain.cancelScheduledValues(t);AU.musBus.gain.setValueAtTime(AU.musBus.gain.value,t);AU.musBus.gain.linearRampToValueAtTime(.8*(OPTS.volMus===undefined?1:OPTS.volMus)*level,t+(rel||.4));}catch(e){}}
+function duckMusic(level,rel){if(!AU.ctx||!AU.musBus)return;const t=AU.ctx.currentTime;try{AU.musBus.gain.cancelScheduledValues(t);AU.musBus.gain.setValueAtTime(AU.musBus.gain.value,t);AU.musBus.gain.linearRampToValueAtTime(.8*vGain(OPTS.volMus)*level,t+(rel||.4));}catch(e){}}
 function vMusicbox(f,t,g){const c=AU.ctx;[[1,1],[3.98,.16],[6.1,.05]].forEach(([r,a])=>{const o=c.createOscillator();o.type='sine';o.frequency.value=f*r;const og=c.createGain();og.gain.setValueAtTime(g*a,t);og.gain.exponentialRampToValueAtTime(.0001,t+1.4/Math.sqrt(r));o.connect(og);og.connect(AU.mIn);o.start(t);o.stop(t+1.5);});}
 function vBell(f,t,g){const c=AU.ctx;const car=c.createOscillator();car.type='sine';car.frequency.value=f;const mod=c.createOscillator();mod.type='sine';mod.frequency.value=f*2.4;const mg=c.createGain();mg.gain.setValueAtTime(f*1.6,t);mg.gain.exponentialRampToValueAtTime(f*.02,t+1.1);mod.connect(mg);mg.connect(car.frequency);const bg=c.createGain();bg.gain.setValueAtTime(g,t);bg.gain.exponentialRampToValueAtTime(.0001,t+2.2);car.connect(bg);bg.connect(AU.mIn);car.start(t);mod.start(t);car.stop(t+2.3);mod.stop(t+2.3);}
 function vPad(f,t,dur,g){const c=AU.ctx;const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=850;const vg=c.createGain();vg.gain.setValueAtTime(.0001,t);vg.gain.linearRampToValueAtTime(g,t+.5);vg.gain.setValueAtTime(g,t+dur*.6);vg.gain.linearRampToValueAtTime(.0001,t+dur);lp.connect(vg);vg.connect(AU.mIn);[-4,4].forEach(d2=>{const o=c.createOscillator();o.type='triangle';o.frequency.value=f;o.detune.value=d2;o.connect(lp);o.start(t);o.stop(t+dur+.1);});}
@@ -174,16 +174,17 @@ let T=0; // waktu global detik
 
 /* ---------- Opsi & penyimpanan (localStorage) ---------- */
 const OPTS=Object.assign({vol:.9,textSpd:1},(()=>{try{return JSON.parse(localStorage.getItem('hat_opts')||'{}')}catch(e){return{}}})());
+const vGain=v=>Math.pow(v===undefined?1:v,2.2); // kurva persepsi (audio-design): slider linier → gain; 0 tetap senyap
 function saveOpts(){try{localStorage.setItem('hat_opts',JSON.stringify(OPTS));}catch(e){}}
-const SAVE={seen:{},chosen:{},game:null,endings:{}}; // node terlihat / pilihan pernah dipilih / autosave siklus / ending terungkap
+const SAVE={seen:{},chosen:{},game:null,endings:{},inspected:{}}; // node terlihat / pilihan pernah dipilih / autosave siklus / ending terungkap / titik lore pernah dibuka
 const END_TOTAL=['A1','B1','B2lock','rebut','paradox','true']; // 5 rute gagal + true ending
 function markEnd(k){if(!k)return;if(!SAVE.endings)SAVE.endings={};if(!SAVE.endings[k]){SAVE.endings[k]=1;persistSave();}}
 try{Object.assign(SAVE,JSON.parse(localStorage.getItem('hat_save')||'{}'));}catch(e){}
 function persistSave(){try{localStorage.setItem('hat_save',JSON.stringify(SAVE));}catch(e){}}
-function applyVol(){if(AU.master&&!AU.muted)AU.master.gain.value=OPTS.vol;
-  if(AU.sfxBus)AU.sfxBus.gain.value=OPTS.volSfx===undefined?1:OPTS.volSfx; // slider EFEK
+function applyVol(){if(AU.master&&!AU.muted)AU.master.gain.value=vGain(OPTS.vol);
+  if(AU.sfxBus)AU.sfxBus.gain.value=vGain(OPTS.volSfx); // slider EFEK
   if(AU.musBus)duckMusic(D&&D.duckT?.55:.85,.06); // slider MUSIK via duckMusic agar transisi halus
-  if(AU.ctx&&AU.ambBus&&!G.paused){const t=AU.ctx.currentTime;AU.ambBus.gain.cancelScheduledValues(t);AU.ambBus.gain.setValueAtTime(AU.ambBus.gain.value,t);AU.ambBus.gain.linearRampToValueAtTime(.9*(OPTS.volSfx===undefined?1:OPTS.volSfx),t+.15);}}
+  if(AU.ctx&&AU.ambBus&&!G.paused){const t=AU.ctx.currentTime;AU.ambBus.gain.cancelScheduledValues(t);AU.ambBus.gain.setValueAtTime(AU.ambBus.gain.value,t);AU.ambBus.gain.linearRampToValueAtTime(.9*vGain(OPTS.volSfx),t+.15);}}
 
 /* ============================================================
    SPRITE CHIBI — palet dari referensi
@@ -234,10 +235,14 @@ const ASSET_MANIFEST={
   prop_radio1968A:{src:'assets/prop_radio1968A.png',fw:200,fh:200,h:74},
   prop_consoleWave1999:{src:'assets/prop_consoleWave1999.png',fw:200,fh:200,h:82},
   prop_poster2088:{src:'assets/prop_poster2088.png',fw:200,fh:200,h:100},
+  prop_flare1944:{src:'assets/prop_flare1944.png',fw:200,fh:200,h:104},
+  prop_frost1999:{src:'assets/prop_frost1999.png',fw:200,fh:200,h:88},
   // pose lukis momen kunci (menggantikan sheet pada node tertentu; h = tinggi tampil px)
   pose_elena_hold:{src:'assets/pose_elena_hold.png',h:120},
   pose_elena_kneel:{src:'assets/pose_elena_kneel.png',h:104},
   pose_arthur_tua_reach:{src:'assets/pose_arthur_tua_reach.png',h:126},
+  pose_arthur_muda_vial:{src:'assets/pose_arthur_muda_vial.png',h:120},
+  pose_elena_resolve:{src:'assets/pose_elena_resolve.png',h:112},
 };
 // audio eksternal (CC0: Kenney RPG Audio + OpenGameArt) — absen => fitur terkait senyap, fallback prosedural
 const AUDIO_MANIFEST={
@@ -611,11 +616,11 @@ function fgSilhouette(c,era,camX){
 }
 /* --- properti animasi per era (strip 3 frame AI; file absen => tak digambar) --- */
 const PROPS={
-  '1944':[{id:'prop_flag1944',x:430,y:444,fps:5},{id:'prop_lantern1944',x:905,y:436,fps:3.2}],
+  '1944':[{id:'prop_flag1944',x:430,y:444,fps:5},{id:'prop_lantern1944',x:905,y:436,fps:3.2},{id:'prop_flare1944',x:1235,y:336,fps:4}],
   '2088':[{id:'prop_barrel2088',x:380,y:444,fps:4.5},{id:'prop_poster2088',x:1240,y:392,fps:3}],
-  '1968A':[{id:'prop_bulb1968A',x:990,y:238,fps:3},{id:'prop_radio1968A',x:250,y:444,fps:2.5}],
+  '1968A':[{id:'prop_bulb1968A',x:990,y:200,fps:3},{id:'prop_radio1968A',x:250,y:444,fps:2.5}], // bohlam: kordel harus menembus langit2 gelap (y-h=92), bukan menggantung 45px di bawahnya
   '1968B':[{id:'prop_beacon1968B',x:1310,y:268,fps:2.2},{id:'prop_steam1968B',x:540,y:330,fps:4}],
-  '1999':[{id:'prop_consoleWave1999',x:1005,y:444,fps:3.5}]};
+  '1999':[{id:'prop_consoleWave1999',x:1005,y:444,fps:3.5},{id:'prop_frost1999',x:620,y:444,fps:2.5}]};
 function drawPropFrame(c,id,sx,y,frame){ // satu frame strip di (sx,y) jangkar tengah-bawah
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!cfg||!im||!im.width)return false;
   const s=cfg.h/cfg.fh,dw=cfg.fw*s,dh=cfg.fh*s;
@@ -624,6 +629,17 @@ function drawProps(c,era,camX){ // frame deterministik dari T; reduceMotion => f
   const list=PROPS[era]||[],mot=OPTS.reduceMotion?0:1;
   for(const p of list){const sx=p.x-camX;if(sx<-130||sx>W+130)continue;
     drawPropFrame(c,p.id,sx,p.y,mot?Math.floor(T*p.fps)%3:0);}}
+function drawHotspots(c){ // penanda titik selidik: titik cahaya hangat berdenyut + petunjuk ▼ saat dekat
+  if(!G.walk)return;const FE=G.era==='1968'?'1968'+S.routeB1:G.era;const cam=G.cam,mot=OPTS.reduceMotion?0:1;
+  for(const h of (HOTSPOTS[FE]||[])){if(SAVE.inspected[h.id])continue;const sx=h.x-cam;if(sx<-40||sx>W+40)continue;
+    const pu=mot?(.5+.5*Math.sin(T*3.2+h.x)):1;
+    c.save();c.globalAlpha=.55+.35*pu;
+    const g=c.createRadialGradient(sx,GROUND-6,1,sx,GROUND-6,16+6*pu);g.addColorStop(0,'rgba(255,214,140,.85)');g.addColorStop(1,'rgba(255,214,140,0)');
+    c.fillStyle=g;c.beginPath();c.arc(sx,GROUND-6,16+6*pu,0,TAU);c.fill();
+    c.globalAlpha=1;c.fillStyle='#F5E6C0';c.font='bold 15px '+F_UI;c.textAlign='center';
+    c.fillText('✦',sx,GROUND-20-mot*Math.sin(T*2.6+h.x)*4);c.restore();}
+  const hot=G.walk.hot;if(hot){const sx=hot.x-cam;c.save();c.globalAlpha=.9;c.fillStyle='#F5F0E8';c.font='12px '+F_UI;c.textAlign='center';
+    c.fillText('▼ periksa',sx,GROUND-44-mot*Math.sin(T*2.6)*3);c.restore();}}
 function bgFgImg(c,id,camX){ // lapisan foreground lukis (parallax 1.18); false => pemanggil pakai fgSilhouette
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!cfg||!im||!im.width)return false;
   const dh=cfg.h||150,dw=Math.round(im.width*dh/im.height),off=-((camX*1.18)%dw);
@@ -633,9 +649,28 @@ function drawPoseImage(c,id){ // gambar pose lukis momen kunci, jangkar tengah-b
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!cfg||!im||!im.width)return false;
   const s=cfg.h/im.height,dw=im.width*s,dh=im.height*s;
   c.drawImage(im,-dw/2,-dh,dw,dh);return true;}
+function poseFade(id){const m=D._poseBorn||(D._poseBorn={});if(m[id]===undefined)m[id]=T;return clamp((T-m[id])*4,0,1);} // pose lukis fade-in 250ms per-id (bukan pop antar node)
 /* --- POSE momen kunci: node dialog -> pose menggantikan sheet --- */
 const POSES={c1e:{side:'elena',id:'pose_elena_hold'},c2e:{side:'elena',id:'pose_elena_hold'},
-  true_end:{side:'elena',id:'pose_elena_kneel'}};
+  true_end:{side:'elena',id:'pose_elena_kneel'},
+  n_b1:{side:'elena',id:'pose_elena_resolve',expr:'angry'},r1b:{side:'arthur',id:'pose_arthur_muda_vial'}};
+/* --- TITIK SELIDIK (lore hotspot) per era — ↓ ketika dekat; sekali seumur save (SAVE.inspected) --- */
+const HOTSPOTS={
+  '1944':[{x:480,id:'lore_crate'},{x:1235,id:'lore_flare'}],
+  '1968A':[{x:560,id:'lore_photo'},{x:940,id:'lore_tape'}],
+  '1968B':[{x:560,id:'lore_photo'},{x:940,id:'lore_tape'}],
+  '1999':[{x:420,id:'lore_clip'}]};
+const LORE={
+  lore_crate:['[ Peti obat tergeletak — morfin habis, perban berlumpur, satu ampul tanpa label. ]',
+    '[ Goresan pensil di tutupnya: "untuk asisten lab — jangan sampai kau pakai sendiri." ]'],
+  lore_flare:['[ Sisa suar Jerman — pemantiknya masih hangat. Parit ini bicara lewat cahaya merah tiap malam. ]',
+    '[ Elena menghitung: suar bertahan 40 detik. Cukup untuk satu doa — tidak cukup untuk pulang. ]'],
+  lore_tape:['[ Pita mainframe berlabel "АРТУР-1": empat belas ribu jam data kriobiologi. ]',
+    '[ Catatan tangan di selotipnya: "impedansi katup kuperbaiki tahun \'72 — demi dia." ]'],
+  lore_photo:['[ Foto sobek di bawah mug enamel: dua sosok muda di parit — hanya separuh wajah tersisa. ]',
+    '[ Di baliknya, tinta pudar: "Andai waktu bisa kuputar... aku akan memilih kalimat yang lebih hangat." ]'],
+  lore_clip:['[ Papan jepit berembun: log pemeriksaan kapsul, 1999. Kolom KONDISI diisi tangan yang sama selama 31 tahun: STABIL. ]',
+    '[ Baris terbawah, tinta yang lebih baru: "Dia datang lagi. Hari ini." ]']};
 function bg1968(c,camX,t,routeA){
   if(routeA){ // bunker persembunyian
     const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#241d18');g.addColorStop(1,'#372c22');c.fillStyle=g;c.fillRect(0,0,W,H);
@@ -912,7 +947,9 @@ N('r1b',[say('muda','Kupahami misiku. Aku akan menyusup dan menyempurnakannya da
 
 N('n_b2',()=>{
   const warm=S.empathy>S.logic;const ops=[];
-  if(S.loop>=2)ops.push(say(warm?'dewasa':'buron','Tatapanmu itu... seperti sudah menyaksikan semua ini berulang kali.','shock')); // déjà-vu loop (C4)
+  if(S.loop===1)ops.push(say(warm?'dewasa':'buron','Tatapanmu... seolah kita pernah bercakap begini, bertahun-tahun lalu. Aneh sekali.','shock')); // gema loop awal
+  else if(S.loop===2)ops.push(say(warm?'dewasa':'buron','Tatapanmu itu... seperti sudah menyaksikan semua ini berulang kali.','shock')); // déjà-vu loop (C4)
+  else if(S.loop>=3)ops.push(say(warm?'dewasa':'buron','Déjà vu lagi... mimpiku tiap malam persis menit ini — kau, aku, dan ruangan ini.','sad')); // makin pahit tiap siklus
   if(warm){ops.push(say('dewasa','Elena...? Liontin itu... kau benar-benar datang kembali setelah 24 tahun!','shock'));
     ops.push(say('dewasa','Setiap malam aku bertahan meneliti, hanya kenangan kehangatanmu yang menjagaku tetap waras.','warm'));}
   else{ops.push(say('buron','Hahaha! Sang \'penyelamat masa depan\' akhirnya menampakkan diri.','angry'));
@@ -971,7 +1008,10 @@ N('n_b3',()=>{
           {...tagR('PILIHAN IKHLAS'),label:'Terima serum & lepaskan Arthur bereinkarnasi.',goto:'true_end'}]}];
     }
   }
-  return ops;});
+  const pre=[]; // gema loop DIDAHULUKAN (cabang menimpa ops, bukan push)
+  if(S.loop===1)pre.push(say('elena','Ruang kriogenik ini lagi... aku bahkan mengingat bau esnya. Kali ini harus berbeda.','sad'));
+  else if(S.loop>=2)pre.push(say('elena','Berapa kali lagi harus kulihat kau menua menungguku, Arthur... bertahanlah, aku hampir sampai.','sad'));
+  return pre.concat(ops);});
 N('r3f',[say('tua','Kalau aku tidak bisa memilikimu, tak seorang pun di masa depan yang boleh hidup!','mad'),
   say('narrator','[ TIMELINE COLLAPSE: Formula hancur oleh dendam. ]'),{t:'ending',kind:'loop'}]);
 N('paradox',[
@@ -999,6 +1039,7 @@ N('true_end',[
 const D={node:null,ops:[],i:0,line:null,prog:0,popT:1,choices:null,sel:0,choiceT:0,duckT:false,elExpr:'neutral',arExpr:'neutral',arKind:'muda',ended:false};
 const LOG=[]; // backlog dialog (30 terakhir) — buka dengan TAB/B
 function startNode(id){const n=NODES[id];D.ops=(typeof n==='function')?n():n;D.i=0;D.node=id;SAVE.seen[id]=1;D.line=null;D.choices=null;
+  D._poseBorn={}; // tiap node: pose fade dihitung ulang
   if(id==='paradox')markEnd('paradox');else if(id==='r3f')markEnd('rebut');else if(id==='true_end')markEnd('true'); // ending via node
   step();}
 function step(){
@@ -1069,16 +1110,21 @@ function updateDialog(dt,mx,my){
    STATE: VORTEX / GLITCH / WALK / TITLE / ENDING
    ============================================================ */
 const ERA_CONF={
-  '1944':{amb:'1944',ar:'muda',node:'n_b1',cap:'BABAK 1 — GARIS DEPAN, 1944',from:1944},
-  '1968':{amb:'1968',ar:null,node:'n_b2',cap:'BABAK 2 — 1968',from:1968},
-  '1999':{amb:'1999',ar:'tua',node:'n_b3',cap:'BABAK 3 — RUANG OBSERVASI KAPSUL, 1999',from:1999}};
+  '1944':{amb:'1944',ar:'muda',node:'n_b1',cap:'BABAK 1 — GARIS DEPAN, 1944',from:1944,len:1800,arX:1480}, // parit diperpanjang: pendekatan menegangkan di tengah gerimis
+  '1968':{amb:'1968',ar:null,node:'n_b2',cap:'BABAK 2 — 1968',from:1968,len:1500,arX:1180},
+  '1999':{amb:'1999',ar:'tua',node:'n_b3',cap:'BABAK 3 — RUANG OBSERVASI KAPSUL, 1999',from:1999,len:1300,arX:1000}}; // lab lebih rapat: kapsul jadi pusat
 function startVortex(to,rewind){
   G.vortex={to,t:0,rewind,from:rewind?1999:(G.era==='2088'?2088:ERA_CONF[G.era].from)};
   G.state='vortex';setAmbience(null);rewind?SFX.vortexR():SFX.vortexF();
 }
-function startGlitch(){G.state='glitch';G.glitch={t:0,hint:loopHint()};
+function startGlitch(){G.state='glitch';
+  const CS={A1:'BERKAS KASUS A1 — misi ditinggalkan: penelitian tak pernah selesai',A2:'BERKAS KASUS A2 — obsesi & paradoks mengunci masa depan',B1:'BERKAS KASUS B1 — formula bocor, disalahgunakan jadi senjata',B2:'BERKAS KASUS B2 — kapsul terkunci oleh kebencian'};
+  G.glitch={t:0,hint:loopHint(),kasus:CS[S.routeB2]||'BERKAS KASUS — timeline runtuh',emp:S.empathy,log:S.logic};
   markEnd(S.routeB2==='A1'?'A1':S.routeB2==='B1'?'B1':S.routeB2==='B2'?'B2lock':null); // rute A2 tercatat lewat node paradox/r3f
-  S.loop++;SFX.glitch();setAmbience(null);stopAmb();persistSave();}
+  S.loop++;SFX.glitch();setAmbience(null);stopAmb();
+  S.empathy=0;S.logic=0;S.routeB1='';S.routeB2=''; // siklus baru = kepribadian Arthur ditentukan ulang oleh obrolan Babak 1 (sebelumnya bocor antar loop!)
+  SAVE.game=null; // autosave siklus yg runtuh tak boleh di-Continue (akan mengembalikan kepribadian lama)
+  persistSave();}
 // remah roti: setiap kegagalan memberi tahu pemain mengapa loop pecah
 function loopHint(){
   if(S.routeB2==='A1')return '⟩ Petunjuk: kabur membuat penelitian tak pernah selesai — jangan tinggalkan misinya.';
@@ -1089,7 +1135,7 @@ function loopHint(){
 }
 function startWalk(era){
   G.era=era;G.state='walk';const cfg=ERA_CONF[era];
-  G.walk={era,len:1500,arX:1180,ar:era==='1968'?(S.routeB1==='A'?'buron':'dewasa'):cfg.ar,node:cfg.node,
+  G.walk={era,len:cfg.len,arX:cfg.arX,ar:era==='1968'?(S.routeB1==='A'?'buron':'dewasa'):cfg.ar,node:cfg.node,hot:null,
     cap:era==='1968'?(S.routeB1==='A'?'BABAK 2 — BUNKER BAWAH TANAH, 1968':'BABAK 2 — LABORATORIUM MILITER, 1968'):cfg.cap};
   G.player.x=90;G.player.facingRight=true;G.player.vx=0;G.player.stride=0;G.player.turnT=0;G.player.acc=0;G.caption=G.walk.cap;G.captionT=3.2;parts.length=0;
   setAmbience(cfg.amb);
@@ -1108,7 +1154,7 @@ function tszIdx(){const i=TSZ.indexOf(OPTS.textScale);return i<0?0:i;}
 function setPaused(on){if(G.paused===on)return;G.paused=on;
   duckMusic(on?.12:.85,on?.3:.8);
   if(AU.ambBus&&AU.ctx){const t=AU.ctx.currentTime;AU.ambBus.gain.cancelScheduledValues(t);AU.ambBus.gain.setValueAtTime(AU.ambBus.gain.value,t);
-    AU.ambBus.gain.linearRampToValueAtTime(on?.04:.9*(OPTS.volSfx===undefined?1:OPTS.volSfx),t+.4);}}
+    AU.ambBus.gain.linearRampToValueAtTime(on?.04:.9*vGain(OPTS.volSfx),t+.4);}}
 function pauseItems(){return [
   {label:'▶ LANJUTKAN',act:()=>{setPaused(false);}},
   {label:'VOLUME MASTER  ‹ '+Math.round(OPTS.vol*100)+'% ›',adj:d=>{OPTS.vol=clamp(Math.round((OPTS.vol+d*.1)*10)/10,0,1);applyVol();saveOpts();}},
@@ -1162,6 +1208,13 @@ function update(dt){
       updateDialog(dt,mx,my);break;
     case 'walk':{
       setAmbOnce(ERA_CONF[G.era].amb);
+      if(G.lore){ // sedang membaca titik selidik: langkah berhenti halus; ENTER/↓/ketuk memajukan baris
+        G.player.vx-=clamp(G.player.vx,-1400*dt,1400*dt);G.player.moving=false;
+        G.lore.prog=Math.min(1,G.lore.prog+dt*2.4);G.lore.popT=Math.min(1,G.lore.popT+dt*5);
+        if(advHit()||ptr.tap||keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')){ptr.tap=false;
+          if(G.lore.prog<1)G.lore.prog=1;
+          else{G.lore.i++;SFX.select();if(G.lore.i>=G.lore.lines.length)G.lore=null;else{G.lore.prog=0;G.lore.popT=0;}}}
+        break;}
       const p=G.player;let dir=0;
       if(keys['ArrowRight']||keys['d']||keys['D'])dir+=1;
       if(keys['ArrowLeft']||keys['a']||keys['A'])dir-=1;
@@ -1188,9 +1241,15 @@ function update(dt){
       p.stride=clamp(Math.abs(p.vx)/262,0,1);
       if(p.moving&&Math.floor(old/Math.PI)!==Math.floor(p.phase/Math.PI)){SFX.step();
         for(let k=0;k<2;k++)parts.push({x:p.x-G.cam+(Math.random()-.5)*8,y:GROUND-3,vx:-(Math.sign(p.vx)||1)*(20+Math.random()*24),vy:-10-Math.random()*20,grav:80,l:0,ml:.45+Math.random()*.25,r:2+Math.random()*2,col:'rgba(170,150,120,.5)',shrink:1});}
-      G.camTarget=clamp(p.x-300,0,G.walk.len-W);G.cam=lerp(G.cam,G.camTarget,1-Math.pow(.001,dt));
+      G.camTarget=clamp(p.x-300+clamp(p.vx*.22,-75,75),0,G.walk.len-W);G.cam=lerp(G.cam,G.camTarget,1-Math.pow(.001,dt)); // look-ahead 22% kecepatan (camera-systems) di atas exp-smoothing yg sudah ada
       spawnParts(G.era); // partikel mengikuti era aktif (1999: motes biru, bukan abu 1944)
       if(G.era==='1944'){AU.boomTimer-=dt;if(AU.boomTimer<=0){AU.boomTimer=6+Math.random()*7;G.skyFlash=1;noise(1.4,70,.14);}}
+      // titik selidik: deteksi kedekatan + picu (↓ / S / ketuk penanda)
+      const FEh=G.era==='1968'?'1968'+S.routeB1:G.era;
+      const hs=(HOTSPOTS[FEh]||[]).find(h=>!SAVE.inspected[h.id]&&Math.abs(p.x-h.x)<52);
+      G.walk.hot=hs||null;
+      if(hs&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||(ptr.tap&&Math.hypot(ptr.x-(hs.x-G.cam),ptr.y-(GROUND-14))<40))){ptr.tap=false;
+        SAVE.inspected[hs.id]=1;persistSave();SFX.select();G.lore={lines:LORE[hs.id],i:0,prog:0,popT:0};G.walk.hot=null;break;}
       if(p.x>G.walk.arX-175){G.state='dialog';G.camTarget=clamp(G.walk.arX-640,0,G.walk.len-W);
         D.arKind=G.walk.ar;D.arExpr='neutral';D.elExpr='neutral';startNode(G.walk.node);}
       break;}
@@ -1240,18 +1299,21 @@ function drawChars(c,mode,cam){if(cam===undefined)cam=G.cam; // mode: 'walk' (du
   c.save();c.translate(elScreenX,GROUND-bnc('elena')+breathE);groundShadow(c,p.moving&&mode==='walk'?.82:1);
   if(mode==='walk'&&p.turnT>0)c.scale(1-.18*Math.sin(Math.PI*(1-clamp(p.turnT/.14,0,1))),1); // squash berganti arah
   if(!p.facingRight&&mode==='walk')c.scale(-1,1);
-  const posE=(mode==='dialog'&&POSES[D.node]&&POSES[D.node].side==='elena')?POSES[D.node].id:null; // pose lukis momen kunci
-  if(!(posE&&drawPoseImage(c,posE)))
-    drawElena(c,t,p.phase,p.moving&&mode==='walk',D.elExpr,{vial:G.state==='endcard'||(G.state==='dialog'&&D.node==='true_end'&&D.i>4),lean:mode==='walk'?((p.vx/262)*.11+clamp((p.acc||0)/900,-1,1)*.03)*(p.facingRight?1:-1):0,stride:mode==='walk'?p.stride:1});
+  const pz=POSES[D.node];
+  const posE=(mode==='dialog'&&pz&&pz.side==='elena'&&(!pz.expr||pz.expr===D.elExpr))?pz.id:null; // pose lukis momen kunci (filter ekspresi opsional)
+  if(posE){c.save();c.globalAlpha=poseFade(posE);const okPose=drawPoseImage(c,posE);c.restore();
+    if(!okPose)drawElena(c,t,p.phase,p.moving&&mode==='walk',D.elExpr,{vial:G.state==='endcard'||(G.state==='dialog'&&D.node==='true_end'&&D.i>4),lean:0,stride:1});}
+  else drawElena(c,t,p.phase,p.moving&&mode==='walk',D.elExpr,{vial:G.state==='endcard'||(G.state==='dialog'&&D.node==='true_end'&&D.i>4),lean:mode==='walk'?((p.vx/262)*.11+clamp((p.acc||0)/900,-1,1)*.03)*(p.facingRight?1:-1):0,stride:mode==='walk'?p.stride:1});
   c.restore();
   if(G.walk&&G.walk.ar&&(mode==='walk'||mode==='dialog')){
     const ax=G.walk.arX-cam;
     const ab=speaking&&speaking!=='elena'&&speaking!=='narrator'?Math.exp(-4.5*G.speak.t)*Math.sin(13*G.speak.t)*3.5:0;
     const breathA=Math.sin(T*1.6+2.2)*1.0; // napas idle Arthur (beda fase)
     c.save();c.translate(ax,GROUND-ab+breathA);groundShadow(c);c.scale(-1,1); // menghadap kiri (ke Elena)
-    const posA=(mode==='dialog'&&D.node==='n_b3'&&D.line&&D.line.who==='tua'&&(D.arExpr==='warm'||D.arExpr==='happy'))?'pose_arthur_tua_reach':null;
-    if(!(posA&&drawPoseImage(c,posA)))
-      drawArthur(c,D.arKind,t,D.arExpr,{tremble:D.arKind==='tua'&&D.arExpr==='mad'});
+    const posA=(mode==='dialog'&&pz&&pz.side==='arthur'&&(!pz.expr||pz.expr===D.arExpr))?pz.id:
+      ((mode==='dialog'&&D.node==='n_b3'&&D.line&&D.line.who==='tua'&&(D.arExpr==='warm'||D.arExpr==='happy'))?'pose_arthur_tua_reach':null);
+    if(posA){c.globalAlpha=poseFade(posA);if(!drawPoseImage(c,posA)){c.globalAlpha=1;drawArthur(c,D.arKind,t,D.arExpr,{tremble:D.arKind==='tua'&&D.arExpr==='mad'});}c.globalAlpha=1;}
+    else drawArthur(c,D.arKind,t,D.arExpr,{tremble:D.arKind==='tua'&&D.arExpr==='mad'});
     c.restore();
   }
 }
@@ -1373,9 +1435,11 @@ function render(){
   else if(G.state==='walk'||G.state==='dialog'){
     const camDrift=G.cam+(OPTS.reduceMotion?0:Math.sin(T*.4)*.9); // nafas kamera halus (nonaktif saat reduceMotion)
     drawScene(ctx,camDrift);drawChars(ctx,G.state,camDrift);
+    if(G.state==='walk')drawHotspots(ctx);
     {const FE=G.era==='1968'?(S.routeB1==='A'?'1968A':'1968B'):G.era; // okluder depan: lukis menang, siluet prosedural sbg fallback
       if(!bgFgImg(ctx,'bg'+FE+'_fg',camDrift))fgSilhouette(ctx,FE,camDrift);}
     grade(ctx,G.era==='1968'?(S.routeB1==='A'?'1968A':'1968B'):G.era);
+    if(G.lore)drawNarr(ctx,G.lore.lines[G.lore.i],G.lore.prog,G.lore.popT); // strip lore titik selidik
     if(G.skyFlash>0&&!OPTS.reduceMotion){const a=G.skyFlash;const g=ctx.createLinearGradient(0,0,0,H*.8);g.addColorStop(0,`rgba(255,190,120,${.34*a})`);g.addColorStop(.55,`rgba(255,150,80,${.16*a})`);g.addColorStop(1,'rgba(255,150,80,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H*.8);ctx.fillStyle=`rgba(255,214,150,${.08*a})`;ctx.fillRect(0,0,W,H);}
     // caption babak — kotak caption komik di kiri atas (ala panel komik perang)
     if(G.captionT>0&&G.state==='walk'){
@@ -1489,7 +1553,11 @@ function render(){
     }
     if(gt>.7){const a=clamp((gt-.7)/.5,0,1);
       ctx.font='italic 15px Georgia,serif';ctx.fillStyle=`rgba(245,240,232,${.8*a})`;
-      ctx.fillText(G.glitch.hint,W/2,H/2+86);}
+      ctx.fillText(G.glitch.hint,W/2,H/2+86);
+      ctx.font='12.5px '+F_UI;ctx.fillStyle=`rgba(226,90,70,${.8*a})`;
+      ctx.fillText('⟨ '+G.glitch.kasus+' ⟩',W/2,H/2+110);
+      ctx.fillStyle=`rgba(245,240,232,${.5*a})`;
+      ctx.fillText(`siklus ini: ♥ empati ${G.glitch.emp} × ⚙ logika ${G.glitch.log}`,W/2,H/2+130);}
   }
   else if(G.state==='endcard'){
     bg1999(ctx,120,T);spawnParts('1999');
@@ -1561,7 +1629,7 @@ function drawPause(c){ // panel jeda kertas + tinta
   c.fillStyle='rgba(243,234,218,.5)';c.font='12.5px '+F_UI;c.textAlign='center';
   c.fillText('ESC: lanjut  •  ↑↓: pilih  •  ←→: ubah  •  ENTER: oke',W/2,by+bh+24);
 }
-function hintAdvance(c){c.fillStyle=`rgba(245,240,232,${.4+.3*Math.sin(T*5)})`;c.font='13.5px '+F_UI;c.textAlign='center';c.fillText('▼ ENTER / KLIK',W/2,H-10);}
+function hintAdvance(c){const bob=OPTS.reduceMotion?0:Math.sin(T*2.4)*1.6;c.save();c.translate(0,bob);c.fillStyle=`rgba(245,240,232,${.4+.3*Math.sin(T*5)})`;c.font='13.5px '+F_UI;c.textAlign='center';c.fillText('▼ ENTER / KLIK',W/2,H-10);c.restore();} // napas alfa + bob halus (missed-opportunity motion)
 function drawLog(c){ // overlay backlog — TAB/B; riwayat 30 dialog terakhir (halaman buku catatan)
   const boxW=720,pad=22,bx=(W-boxW)/2,by=48,bh=H-96,lineH=18;
   c.save();c.fillStyle='rgba(6,5,4,.82)';c.fillRect(0,0,W,H);
@@ -1591,7 +1659,7 @@ function drawMuteBtn(c){
   c.fillStyle='#F5F0E8';c.font='13px sans-serif';c.textAlign='center';c.textBaseline='middle';
   c.fillText(AU.muted?'🔇':'🔊',x,y+1);c.restore();c.textBaseline='alphabetic'; // logika tap pindah ke update()
 }
-function toggleMute(){AU.muted=!AU.muted;if(AU.master)AU.master.gain.value=AU.muted?0:OPTS.vol;
+function toggleMute(){AU.muted=!AU.muted;if(AU.master)AU.master.gain.value=AU.muted?0:vGain(OPTS.vol);
   if(!AU.muted){setAmbience(G.state==='title'?'title':(ERA_CONF[G.era]?ERA_CONF[G.era].amb:'2088'));}}
 
 /* ---------- loop utama ---------- */

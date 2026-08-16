@@ -180,16 +180,22 @@ def compose(spec_path: str, out_path: str):
 # ---------- backgrounds ----------
 
 def seam_blend(im: Image.Image, frac=0.12) -> Image.Image:
-    """GIMP-style symmetric edge blend -> approximately seamless horizontal tile."""
+    """Seamless horizontal tile: crossfade tepi kiri<->kanan LALU ramp koreksi
+    supaya kolom 0 == kolom w-1 persis (junction ditutup, bukan cuma dihaluskan)."""
     arr = np.asarray(im.convert("RGBA")).astype(np.float32)
     h, w = arr.shape[:2]
     bw = max(8, int(w * frac))
-    t = 0.5 * (1 - np.cos(np.linspace(0, np.pi, bw)))  # smooth 0..1
+    t = 0.5 * (1 - np.cos(np.pi * (np.arange(bw) + 0.5) / bw))  # smooth 0..1 (pusat piksel)
     t = t[None, :, None]
     left = arr[:, :bw].copy()
     right = arr[:, w - bw:].copy()
-    arr[:, :bw] = left * (1 - t) + right * t        # left edge warms toward right
-    arr[:, w - bw:] = right * (1 - t[::-1]) + left * t[::-1]
+    arr[:, :bw] = left * t + right * (1 - t)        # kolom 0 mewarisi konten tepi kanan
+    arr[:, w - bw:] = right * t + left * (1 - t)    # kolom w-1 mewarisi konten tepi kiri
+    # ramp koreksi residual: kolom 0 digeser persis ke kolom w-1 dalam 24px
+    jw = min(24, bw)
+    delta = arr[:, 0] - arr[:, w - 1]
+    ramp = (1 - np.arange(jw) / jw)[None, :, None]
+    arr[:, :jw] -= delta[:, None, :] * ramp
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA")
 
 

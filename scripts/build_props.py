@@ -29,7 +29,13 @@ def proc(pid: str) -> bool:
     if not src.exists():
         print(f"!! missing raw {src}", file=sys.stderr)
         return False
-    im = flood_key(Image.open(src).convert("RGB"))
+    raw = Image.open(src)
+    im = flood_key(raw.convert("RGB"))
+    if raw.mode == "RGBA":  # alpha hasil fix_props_key: perbatasan/area berlabel transparan ikut dipotong
+        a_src = np.asarray(raw.getchannel("A"), np.uint8)
+        ra = np.asarray(im).copy()
+        ra[..., 3] = np.minimum(ra[..., 3], np.asarray(Image.fromarray(a_src).resize(im.size, Image.LANCZOS)))
+        im = Image.fromarray(ra, "RGBA")
     im = trim(im, pad=0)
     w3 = im.width // 3
     cells = []

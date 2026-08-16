@@ -60,6 +60,16 @@ PROPS = {
                 "invisible wall, bottom corners peeling and flapping in the wind. Between the 3 "
                 "frames only the curl of the peeling corners changes (slight / lifted / flapping). "
                 "Sepia aged-paper palette.",
+  # —— batch 3 (008) ——
+  "flare1944": f"{STYLE} {STRIP} A red signal flare stuck upright in churned trench mud, spitting a "
+               "bright crimson-pink flame with a thin smoke plume, small sparks around the tip. "
+               "Between the 3 frames only the flame shape and glow intensity change (sputtering "
+               "low / bright bloom / dying ember). Mud and stick never move. Muddy umber palette "
+               "with intense red glow.",
+  "frost1999": f"{STYLE} {STRIP} A small floor frost vent in a cryogenic lab: a dark floor grate with "
+               "pale blue-white ice crystals around it and cold vapor curling upward. Between the 3 "
+               "frames only the vapor curl and frost glint change (faint wisp / fuller curl / "
+               "dissipating). Grate never moves. Deep midnight-blue palette with icy cyan highlights.",
 }
 
 

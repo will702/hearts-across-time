@@ -56,6 +56,18 @@ POSES = {
                             "outside the frame, leaning heavily on his cane with the other hand, "
                             "yearning expression.",
                             "assets/gen/cells/arthur_tua_neutral.png"),
+  "pose_arthur_muda_vial": (POSE_STYLE + "The same young man character from the reference image "
+                            "(1940s field medical uniform with a soft cap, satchel strap across the "
+                            "chest): holding out a small glowing green glass vial toward the viewer, "
+                            "both hands cupped around it carefully, slight respectful bow, focused "
+                            "and hopeful expression. Only him, no other character.",
+                            "assets/gen/cells/arthur_muda_neutral.png"),
+  "pose_elena_resolve": (POSE_STYLE + "The same young woman character from the reference image "
+                            "(ash-blonde half-up hair, white lab coat over dusty-rose dress, pale "
+                            "boots): standing firm, fists clenched at her sides, chin raised, "
+                            "resolute determined expression with a slight angry frown, hair tips "
+                            "swaying as if in a gust. Only her, no other character.",
+                            "assets/gen/cells/elena_neutral.png"),
 }
 
 
@@ -81,7 +93,10 @@ def main() -> int:
             time.sleep(0.5)
     elif mode == "poses":
         Path("assets/gen/poses").mkdir(parents=True, exist_ok=True)
+        only = set(sys.argv[2:])
         for pid, (prompt, inp) in POSES.items():
+            if only and pid not in only:
+                continue
             out = f"assets/gen/poses/{pid}.png"
             print(f"== {pid}", flush=True)
             ok &= run([sys.executable, str(GEN), "--max-tokens", "8000", prompt,

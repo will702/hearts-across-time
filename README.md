@@ -20,6 +20,7 @@ atau untuk deploy itch.io: zip `index.html` → upload sebagai **HTML5 game** (9
 | Bergerak | `← →` atau `A D` (lari: `Shift`) | tombol ◀ ▶ (lari: tahan ≫) |
 | Lanjut dialog | `Enter` / `Space` / klik | ketuk layar |
 | Pilih opsi | `↑ ↓` + `Enter`, atau tombol `1` / `2` | ketuk opsi |
+| Periksa titik lore (`✦` berdenyut) | `↓` atau `S` saat berdiri dekat | ketuk penanda |
 | Backlog dialog | `Tab` / `B` (gulir: `↑ ↓`) | — |
 | Jeda (mixer + aksesibilitas) | `Esc` | ikon ⏸ pojok kanan atas |
 | Bisu-suara | `M` | ikon 🔊 pojok kanan atas |
@@ -46,7 +47,10 @@ referensi: garis pensil grafit sketsa + wash cat air, palet muted). Digenerate d
 hue estimation + flood-fill, re-anchor kaki bottom-center, seamless tiling cross-fade) lewat skrip yang
 disertakan: `scripts/gen_image.py`, `scripts/gen_exprs.py`, `scripts/gen_bgs.py`,
 `scripts/build_sheets.py`, `scripts/compose_all.py` (butuh `OPENROUTER_API_KEY` di `.env` + `.venv` berisi
-`requests pillow numpy` untuk regenerasi). Backend alternatif: `scripts/gen_image_ds.py` memakai
+`requests pillow numpy` untuk regenerasi). Sejak pass 010, `seam_blend` di `build_sheets.py` menutup
+junction tile secara eksak (kolom 0 == kolom w-1 + ramp koreksi 24px); PNG final era lama yang masih
+berseam dapat dirapikan tanpa regenerasi lewat `scripts/fix_bg_seams.py` (cetak seamdiff sebelum/sesudah,
+`--qc` untuk pasangan tile). Backend alternatif: `scripts/gen_image_ds.py` memakai
 Alibaba Cloud Model Studio/DashScope (WanX t2i async; butuh `DASHSCOPE_API_KEY` di `.env`) — gaya
 WanX cenderung lebih tajam/kartun dari wash cat air gemini, jadi hanya dipakai bila jalur gemini tak tersedia. Fallback prosedural tetap utuh — hapus PNG mana pun dan game
 otomatis menggambarnya lagi lewat kode. Font UI **Patrick Hand** (SIL OFL) ikut di-bundle di `assets/fonts/`
@@ -67,12 +71,15 @@ untuk fallback prosedural.
 **Asset-rich pass (v4)** menambah, lewat pipeline yang sama (`scripts/gen_props.py` →
 `scripts/build_props.py`, `scripts/gen_extra.py` → `scripts/build_extra.py`):
 
-- **9 strip properti animasi** 3-frame (`assets/prop_*.png`): bendera lusuh & lentera (1944), tong api &
-  poster robek (2088), bohlam bergoyang & radio (1968A), beacon & uap pipa (1968B), CRT osiloskop (1999)
+- **11 strip properti animasi** 3-frame (`assets/prop_*.png`): bendera lusuh & lentera (1944), tong api &
+  poster robek (2088), bohlam bergoyang & radio (1968A), beacon & uap pipa (1968B), CRT osiloskop (1999),
+  suar sinyal (1944, menandai titik lore), ventilasi embun beku (1999)
 - **5 lapisan foreground lukis** `assets/bg<era>_fg.png` (okluder dekat kamera parallax ×1.18; absen →
   tetap `fgSilhouette` prosedural)
-- **3 pose momen kunci** `assets/pose_*.png`: Elena menggenggam tangan (respons empati `c1e`/`c2e`),
-  Elena berlutut memeluk vial (`true_end` & kartu akhir), Arthur tua meraih kapsul (`n_b3` cabang hangat)
+- **5 pose momen kunci** `assets/pose_*.png`: Elena menggenggam tangan (respons empati `c1e`/`c2e`),
+  Elena berlutut memeluk vial (`true_end` & kartu akhir), Arthur tua meraih kapsul (`n_b3` cabang hangat),
+  Arthur muda menyodorkan vial (`r1b`), Elena teguhkan hati (`n_b1` saat ekspresi marah, loop ≥3) — pose
+  kini **fade-in 250ms** (bukan pop) antar node, dengan filter ekspresi opsional per node
 - **Audio CC0** di `assets/audio/` (lihat kredit di bagian Musik & Audio) — langkah kaki per-permukaan,
   rustle kertas dialog, loop ambience per era (hujan / angin / bara / dengung mesin)
 
@@ -213,6 +220,18 @@ rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, C
 - **Pose momen kunci** menggantikan sheet pada node tertentu (genggam tangan empati, berlutut true_end,
   Arthur meraih kapsul) — fallback mulus ke sheet standar
 - Lapisan **foreground lukis** (`bgLayerImg` ×1.18) menggantikan siluet prosedural bila file tersedia
+
+**008 — Skill-audit pass (story × gameplay × aset):**
+
+- **Titik selidik (lore hotspots)**: 5 penanda `✦` berdenyut di adegan jalan (2×1944, 2×1968, 1×1999) —
+  `↓`/`S` atau ketuk → strip narator lore 2 baris (pakai kit kertas yang sama); tersimpan permanen di save
+- **Gema loop lintas era**: déjà-vu bertingkat kini juga di pembuka 1968 (3 tingkat) & 1999 (2 tingkat);
+  layar glitch menampilkan **berkas kasus** + sebaran ♥/⚙ siklus yg baru runtuh
+- **Fix logika kepribadian**: empati/logika & rute **direset tiap loop** — sebelumnya bocor antar-loop
+  (true ending bisa digrinding); kini tiap siklus menentukan Arthur-nya sendiri
+- **Pacing level**: segmen jalan dibedakan per era (1944: 1800px pendekatan tegang · 1968: 1500 · 1999: 1300 rapat)
+- **Kamera look-ahead** 22% kecepatan (di atas exp-smoothing) + bob halus indikator `▼ ENTER`
+- **Mixer persepsi**: slider volume kini lewat kurva `v^2.2` (dB-feel) untuk MASTER/MUSIK/EFEK+ambience
 
 ## 🛠 Struktur Kode (dalam `index.html`)
 
