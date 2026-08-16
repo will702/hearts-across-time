@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hearts Across Time — Phaser POC (2088 Walk)</title>
+<style>
+  html,body{margin:0;padding:0;background:#0a0806;height:100%;overflow:hidden;
+    font-family:'Trebuchet MS','Segoe UI',sans-serif;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;touch-action:none;box-shadow:0 0 80px rgba(0,0,0,.8);}
+  #nav{position:fixed;left:10px;bottom:8px;z-index:10;font-size:12px;color:#8f846f;}
+  #nav a{color:#e8ddc8;}
+</style>
+</head>
+<body>
+<div id="wrap"></div>
+<div id="nav">⚗ <b>Phaser POC</b> — scene jalan 2088 · <a href="index.html">← versi Canvas asli (index.html)</a></div>
+<script src="vendor/phaser.min.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   HEARTS ACROSS TIME × PHASER 4 — proof of concept: scene "walk 2088"
+   Peta migrasi dari index.html (Canvas):
+     render()        → Scene (create/update)
+     parallax PNG    → TileSprite + scrollFactor (faktor .1/.3/.85 tetap)
+     drawCharSheet   → spritesheet 6 frame + anims (sel 150×210, jangkar bawah-tengah, h=112)
+     fisika jalan    → konstanta identik: top 150/262, accel 900, fric 1400, phase*=.105
+   QA headless: ?qa=walk | ?qa=run | ?qa=left  (auto-gerak utk screenshot)
+   ============================================================ */
+const W=960,H=540,GROUND=444,LEN=1500;
+const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+
+/* tekstur prosedural kecil via kanvas (langit/matahari/partikel) —
+   sengaja tanpa tint agar valid di renderer Canvas maupun WebGL */
+function gradTex(sc,key,w,h,fn){if(sc.textures.exists(key))return;
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;fn(cv.getContext('2d'),w,h);sc.textures.addCanvas(key,cv);}
+
+class Walk2088 extends Phaser.Scene{
+  preload(){
+    this.load.spritesheet('elena','assets/elena_sheet.png',{frameWidth:150,frameHeight:210});
+    this.load.image('bg2088_far','assets/bg2088_far.png');
+    this.load.image('bg2088_mid','assets/bg2088_mid.png');
+    this.load.image('bg2088_near','assets/bg2088_near.png');
+  }
+  create(){
+    this.qa=new URLSearchParams(location.search).get('qa'); // walk|run|left (mode uji otomatis)
+
+    // langit: gradasi 3 titik persis bg2088() versi Canvas
+    gradTex(this,'sky',W,H,c=>{const g=c.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,'#c9bda9');g.addColorStop(.62,'#b1a48f');g.addColorStop(1,'#8b7f6c');
+      c.fillStyle=g;c.fillRect(0,0,W,H);});
+    this.add.image(0,0,'sky').setOrigin(0,0).setScrollFactor(0).setDepth(0);
+    // matahari Crimson + kabut radial (screen-space, sama seperti aslinya)
+    gradTex(this,'sunhaze',300,300,c=>{const g=c.createRadialGradient(150,150,10,150,150,150);
+      g.addColorStop(0,'rgba(226,80,60,.5)');g.addColorStop(.4,'rgba(226,80,60,.18)');g.addColorStop(1,'rgba(226,80,60,0)');
+      c.fillStyle=g;c.fillRect(0,0,300,300);});
+    gradTex(this,'sundisc',92,92,c=>{c.fillStyle='rgba(230,90,64,.55)';c.beginPath();c.arc(46,46,46,0,Math.PI*2);c.fill();});
+    this.add.image(700,140,'sunhaze').setScrollFactor(0).setDepth(1);
+    this.add.image(700,140,'sundisc').setScrollFactor(0).setDepth(1);
+
+    // parallax 3 lapis: TileSprite, jangkar bawah, faktor sesuai README (.1/.3/.85)
+    this.far =this.add.tileSprite(0,H,W,280,'bg2088_far') .setOrigin(0,1).setScrollFactor(0).setDepth(1);
+    this.mid =this.add.tileSprite(0,H,W,300,'bg2088_mid') .setOrigin(0,1).setScrollFactor(0).setDepth(2);
+    this.near=this.add.tileSprite(0,H,W,160,'bg2088_near').setOrigin(0,1).setScrollFactor(0).setDepth(3);
+
+    // dot lembut per warna (tanpa tint → aman di semua renderer)
+    const mkDot=(key,rgb,aMax)=>gradTex(this,key,16,16,c=>{const g=c.createRadialGradient(8,8,1,8,8,8);
+      g.addColorStop(0,`rgba(${rgb},${aMax})`);g.addColorStop(1,`rgba(${rgb},0)`);c.fillStyle=g;c.fillRect(0,0,16,16);});
+    mkDot('d_ash','210,200,190',.4); mkDot('d_dust','170,150,120',.5); mkDot('d_dark','10,8,6',.28);
+
+    // hujan abu 2088 — rule spawnParts(): vx 8, vy 20–42, ml 28s, alpha .4
+    this.add.particles(0,-10,'d_ash',{
+      emitZone:{type:'random',source:new Phaser.Geom.Rectangle(0,0,W,1)},
+      speedX:8,speedY:{min:20,max:42},lifespan:28000,frequency:85,
+      scale:.19,alpha:{start:1,end:0}}).setScrollFactor(0).setDepth(6);
+
+    // debu langkah: dua emitter arah (kanan/kiri), explode manual saat tumpu
+    const dustCfg=(vx1,vx2)=>({speedX:{min:vx1,max:vx2},speedY:{min:-30,max:-10},gravityY:80,
+      lifespan:{min:450,max:700},scale:{start:.19,end:.06},alpha:{start:1,end:0},emitting:false});
+    this.dustR=this.add.particles(0,0,'d_dust',dustCfg(-44,-14)).setDepth(5);
+    this.dustL=this.add.particles(0,0,'d_dust',dustCfg(14,44)).setDepth(5);
+
+    // bayangan kaki (groundShadow versi asli: radial hitam lebar, y=+4, skala x≈3.6)
+    this.shadow=this.add.image(90,GROUND+4,'d_dark').setScale(3.6,1.0).setDepth(4);
+
+    // --- Elena: jangkar tengah-bawah, tinggi tampil 112 (ASSET_MANIFEST) ---
+    this.anims.create({key:'walk',
+      frames:this.anims.generateFrameNumbers('elena',{frames:[1,2,3,2]}), // siklus w1→w2→w3→w2
+      frameRate:10,repeat:-1});
+    const P=this.player=this.add.sprite(90,GROUND,'elena',0).setOrigin(.5,1).setDepth(5);
+    P.baseScale=112/210; P.setScale(P.baseScale);
+
+    // state jalan: konstanta disamakan dengan index.html
+    this.st={x:90,vx:0,phase:0,moving:false,facingRight:true,turnT:0,acc:0,stride:0};
+    const qx=parseFloat(new URLSearchParams(location.search).get('x')); // utk QA
+    if(!isNaN(qx))this.st.x=clamp(qx,64,LEN-40);
+    this.cameras.main.setBounds(0,0,LEN,H);
+    this.cameras.main.startFollow(P,false,.1,.1); // ≈ lerp(1-.001^dt) @60fps
+    this.cameras.main.setFollowOffset(180,0);     // camTarget = p.x-300
+
+    this.keys=this.input.keyboard.addKeys({left:'LEFT',right:'RIGHT',a:'A',d:'D',shift:'SHIFT'});
+    this.input.addPointer(1);
+
+    this.add.text(12,10,'PHASER POC — 2088 walk · ← → / A D jalan · Shift lari · sentuh: sudut bawah ◀ ▶, pojok ≫ lari',
+      {fontFamily:'Trebuchet MS, sans-serif',fontSize:'12px',color:'#4a4136',
+       backgroundColor:'rgba(245,240,232,.6)',padding:{x:6,y:3}}).setScrollFactor(0).setDepth(20);
+
+    this.t=0; this.stepCtx=null;
+    window.__POC=this; // hook debug headless
+    this.dbg=this.add.text(12,H-20,'',{fontFamily:'monospace',fontSize:'11px',color:'#fff',
+      backgroundColor:'rgba(10,8,6,.5)',padding:{x:4,y:2}}).setScrollFactor(0).setDepth(20);
+    // QA: prasimulasi N detik gerak (headless screenshot—virtual-time tidak andal utk rAF)
+    const warm=parseFloat(new URLSearchParams(location.search).get('warm')||0);
+    if(this.qa&&warm>0)for(let i=0,n=Math.floor(warm*60);i<n;i++){
+      this.stepPhysics(1/60,this.qa==='left'?-1:1,this.qa==='run');
+      this.t+=1/60;}
+    if(warm>0)this.cameras.main.scrollX=clamp(this.st.x-300,0,LEN-W); // snap kamera utk QA
+  }
+  /* integrator fisika langkah (dipakai update() & prasimulasi QA) */
+  stepPhysics(dt,dir,sprint){
+    const st=this.st,top=sprint?262:150,accel=900,fric=1400,prevVx=st.vx,oldPhase=st.phase;
+    if(dir!==0){
+      if((dir>0)!==st.facingRight){st.facingRight=dir>0;st.turnT=.14;}
+      st.vx+=clamp(dir*top-st.vx,-accel*dt,accel*dt);
+    }else st.vx-=clamp(st.vx,-fric*dt,fric*dt);
+    st.x=clamp(st.x+st.vx*dt,64,LEN-40);
+    if((st.x===64&&st.vx<0)||(st.x===LEN-40&&st.vx>0))st.vx=0;
+    st.acc=lerp(st.acc,(st.vx-prevVx)/Math.max(dt,1e-4),1-Math.pow(.01,dt));
+    if(st.turnT>0)st.turnT-=dt;
+    st.phase+=Math.abs(st.vx)*dt*.105;
+    st.moving=Math.abs(st.vx)>8;
+    st.stride=clamp(Math.abs(st.vx)/262,0,1);
+    return oldPhase;
+  }
+  step(){ // SFX.step versi mini: noise 50ms lowpass ~420Hz
+    try{const C=this.stepCtx||(this.stepCtx=new (window.AudioContext||window.webkitAudioContext)());
+      if(C.state==='suspended')C.resume();
+      const n=Math.floor(C.sampleRate*.05),b=C.createBuffer(1,n,C.sampleRate),ch=b.getChannelData(0);
+      for(let i=0;i<n;i++)ch[i]=Math.random()*2-1;
+      const s=C.createBufferSource();s.buffer=b;
+      const f=C.createBiquadFilter();f.type='lowpass';f.frequency.value=420;
+      const v=C.createGain();const t0=C.currentTime;
+      v.gain.setValueAtTime(.05+Math.random()*.02,t0);v.gain.exponentialRampToValueAtTime(.0001,t0+.05);
+      s.connect(f);f.connect(v);v.connect(C.destination);s.start(t0);s.stop(t0+.05);
+    }catch(e){}
+  }
+  puff(x,toRight,n){(toRight?this.dustR:this.dustL).explode(n,x,GROUND-3);}
+  update(time,delta){
+    const dt=Math.min(delta/1000,.05),t=this.t+=dt,st=this.st,P=this.player;
+    let dir=0,sprint=this.keys.shift.isDown;
+    if(this.keys.right.isDown||this.keys.d.isDown)dir+=1;
+    if(this.keys.left.isDown||this.keys.a.isDown)dir-=1;
+    for(const p of [this.input.pointer1,this.input.pointer2])if(p&&p.isDown){
+      if(p.position.y>H-130){if(p.position.x>W-140)dir=1;else if(p.position.x<140)dir=-1;}
+      if(Math.hypot(p.position.x-(W-36),p.position.y-(H-162))<30)sprint=true;}
+    if(this.qa){dir=this.qa==='left'?-1:1;sprint=this.qa==='run';}
+
+    // --- fisika identik index.html: akselerasi ke top speed, gesekan saat lepas ---
+    const prevVx=st.vx,oldPhase=this.stepPhysics(dt,dir,sprint);
+    if(dir!==0){
+      if(Math.abs(prevVx)<10)this.puff(st.x,dir<0,1); // debu awal langkah
+    }else if(Math.abs(prevVx)>140&&Math.abs(st.vx)<10)for(let k=0;k<3;k++)
+        this.puff(st.x+(Math.random()-.5)*10,!st.facingRight,1); // debu berhenti keras
+    if(st.moving&&Math.floor(oldPhase/Math.PI)!==Math.floor(st.phase/Math.PI)){
+      this.step();this.puff(st.x+(Math.random()-.5)*8,st.vx<0,2);} // tumpu: bunyi + debu
+
+    // --- animasi & juice karakter (bob / counter-rock / lean / squash) ---
+    const st_=st.stride,mv=st.moving;
+    if(mv){if(!P.anims.isPlaying)P.play('walk');P.anims.timeScale=Math.max(Math.abs(st.vx)/150,.3);}
+    else if(P.anims.isPlaying){P.stop();P.setFrame(0);} // F0 idle
+    P.setFlipX(!st.facingRight);
+    P.x=st.x+(mv?Math.sin(st.phase*2-.4)*(0.6+0.5*st_):0);
+    P.y=GROUND-(mv?Math.abs(Math.sin(st.phase))*(1.6+1.4*st_):Math.sin(t*2)*.9); // bob / napas idle
+    let rot=(mv?Math.sin(st.phase)*.03*st_:0)+(mv?st.vx/262*.11+clamp(st.acc/900,-1,1)*.03:0);
+    P.rotation=st.facingRight?rot:-rot; // flipX membalik rotasi visual → koreksi arah
+    P.scaleX=P.baseScale*(st.turnT>0?1-.18*Math.sin(Math.PI*(1-st.turnT/.14)):1);
+    this.shadow.x=P.x;this.shadow.y=P.y+4;
+
+    // kamera "bernafas" halus saat berjalan
+    this.cameras.main.setFollowOffset(180,mv?Math.sin(t*1.5)*1.2*st_:0);
+
+    // parallax ×faktor (screen-space TileSprite — tilePosition menggantikan modulo manual)
+    const camX=this.cameras.main.scrollX;
+    this.far.tilePositionX=camX*.1;
+    this.mid.tilePositionX=camX*.3;
+    this.near.tilePositionX=camX*.85;
+    this.dbg.setText(`x=${Math.round(st.x)} vx=${Math.round(st.vx)} cam=${Math.round(camX)} t=${t.toFixed(1)}s`);
+  }
+}
+
+new Phaser.Game({
+  type:Phaser.AUTO,width:W,height:H,parent:'wrap',
+  backgroundColor:'#0a0806',disableContextMenu:true,banner:false,
+  scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
+  scene:Walk2088
+});
+</script>
+</body>
+</html>

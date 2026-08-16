@@ -46,19 +46,35 @@ referensi: garis pensil grafit sketsa + wash cat air, palet muted). Digenerate d
 hue estimation + flood-fill, re-anchor kaki bottom-center, seamless tiling cross-fade) lewat skrip yang
 disertakan: `scripts/gen_image.py`, `scripts/gen_exprs.py`, `scripts/gen_bgs.py`,
 `scripts/build_sheets.py`, `scripts/compose_all.py` (butuh `OPENROUTER_API_KEY` di `.env` + `.venv` berisi
-`requests pillow numpy` untuk regenerasi). Fallback prosedural tetap utuh — hapus PNG mana pun dan game
-otomatis menggambarnya lagi lewat kode.
+`requests pillow numpy` untuk regenerasi). Backend alternatif: `scripts/gen_image_ds.py` memakai
+Alibaba Cloud Model Studio/DashScope (WanX t2i async; butuh `DASHSCOPE_API_KEY` di `.env`) — gaya
+WanX cenderung lebih tajam/kartun dari wash cat air gemini, jadi hanya dipakai bila jalur gemini tak tersedia. Fallback prosedural tetap utuh — hapus PNG mana pun dan game
+otomatis menggambarnya lagi lewat kode. Font UI **Patrick Hand** (SIL OFL) ikut di-bundle di `assets/fonts/`
+(2 subset woff2, dimuat via `FontFace`); saat dibuka langsung lewat `file://` font diblokir CORS browser →
+otomatis fallback ke Trebuchet tanpa error.
 
 - Elena — rambut ash-blonde belah tengah, jas lab putih di atas gaun dusty-rose, boot kulit pucat strap gelap;
   4 frame jalan asli (sel F1–F3) + 7 variasi ekspresi
 - Arthur muda (seragam medis + helm + vial hijau), dewasa (jas lab + kacamata), buron (jaket coklat + satchel),
   tua (kardigan + tongkat) — masing-masing 8 baris ekspresi konsisten satu pose
-- 10 latar parallax lukis: puing 2088 (far/mid/near), parit 1944 (far/mid), bunker 1968A (far/mid),
-  lab 1968B (far/mid), ruang kriogenik 1999 (far). Kapsul 1999 tetap **prosedural-animasi** (gelembung,
+- 11 latar parallax lukis: puing 2088 (far/mid/near), parit 1944 (far/mid), bunker 1968A (far/mid),
+  lab 1968B (far/mid), ruang kriogenik 1999 (far/mid). Kapsul 1999 tetap **prosedural-animasi** (gelembung,
   cairan, label ARTHUR PROJECT) — keputusan sengaja agar centerpiece tetap hidup
 
 Sprite & latar masih bisa di-tweak: regenerasi sel lewat skrip di atas, atau tweak konstanta `PAL`
 untuk fallback prosedural.
+
+**Asset-rich pass (v4)** menambah, lewat pipeline yang sama (`scripts/gen_props.py` →
+`scripts/build_props.py`, `scripts/gen_extra.py` → `scripts/build_extra.py`):
+
+- **9 strip properti animasi** 3-frame (`assets/prop_*.png`): bendera lusuh & lentera (1944), tong api &
+  poster robek (2088), bohlam bergoyang & radio (1968A), beacon & uap pipa (1968B), CRT osiloskop (1999)
+- **5 lapisan foreground lukis** `assets/bg<era>_fg.png` (okluder dekat kamera parallax ×1.18; absen →
+  tetap `fgSilhouette` prosedural)
+- **3 pose momen kunci** `assets/pose_*.png`: Elena menggenggam tangan (respons empati `c1e`/`c2e`),
+  Elena berlutut memeluk vial (`true_end` & kartu akhir), Arthur tua meraih kapsul (`n_b3` cabang hangat)
+- **Audio CC0** di `assets/audio/` (lihat kredit di bagian Musik & Audio) — langkah kaki per-permukaan,
+  rustle kertas dialog, loop ambience per era (hujan / angin / bara / dengung mesin)
 
 ## 🖼 Memakai Aset PNG Buatan Sendiri (opsional, tanpa pindah engine)
 
@@ -114,6 +130,26 @@ atau integrasi Spine/DragonBones. Peta migrasi bila kelak diperlukan:
 `NODES`/dialog tetap utuh → `render()` jadi Scene, parallax → `TileSprite` +
 `scrollFactor`, `PAL` → tint/tintFill, audio WebAudio bisa dipertahankan apa adanya.
 
+**Engine sudah tersedia lokal.** Perbandingan PixiJS / melonJS / Phaser (Agu 2026):
+**Phaser** dipilih sebagai yang terbaik untuk proyek ini — framework game lengkap
+(Scene, input, audio, tween, partikel), bukan sekadar renderer seperti PixiJS;
+ekosistem melonJS jauh lebih kecil. Runtime **Phaser v4.2.1** di-vendorkan ke
+`vendor/phaser.min.js` (offline, ikut dalam zip itch.io; **belum** dipakai oleh
+`index.html` — game ini tetap Canvas murni). Skill agent resmi Phaser yang
+terpasang: `phaserjs/phaser@game-setup-and-config`, `@sprites-and-images`,
+`@animations`, `@audio-and-sound`, `@v4-new-features`. Untuk mulai memakai:
+`<script src="vendor/phaser.min.js"></script>` lalu buat Scene mengikuti peta
+migrasi di atas.
+
+**POC tersedia:** `phaser-demo.html` — scene jalan 2088 dalam Phaser 4 (sajikan
+via server lokal, mis. `python -m http.server`, lalu buka `/phaser-demo.html`).
+Membuktikan peta migrasi: parallax PNG → `TileSprite`+`scrollFactor` (faktor
+.1/.3/.85), sheet Elena 150×210 → anim `walk` `[1,2,3,2]` + F0 idle (skala
+112/210, jangkar bawah-tengah), fisika jalan identik (top 150/262, accel 900,
+fric 1400, phase×.105), kamera follow ≈ `camTarget=x-300` + napas halus, abu
+2088 & debu langkah → `ParticleEmitter`. QA headless deterministik: tambahkan
+`?qa=walk|run|left&warm=<detik>&x=<pos>` (prasimulasi sebelum render).
+
 ## 🎵 Musik & Audio (v2 — Leitmotif System)
 
 Seluruh musik dibangkitkan **real-time via WebAudio sequencer** (lookahead scheduling, tanpa file audio).
@@ -132,6 +168,13 @@ Arsitektur audio: bus `Master → limiter(kompressor) → out` dengan sub-bus **
 musik lewat *feedback-delay* + *convolution reverb* (impulse noise buatan). Musnahnya timeline (glitch)
 mem-fade musik ke 0, dan musik **duck otomatis ±6 dB saat teks dialog sedang mengetik** lalu naik lagi.
 
+**Lapisan audio eksternal CC0** (dimuat malas setelah gesture pertama; file absen → senyap, fallback
+prosedural tetap bunyi): loop ambience per era (`AMB_LAYER`) — gerimis+angin 1944, angin+bara 2088,
+dengung mesin 1968/1999 — plus langkah kaki Kenney yang difilter per permukaan (lumpur/beton/metal) dan
+rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, CC0); *AMB Rain Loop 1*
+(Kresiek The Furry, CC0); *wind1* (Luke.RUSTLTD, CC0); *Fireplace Sound loop* (PagDev, CC0);
+*Generator loop* (YCbCr, CC0) — semua dari OpenGameArt.org.
+
 ## ✨ Efek Visual (v2 — Juice Pass)
 
 - **Karakter**: bayangan lembut di kaki, siklus kaki elips ayun/tumpu (kaki tumpu menapak, kaki ayun melengkung), fisika rambut & ayunan gaun dengan follow-through tertinggal dari langkah, condong saat berjalan + pitch badan saat akselerasi,
@@ -146,6 +189,30 @@ mem-fade musik ke 0, dan musik **duck otomatis ±6 dB saat teks dialog sedang me
 - **Glitch**: sobekan strip + *ghosting* duplikat layar (screen blend)
 - **UI**: panel pilihan *pop-in* spring (ease-out-back), vignette merah berdenyut sinkron detak jantung prolog,
   kamera "bernafas" halus saat berjalan
+
+**v3 — Tampilan Valiant Hearts (komik perang):**
+
+- Tipografi tulisan tangan: font **Patrick Hand** (SIL OFL) di-bundle lokal (`assets/fonts/patrick-hand(-ext).woff2`,
+  2 subset unicode-range via `FontFace`) — fallback mulus ke Trebuchet bila game dibuka lewat `file://` (CORS memblokir font lokal)
+- Kit **kertas & tinta** (`PAPER` + `sketchRR`): balon kata, strip narator, panel pilihan, jeda, backlog — semua panel
+  kertas krem bertekstur serat dengan goresan tinta ganda bergoyang alami (jitter deterministik); pilihan aktif diberi
+  goresan spidol merah; chip nama jadi cap tinta miring
+- **Kotak caption komik** untuk judul babak (kiri atas, aksen tinta merah) menggantikan pita gelap
+- **Siluet latar depan** `fgSilhouette` (parallax ×1.18): bibir tanah tak rata + kawat berduri & tunggul 1944, lempeng
+  beton & rebar 2088, rantai bunker 1968A, pipa & kabel 1968B, pilar silo 1999
+- **Kabut antar-lapisan** (`hazeBand`) untuk perspektif udara di tiap era
+- Grading v3 "cetakan buku harian perang": serat kertas multiply + lift krem overlay + vignette + sudut gelap panel cetak
+- Bingkai ganda sampul komik pada layar judul & endcard; palet chip/tag UI dilembutkan; langit 1944 mendung-oker
+
+**v4 — Asset-rich & alive (properti/cuaca/pose/napas):**
+
+- 9 **properti animasi** 3-frame gaya cat air per era (bendera, lentera, tong api, poster, bohlam, radio,
+  beacon, uap pipa, CRT) — frame deterministik dari `T` (`reduceMotion` → frame 0)
+- **Gerimis parit 1944** prosedural (streak miring + riak pecah di tanah), terkait loop audio hujan
+- **Tarikan napas idle** ±1px pada karakter sheet saat diam (beda fase Elena/Arthur)
+- **Pose momen kunci** menggantikan sheet pada node tertentu (genggam tangan empati, berlutut true_end,
+  Arthur meraih kapsul) — fallback mulus ke sheet standar
+- Lapisan **foreground lukis** (`bgLayerImg` ×1.18) menggantikan siluet prosedural bila file tersedia
 
 ## 🛠 Struktur Kode (dalam `index.html`)
 
