@@ -1,17 +1,18 @@
 # ⏳ Hearts Across Time — Break The Loop
 
-> 2D Side-Scroller Narrative Puzzle / Psychological Time-Loop • WebGL (Canvas)
+> 2D Side-Scroller Narrative Puzzle / Psychological Time-Loop • Phaser 4 + Canvas 2D
 > Dibangun untuk **COMPFEST Indie Game Jam** — implementasi penuh dari *Game Design Document* `FIKS IDE.md`.
 
 ## ▶ Cara Menjalankan
 
-Tidak butuh build apa pun — satu file saja:
+Tidak butuh build step. Jalankan lewat server lokal agar modul dan font dimuat konsisten:
 
 ```
-Buka index.html di browser (Chrome / Firefox / Edge / Safari)
+python -m http.server 8777
+# buka http://127.0.0.1:8777/index.html
 ```
 
-atau untuk deploy itch.io: zip `index.html` → upload sebagai **HTML5 game** (960×540, scale to fit).
+Untuk deploy itch.io, zip `index.html`, `src/`, `vendor/`, dan `assets/`, lalu upload sebagai **HTML5 game** (960×540, scale to fit).
 
 ## 🎮 Kontrol
 
@@ -121,41 +122,28 @@ jangkar bawah, angka kurung = faktor parallax. Langit & grading tetap prosedural
 
 ### Deploy itch.io
 
-Setelah menambah aset, zip **wajib** berisi `index.html` + `assets/` (bukan lagi
-satu file). Tanpa aset pun zip index.html saja tetap jalan penuh.
+Zip **wajib** berisi `index.html`, `src/`, `vendor/`, dan `assets/`. `legacy-canvas.html`
+opsional dan hanya dipakai sebagai pembanding QA.
 
-## ⚙️ Phaser atau tetap Canvas?
+## ⚙️ Arsitektur Phaser modular
 
-**Verdict: tetap Canvas untuk game ini.** Game sudah selesai & teruji, tidak butuh
-fisika/tumbukan/tilemap, draw call < 60 per frame (Canvas 2D 60fps santai), dan
-lapisan aset di atas sudah mencakup loader + spritesheet + fallback — 90% manfaat
-Phaser untuk kasus ini dengan risiko migrasi nol.
+`index.html` kini merupakan entry point tipis. Phaser v4.2.1 di `vendor/phaser.min.js`
+menjadi pemilik lifecycle, timing, pause render, scaling, dan scene utama. Renderer
+Canvas 2D yang sudah teruji dipanggil pada fase `POST_RENDER`, sehingga seluruh dialog,
+save, audio, ending, dan fallback prosedural tetap identik selama migrasi display-list
+Phaser berlangsung bertahap.
 
-**Pindah ke Phaser layak untuk proyek berikutnya** jika butuh: fisika platformer,
-tilemap Tiled, ratusan animasi dalam atlas, post-processing WebGL (bloom/CRT),
-atau integrasi Spine/DragonBones. Peta migrasi bila kelak diperlukan:
-`NODES`/dialog tetap utuh → `render()` jadi Scene, parallax → `TileSprite` +
-`scrollFactor`, `PAL` → tint/tintFill, audio WebAudio bisa dipertahankan apa adanya.
+Kode dipisah berdasarkan tanggung jawab:
 
-**Engine sudah tersedia lokal.** Perbandingan PixiJS / melonJS / Phaser (Agu 2026):
-**Phaser** dipilih sebagai yang terbaik untuk proyek ini — framework game lengkap
-(Scene, input, audio, tween, partikel), bukan sekadar renderer seperti PixiJS;
-ekosistem melonJS jauh lebih kecil. Runtime **Phaser v4.2.1** di-vendorkan ke
-`vendor/phaser.min.js` (offline, ikut dalam zip itch.io; **belum** dipakai oleh
-`index.html` — game ini tetap Canvas murni). Skill agent resmi Phaser yang
-terpasang: `phaserjs/phaser@game-setup-and-config`, `@sprites-and-images`,
-`@animations`, `@audio-and-sound`, `@v4-new-features`. Untuk mulai memakai:
-`<script src="vendor/phaser.min.js"></script>` lalu buat Scene mengikuti peta
-migrasi di atas.
+- `src/core/` — utilitas, audio, input, state, loader aset, karakter.
+- `src/data/` — seluruh node cerita dan pilihan.
+- `src/game/` — flow gameplay, state machine, save, serta bootstrap Phaser.
+- `src/render/` — dunia, efek, cover/onboarding, HUD, dan layar ending.
+- `src/ui/` — dialog, narator, dan pilihan.
 
-**POC tersedia:** `phaser-demo.html` — scene jalan 2088 dalam Phaser 4 (sajikan
-via server lokal, mis. `python -m http.server`, lalu buka `/phaser-demo.html`).
-Membuktikan peta migrasi: parallax PNG → `TileSprite`+`scrollFactor` (faktor
-.1/.3/.85), sheet Elena 150×210 → anim `walk` `[1,2,3,2]` + F0 idle (skala
-112/210, jangkar bawah-tengah), fisika jalan identik (top 150/262, accel 900,
-fric 1400, phase×.105), kamera follow ≈ `camTarget=x-300` + napas halus, abu
-2088 & debu langkah → `ParticleEmitter`. QA headless deterministik: tambahkan
-`?qa=walk|run|left&warm=<detik>&x=<pos>` (prasimulasi sebelum render).
+Rincian kontrak modul ada di `src/README.md`. `phaser-demo.html` tetap tersedia
+sebagai eksperimen display-list native untuk scene jalan 2088, sedangkan
+`legacy-canvas.html` adalah snapshot game sebelum entry point berpindah ke Phaser.
 
 ## 🎵 Musik & Audio (v2 — Leitmotif System)
 
@@ -183,6 +171,8 @@ rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, C
 *Generator loop* (YCbCr, CC0) — semua dari OpenGameArt.org.
 
 ## ✨ Efek Visual (v2 — Juice Pass)
+
+**Onboarding Figma:** layar judul kini dibuka oleh sequence parallax autoplay ±8,4 detik dari tujuh komposisi Figma. Delapan belas-plus lapisan PNG transparan di `assets/onboarding/` bergerak dengan kedalaman berbeda, lalu dissolve ke cover interaktif; tombol mulai baru aktif sesudah sequence selesai. Enter/sentuh pertama melewati intro, input berikutnya memulai game, dan opsi `reduceMotion` langsung menampilkan cover.
 
 - **Karakter**: bayangan lembut di kaki, siklus kaki elips ayun/tumpu (kaki tumpu menapak, kaki ayun melengkung), fisika rambut & ayunan gaun dengan follow-through tertinggal dari langkah, condong saat berjalan + pitch badan saat akselerasi,
   kilau rambut ala anime, air mata (ekspresi sedih) & butir keringat (kaget)
