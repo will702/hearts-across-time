@@ -79,6 +79,40 @@ function drawPrologueScene(c){
   c.restore();
 }
 /* ============================================================
+   INTRO 1944 — empat beat kamera dari frame Figma 63:6, 64:18,
+   64:20, dan 68:54 sebelum kontrol pemain diaktifkan.
+   ============================================================ */
+const WAR_CAM=[
+  {z:3.25,fx:.34,fy:.76}, // detail puing, helm, dan korban
+  {z:1.86,fx:.50,fy:.43}, // parit terbuka, ledakan mulai terungkap
+  {z:1.68,fx:.60,fy:.44}, // ledakan menjadi pusat komposisi
+  {z:1.68,fx:.60,fy:.44}, // tahan framing untuk kemunculan Elena
+];
+function warCamAt(t){
+  const q=clamp(t/3.25,0,1)*(WAR_CAM.length-1),i=Math.min(WAR_CAM.length-2,Math.floor(q)),u=easeIO(q-i),a=WAR_CAM[i],b=WAR_CAM[i+1];
+  return{z:lerp(a.z,b.z,u),fx:lerp(a.fx,b.fx,u),fy:lerp(a.fy,b.fy,u)};
+}
+function drawWarIntroBg(c){
+  const im=AS.imgs.bg1944_mid;if(!im||!im.width){bg1944(c,0,T);return;}
+  const k=OPTS.reduceMotion?WAR_CAM[WAR_CAM.length-1]:warCamAt(G.warIntro.t);
+  const base=Math.max(W/im.width,H/im.height),dw=im.width*base*k.z,dh=im.height*base*k.z;
+  c.drawImage(im,W*.5-k.fx*dw,H*.5-k.fy*dh,dw,dh);
+  spawnParts('1944');drawParts(c,1/60);
+  const vg=c.createRadialGradient(W*.5,H*.45,H*.18,W*.5,H*.45,H*.82);vg.addColorStop(0,'rgba(12,8,6,0)');vg.addColorStop(1,'rgba(8,6,5,.42)');c.fillStyle=vg;c.fillRect(0,0,W,H);
+}
+function drawWarIntroElena(c){
+  const im=AS.imgs.elena_dialog1,a=easeO(G.warIntro.reveal);if(!im||!im.width){c.save();c.globalAlpha=a;c.translate(W*.5,GROUND+26);c.scale(1.85,1.85);drawElena(c,T,0,false,'angry');c.restore();return;}
+  const sx=im.width*.345,sy=im.height*.03,sw=im.width*.31,sh=im.height*.48,dh=318,dw=dh*(sw/sh);
+  const y=H-dh+18+(1-a)*26,bob=OPTS.reduceMotion?0:Math.sin(T*1.45)*1.2;
+  c.save();c.globalAlpha=a;c.translate(0,bob);c.shadowColor='rgba(20,8,4,.72)';c.shadowBlur=18;c.drawImage(im,sx,sy,sw,sh,W*.5-dw*.5,y,dw,dh);c.restore();
+}
+function drawWarIntro(c){
+  drawWarIntroBg(c);
+  const top=c.createLinearGradient(0,0,0,190);top.addColorStop(0,'rgba(7,5,5,.68)');top.addColorStop(1,'rgba(7,5,5,0)');c.fillStyle=top;c.fillRect(0,0,W,190);
+  if(G.warIntro.t>=3.25){drawWarIntroElena(c);if(D.line&&G.warIntro.reveal>.15)drawNarr(c,D.line.text,D.prog,D.popT);if(D.line&&D.prog>=1)hintAdvance(c);}
+  else{const p=clamp(G.warIntro.t/3.25,0,1);c.textAlign='center';c.fillStyle=`rgba(245,240,232,${.36+.28*Math.sin(T*3)})`;c.font='italic 14px Georgia,serif';c.fillText('1944 — GARIS DEPAN',W/2,H-30);c.fillStyle='rgba(245,240,232,.2)';rr(c,W/2-105,H-19,210,3,2);c.fill();c.fillStyle='#A85550';rr(c,W/2-105,H-19,210*p,3,2);c.fill();}
+}
+/* ============================================================
    COVER / LAYAR JUDUL — poster sinematik: emblem jam pasir
    bercahaya + cincin waktu, ensemble Arthur lintas era
    mengapit Elena, judul berhierarki, pil MULAI berdenyut
@@ -217,6 +251,10 @@ function render(){
     {const hb=T%2.4;if(!OPTS.reduceMotion&&hb<.6){const a=Math.sin(hb/.6*Math.PI)*.22;const vg=ctx.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,H*.78);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,`rgba(140,20,20,${a})`);ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);}}
     if(D.line)drawNarr(ctx,D.line.text,D.prog,D.popT);
     if(!D.choices&&D.line&&D.prog>=1)hintAdvance(ctx);
+    drawFFBtn(ctx);
+  }
+  else if(G.state==='warintro'){
+    drawWarIntro(ctx);
     drawFFBtn(ctx);
   }
   else if(G.state==='walk'||G.state==='dialog'){
@@ -395,7 +433,7 @@ function drawFFBtn(c){ // tombol lewati (hanya jika node ini pernah dilihat)
   c.globalAlpha=1;
 }
 function drawPauseBtn(c){
-  if(G.paused||!(G.state==='walk'||G.state==='dialog'||G.state==='prologue'))return;
+  if(G.paused||!(G.state==='walk'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'))return;
   const x=W-72,y=26;c.save();c.globalAlpha=.65;c.fillStyle='#0a0806';c.beginPath();c.arc(x,y,15,0,TAU);c.fill();
   c.strokeStyle='#F5F0E8';c.lineWidth=1.6;c.beginPath();c.arc(x,y,15,0,TAU);c.stroke();
   c.fillStyle='#F5F0E8';c.font='13px sans-serif';c.textAlign='center';c.textBaseline='middle';

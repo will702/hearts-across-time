@@ -15,6 +15,10 @@ N('prologue',[
   say('narrator','Aku memicu kapsul waktu darurat. Aku harus mengubah masa lalu sebelum racun itu diciptakan.'),
   {t:'vortex',to:'1944'},
 ]);
+N('war_intro',[
+  say('elena','Semuanya bermula di sini—tahun 1944. Di tengah hujan, api, dan suara bom... kali ini aku akan menyelamatkan Arthur. Apa pun harga yang harus kubayar.','angry'),
+  {t:'walk',era:'1944'},
+]);
 N('n_b1',()=>{
   const ops=[];
   if(S.loop>0){ // déjà-vu bertingkat mengikuti jumlah loop (C4)
@@ -135,4 +139,3 @@ N('true_end',[
   {t:'fx',kind:'chime'},
   say('narrator','[ THE END - HEARTS ACROSS TIME: BREAK THE LOOP ]'),
   {t:'ending',kind:'true'}]);
-
