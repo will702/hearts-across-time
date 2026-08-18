@@ -184,7 +184,7 @@ rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, C
 - **2088**: matahari Crimson dengan kabut radial, api jauh berkedip antar bangunan
 - **Vortex**: angka tahun **RGB-split** makin lebar, partikel streaks
 - **Glitch**: sobekan strip + *ghosting* duplikat layar (screen blend)
-- **UI**: panel pilihan *pop-in* spring (ease-out-back), vignette merah berdenyut sinkron detak jantung prolog,
+- **UI**: panel pilihan *pop-in* spring (ease-out-back), prolog 2088 memakai `bgnarator.png` dengan zoom-parallax sinematik, cross-fade ekspresi `elenadialog1.png` / `elenadialog2sedih.png`, serta vignette merah berdenyut sinkron detak jantung,
   kamera "bernafas" halus saat berjalan
 
 **v3 — Tampilan Valiant Hearts (komik perang):**

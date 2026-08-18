@@ -317,8 +317,12 @@ function drawVialOverlay(c,cfg){ // serum di tangan tetap digambar di atas sheet
   c.save();c.translate(dw*.13,-dh*.44);c.fillStyle=PAL.vialB;c.shadowColor=PAL.vialB;c.shadowBlur=10;rr(c,-2.6,-7,5.2,10,2.4);c.fill();c.shadowBlur=0;outline(c,1.4);rr(c,-2.6,-7,5.2,10,2.4);c.stroke();c.restore();}
 function bgLayerImg(c,id,factor,camX){ // tile horizontal, jangkar bawah; false => prosedural
   const im=AS.imgs[id];if(!im||!im.width)return false;
-  const iw=im.width,ih=im.height,off=-((camX*factor)%iw);
-  for(let x=off;x<W;x+=iw)c.drawImage(im,x,H-ih);
+  const cfg=ASSET_MANIFEST[id]||{};
+  const iw=im.width,ih=im.height;
+  const s=cfg.scale||(cfg.h?cfg.h/ih:(ih>H?0.75:1));
+  const dw=iw*s,dh=ih*s,off=-((camX*factor)%dw);
+  const posY=(H-dh)+(cfg.yOff||0);
+  for(let x=off;x<W;x+=dw)c.drawImage(im,x,posY,dw,dh);
   return true;
 }
 

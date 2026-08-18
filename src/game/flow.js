@@ -108,7 +108,7 @@ function startWalk(era){
 }
 function startEndCard(){G.state='endcard';G.endCard={t:0};SFX.chime();setAmbience('1999');setSong('end');duckMusic(1,1.2);SAVE.game=null;persistSave();}
 function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;
-  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;parts.length=0;}
+  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.prologueT=0;parts.length=0;}
 
 /* ---------- update per-state ---------- */
 const SPD=[.5,1,2],SPD_N=['LAMBAT','NORMAL','CEPAT'];
@@ -171,6 +171,7 @@ function update(dt){
       if(G.titleReady&&(advHit()||ptr.tap)){ptr.tap=false;SFX.confirm();resetAll();G.state='prologue';G.fadeIn=1;startNode('prologue');setAmbience('2088');SFX.heart();}
       break;
     case 'prologue':
+      G.prologueT+=dt;
       if((T%2.4)<dt)SFX.heart();
       updateDialog(dt,mx,my);break;
     case 'walk':{
@@ -247,4 +248,3 @@ function update(dt){
 }
 let ambSet='';
 function setAmbOnce(k){if(ambSet!==k){ambSet=k;setAmbience(k);}}
-

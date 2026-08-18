@@ -35,6 +35,50 @@ function drawChars(c,mode,cam){if(cam===undefined)cam=G.cam; // mode: 'walk' (du
   }
 }
 /* ============================================================
+   PROLOG 2088 — panel sinematik berdasarkan frame Figma 66:40.
+   Latar bergerak dari close-up ke framing akhir; reduceMotion
+   membekukan kamera tanpa mengubah komposisi dan keterbacaan.
+   ============================================================ */
+function drawCoverImage(c,im,zoom=1,panX=0,panY=0){
+  if(!im||!im.width)return false;
+  const base=Math.max(W/im.width,H/im.height),dw=im.width*base*zoom,dh=im.height*base*zoom;
+  c.drawImage(im,(W-dw)/2+panX,(H-dh)/2+panY,dw,dh);return true;
+}
+function drawPrologueElena(c){
+  const sad=D.i<=2,front=AS.imgs[sad?'elena_dialog2_sedih':'elena_dialog1'];
+  const back=AS.imgs[sad?'elena_dialog1':'elena_dialog2_sedih'];
+  if(!front||!front.width){c.save();c.translate(W*.5,GROUND+2);groundShadow(c);drawElena(c,T,0,false,sad?'sad':'neutral');c.restore();return;}
+  // Dua file menyimpan karakter di kanvas transparan; crop ini mengambil setengah badan (waist-up).
+  const sx=front.width*.345,sy=front.height*.03,sw=front.width*.31,sh=front.height*.48;
+  const dh=270,dw=dh*(sw/sh),x=W*.5-dw*.5,y=GROUND-dh+20;
+  const born=easeO(clamp(G.prologueT/.85,0,1)),breath=OPTS.reduceMotion?0:Math.sin(G.prologueT*1.55)*1.4;
+  c.save();c.globalAlpha=.25*born;c.fillStyle='#090706';c.filter='blur(9px)';c.beginPath();c.ellipse(W*.5,GROUND+2,dw*.42,9,0,0,TAU);c.fill();c.filter='none';
+  c.globalAlpha=born;c.translate(0,breath);
+  if(back&&back.width&&D.popT<.22){const a=clamp(D.popT/.22,0,1);c.globalAlpha=born*(1-a);c.drawImage(back,sx,sy,sw,sh,x,y,dw,dh);c.globalAlpha=born*a;}
+  c.drawImage(front,sx,sy,sw,sh,x,y,dw,dh);c.restore();
+}
+function drawPrologueScene(c){
+  const im=AS.imgs.bgnarator,mot=OPTS.reduceMotion?0:1,p=easeO(clamp(G.prologueT/7.5,0,1));
+  // Kamera dimulai besar, lalu perlahan mundur untuk memperlihatkan luasnya kehancuran.
+  const zoom=1+mot*.16*(1-p),panX=mot*lerp(-18,0,p),panY=mot*lerp(12,0,p);
+  if(!drawCoverImage(c,im,zoom,panX,panY)){bg2088(c,0,T,.25);drawProps(c,'2088',0);}
+  // Abu di bidang dekat memberi pemisahan kedalaman terhadap ilustrasi statis.
+  spawnParts('2088');drawParts(c,1/60);
+  const lower=c.createLinearGradient(0,H*.56,0,H);lower.addColorStop(0,'rgba(8,7,6,0)');lower.addColorStop(1,'rgba(8,6,5,.64)');c.fillStyle=lower;c.fillRect(0,H*.5,W,H*.5);
+  drawPrologueElena(c);
+  // Top Gaussian blur & smooth gradient vignette connecting seamlessly into background
+  c.save();
+  const topGrad=c.createLinearGradient(0,0,0,210);
+  topGrad.addColorStop(0,'rgba(4,4,5,0.82)');
+  topGrad.addColorStop(0.35,'rgba(5,5,6,0.50)');
+  topGrad.addColorStop(0.70,'rgba(6,5,6,0.18)');
+  topGrad.addColorStop(1,'rgba(7,6,6,0)');
+  c.fillStyle=topGrad;
+  c.filter=OPTS.reduceMotion?'none':'blur(12px)';
+  c.fillRect(-20,-20,W+40,230);
+  c.restore();
+}
+/* ============================================================
    COVER / LAYAR JUDUL — poster sinematik: emblem jam pasir
    bercahaya + cincin waktu, ensemble Arthur lintas era
    mengapit Elena, judul berhierarki, pil MULAI berdenyut
@@ -168,9 +212,7 @@ function render(){
     if(G.titleReady)drawCover(ctx);else drawTitleIntro(ctx);
   }
   else if(G.state==='prologue'){
-    bg2088(ctx,0,T,.25);drawParts(ctx,1/60);spawnParts('2088');drawProps(ctx,'2088',0);
-    ctx.save();ctx.translate(W*0.42,GROUND);groundShadow(ctx);drawElena(ctx,T,0,false,'sad');ctx.restore();
-    grade(ctx,'2088');
+    drawPrologueScene(ctx);
     // denyut vignette merah menyala sinkron dengan SFX detak jantung (dimatikan oleh reduceMotion)
     {const hb=T%2.4;if(!OPTS.reduceMotion&&hb<.6){const a=Math.sin(hb/.6*Math.PI)*.22;const vg=ctx.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,H*.78);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,`rgba(140,20,20,${a})`);ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);}}
     if(D.line)drawNarr(ctx,D.line.text,D.prog,D.popT);
@@ -406,4 +448,3 @@ function drawMuteBtn(c){
 }
 function toggleMute(){AU.muted=!AU.muted;if(AU.master)AU.master.gain.value=AU.muted?0:vGain(OPTS.vol);
   if(!AU.muted){setAmbience(G.state==='title'?'title':(ERA_CONF[G.era]?ERA_CONF[G.era].amb:'2088'));}}
-
