@@ -188,6 +188,7 @@ rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, C
   kamera "bernafas" halus saat berjalan
 - **Intro 1944**: empat beat kamera Figma bergerak dari detail puing menuju ledakan utama, lalu menahan Elena setengah badan dan monolog sebelum kontrol berjalan aktif
 - **Intro 1968**: slow-pan empat beat pada `backgroundbawahtanah.jpg`, kemudian Elena sedih muncul di tengah sebelum adegan bunker/lab dimulai
+- **Intro laboratorium 1968 (rute B)**: empat framing kamera pada `labotariummiliter.jpg`, kemudian Elena bersemangat menyampaikan monolog tiga beat sebelum gameplay laboratorium
 
 **v3 — Tampilan Valiant Hearts (komik perang):**
 

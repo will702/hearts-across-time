@@ -33,7 +33,7 @@ const ASSET_MANIFEST = {
   bg2088_far: { src: 'assets/bg2088_far.png' }, bg2088_mid: { src: 'assets/bg2088_mid.png' }, bg2088_near: { src: 'assets/bg2088_near.png' },
   bg1944_far: { src: 'assets/bg1944_far.png', scale: 0.75, yOff: 2000 }, bg1944_mid: { src: 'assets/bg1944_mid.png', scale: 0.75, yOff: 300 },
   bg1968A_far: { src: 'assets/bg1968A_far.png', scale: 0.75, yOff: 50 }, bg1968A_mid: { src: 'assets/bg1968A_mid.png', scale: 0.75 },
-  bg1968B_far: { src: 'assets/bg1968B_far.png' }, bg1968B_mid: { src: 'assets/bg1968B_mid.png' },
+  bg1968B_far: { src: 'assets/bg1968B_far.png' }, bg1968B_mid: { src: 'assets/bg1968B_mid.png', scale: 0.5 },
   bg1999_far: { src: 'assets/bg1999_far.png' }, bg1999_mid: { src: 'assets/bg1999_mid.png' },
   // lapisan foreground lukis (okluder dekat kamera; absen => fgSilhouette prosedural)
   bg2088_fg: { src: 'assets/bg2088_fg.png', h: 150 }, bg1944_fg: { src: 'assets/bg1944_fg.png', h: 200 },
@@ -60,6 +60,7 @@ const ASSET_MANIFEST = {
   // ilustrasi prolog 2088: latar narator + dua ekspresi Elena beresolusi tinggi
   bgnarator: { src: 'assets/bgnarator.png' },
   background_bawah_tanah: { src: 'assets/backgroundbawahtanah.jpg' },
+  laboratorium_militer: { src: 'assets/labotariummiliter.jpg' },
   elena_dialog1: { src: 'assets/elenadialog1.png' },
   elena_dialog2_sedih: { src: 'assets/elenadialog2sedih.png' },
   // bidang ilustrasi Figma untuk intro judul parallax (PNG transparan; absen => cover lama)

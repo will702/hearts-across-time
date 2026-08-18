@@ -91,6 +91,10 @@ function startBunkerIntro(){
   G.era='1968';G.state='bunkerintro';G.bunkerIntro={t:0,reveal:0};parts.length=0;
   startNode('bunker_intro');setAmbience('1968');G.fadeIn=.42;
 }
+function startLabIntro(){
+  G.era='1968';G.state='labintro';G.labIntro={t:0,reveal:0};parts.length=0;
+  startNode('lab_intro');setAmbience('1968');G.fadeIn=.42;
+}
 function startGlitch(){G.state='glitch';
   const CS={A1:'BERKAS KASUS A1 — misi ditinggalkan: penelitian tak pernah selesai',A2:'BERKAS KASUS A2 — obsesi & paradoks mengunci masa depan',B1:'BERKAS KASUS B1 — formula bocor, disalahgunakan jadi senjata',B2:'BERKAS KASUS B2 — kapsul terkunci oleh kebencian'};
   G.glitch={t:0,hint:loopHint(),kasus:CS[S.routeB2]||'BERKAS KASUS — timeline runtuh',emp:S.empathy,log:S.logic};
@@ -117,7 +121,7 @@ function startWalk(era){
 }
 function startEndCard(){G.state='endcard';G.endCard={t:0};SFX.chime();setAmbience('1999');setSong('end');duckMusic(1,1.2);SAVE.game=null;persistSave();}
 function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;
-  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;parts.length=0;}
+  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;parts.length=0;}
 
 /* ---------- update per-state ---------- */
 const SPD=[.5,1,2],SPD_N=['LAMBAT','NORMAL','CEPAT'];
@@ -165,9 +169,9 @@ function update(dt){
   const mx=ptr.x,my=ptr.y;
   // hotspot UI pojok (mute/pause) via klik atau sentuhan — dicek DI SINI karena ptr.tap dibersihkan sebelum render()
   if(ptr.tap&&Math.hypot(ptr.x-(W-34),ptr.y-26)<20){toggleMute();ptr.tap=false;}
-  else if(ptr.tap&&!G.paused&&(G.state==='walk'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro')&&Math.hypot(ptr.x-(W-72),ptr.y-26)<20){ptr.tap=false;setPaused(true);G.pSel=0;SFX.select();}
+  else if(ptr.tap&&!G.paused&&(G.state==='walk'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')&&Math.hypot(ptr.x-(W-72),ptr.y-26)<20){ptr.tap=false;setPaused(true);G.pSel=0;SFX.select();}
   if(G.paused){updatePause();}
-  else if(keyOnce('Escape')&&!G.logOpen&&(G.state==='walk'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro')){setPaused(true);G.pSel=0;SFX.select();}
+  else if(keyOnce('Escape')&&!G.logOpen&&(G.state==='walk'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')){setPaused(true);G.pSel=0;SFX.select();}
   else switch(G.state){
     case 'load':
       if(AS.ready){G.state='title';G.titleT=0;G.titleReady=false;}
@@ -192,6 +196,11 @@ function update(dt){
       const bi=G.bunkerIntro;bi.t+=dt;
       if(bi.t<4.6){if(advHit()||ptr.tap){ptr.tap=false;bi.t=4.6;SFX.select();}}
       else{bi.reveal=Math.min(1,bi.reveal+dt*2.2);updateDialog(dt,mx,my);}
+      break;}
+    case 'labintro':{
+      const li=G.labIntro;li.t+=dt;
+      if(li.t<4.6){if(advHit()||ptr.tap){ptr.tap=false;li.t=4.6;SFX.select();}}
+      else{li.reveal=Math.min(1,li.reveal+dt*2.2);updateDialog(dt,mx,my);}
       break;}
     case 'walk':{
       setAmbOnce(ERA_CONF[G.era].amb);
@@ -249,7 +258,10 @@ function update(dt){
       G.vortex.t+=dt/2.4;
       for(let i=0;i<2;i++)parts.push({x:W/2,y:H/2,vx:(Math.random()-.5)*520,vy:(Math.random()-.5)*400,l:0,ml:.5,r:1.4+Math.random()*1.6,col:G.vortex.rewind?'rgba(255,120,90,.8)':'rgba(150,225,255,.8)',shrink:1});
       if(G.vortex.t>=1){const to=G.vortex.to;G.vortex=null;G.whiteFlash=1;
-        if(to==='1944')startWarIntro();else if(to==='1968')startBunkerIntro();else startWalk('1999');}
+        if(to==='1944')startWarIntro();
+        else if(to==='1968'){
+          if(S.routeB1==='B')startLabIntro();else startBunkerIntro();
+        }else startWalk('1999');}
       break;}
     case 'glitch':
       G.glitch.t+=dt;

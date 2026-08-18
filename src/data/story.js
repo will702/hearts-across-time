@@ -25,6 +25,12 @@ N('bunker_intro',[
   say('elena','Aku akan segera menyelamatkannya... dan membalas seluruh perjuangannya!','sad'),
   {t:'walk',era:'1968'},
 ]);
+N('lab_intro',[
+  say('elena','Semoga dengan seluruh fasilitas ini, Arthur akhirnya berhasil menemukan formulanya...','angry'),
+  say('elena','Formula yang mampu menebus dua puluh empat tahun penantiannya—dan menyelamatkan masa depan kami.','angry'),
+  say('elena','Kali ini, aku tidak akan membiarkan siapa pun merebut harapan itu darinya!','angry'),
+  {t:'walk',era:'1968'},
+]);
 N('n_b1',()=>{
   const ops=[];
   if(S.loop>0){ // déjà-vu bertingkat mengikuti jumlah loop (C4)
