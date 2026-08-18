@@ -54,8 +54,8 @@ berseam dapat dirapikan tanpa regenerasi lewat `scripts/fix_bg_seams.py` (cetak 
 `--qc` untuk pasangan tile). Backend alternatif: `scripts/gen_image_ds.py` memakai
 Alibaba Cloud Model Studio/DashScope (WanX t2i async; butuh `DASHSCOPE_API_KEY` di `.env`) — gaya
 WanX cenderung lebih tajam/kartun dari wash cat air gemini, jadi hanya dipakai bila jalur gemini tak tersedia. Fallback prosedural tetap utuh — hapus PNG mana pun dan game
-otomatis menggambarnya lagi lewat kode. Font UI **Patrick Hand** (SIL OFL) ikut di-bundle di `assets/fonts/`
-(2 subset woff2, dimuat via `FontFace`); saat dibuka langsung lewat `file://` font diblokir CORS browser →
+otomatis menggambarnya lagi lewat kode. Font UI **Patrick Hand**, judul **Cinzel**, dan metadata **Poppins**
+(SIL OFL) ikut di-bundle di `assets/fonts/` dan dimuat via `FontFace`; saat dibuka langsung lewat `file://` font diblokir CORS browser →
 otomatis fallback ke Trebuchet tanpa error.
 
 - Elena — rambut ash-blonde belah tengah, jas lab putih di atas gaun dusty-rose, boot kulit pucat strap gelap;
@@ -189,6 +189,7 @@ rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, C
 - **Intro 1944**: empat beat kamera Figma bergerak dari detail puing menuju ledakan utama, lalu menahan Elena setengah badan dan monolog sebelum kontrol berjalan aktif
 - **Intro 1968**: slow-pan empat beat pada `backgroundbawahtanah.jpg`, kemudian Elena sedih muncul di tengah sebelum adegan bunker/lab dimulai
 - **Intro laboratorium 1968 (rute B)**: empat framing kamera pada `labotariummiliter.jpg`, kemudian Elena bersemangat menyampaikan monolog tiga beat sebelum gameplay laboratorium
+- **Layar judul Figma**: ilustrasi kosmik `title_cover_figma.png`, wordmark resmi `JUDUL.png`, plakat START, serta footer progres ending, Continue, kontrol, dan kredit yang tetap utuh
 
 **v3 — Tampilan Valiant Hearts (komik perang):**
 

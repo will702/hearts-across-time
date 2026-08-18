@@ -24,6 +24,8 @@ const PAL = {
 const EXPR_ROWS = ['neutral', 'smile', 'sad', 'shock', 'angry', 'mad', 'warm', 'happy'];
 /* huruf tulisan tangan ala komik perang (Patrick Hand, SIL OFL) — fallback mulus ke Trebuchet */
 const F_UI = '"Patrick Hand","Trebuchet MS",sans-serif';
+const F_TITLE = '"Cinzel",Georgia,serif';
+const F_META = '"Poppins","Trebuchet MS",sans-serif';
 const ASSET_MANIFEST = {
   elena: { src: 'assets/elena_sheet.png', fw: 150, fh: 210, h: 112 },
   arthur_muda: { src: 'assets/arthur_muda_sheet.png', fw: 150, fh: 210, h: 112 },
@@ -61,6 +63,9 @@ const ASSET_MANIFEST = {
   bgnarator: { src: 'assets/bgnarator.png' },
   background_bawah_tanah: { src: 'assets/backgroundbawahtanah.jpg' },
   laboratorium_militer: { src: 'assets/labotariummiliter.jpg' },
+  title_cover_figma: { src: 'assets/title_cover_figma.png' },
+  title_start_plate: { src: 'assets/title_start_plate.png' },
+  title_wordmark: { src: 'assets/JUDULL.png' },
   elena_dialog1: { src: 'assets/elenadialog1.png' },
   elena_dialog2_sedih: { src: 'assets/elenadialog2sedih.png' },
   // bidang ilustrasi Figma untuk intro judul parallax (PNG transparan; absen => cover lama)
@@ -84,7 +89,7 @@ const AMB_LAYER = { // loop rekaman per kind ambience: [idBuffer, volume]
 };
 const AS = { imgs: {}, ok: {}, total: 0, done: 0, ready: false };
 (function loadAssets() { // mulai dimuat saat halaman dibuka; layar 'load' menunggu
-  const list = Object.entries(ASSET_MANIFEST); AS.total = list.length + 2; // +2 subset font tangan
+  const list = Object.entries(ASSET_MANIFEST); AS.total = list.length + 4; // Patrick Hand 2 subset + Cinzel + Poppins
   if (!list.length) { AS.ready = true; return; }
   let fin = 0; const end = () => { AS.done = ++fin; if (fin >= AS.total) AS.ready = true; };
   list.forEach(([id, cfg]) => {
@@ -94,11 +99,12 @@ const AS = { imgs: {}, ok: {}, total: 0, done: 0, ready: false };
     im.src = cfg.src;
   });
   // font tangan (2 subset unicode-range ala Google Fonts) — gagal diblokir CORS file:// => senyap, fallback
-  [['assets/fonts/patrick-hand.woff2', 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'],
-  ['assets/fonts/patrick-hand-ext.woff2', 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF']]
-    .forEach(([src, ur]) => {
+  [['Patrick Hand','assets/fonts/patrick-hand.woff2','U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'],
+  ['Patrick Hand','assets/fonts/patrick-hand-ext.woff2','U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'],
+  ['Cinzel','assets/fonts/cinzel.ttf'],['Poppins','assets/fonts/poppins-regular.ttf']]
+    .forEach(([name, src, ur]) => {
       try {
-        const f = new FontFace('Patrick Hand', `url('${src}')`, { unicodeRange: ur });
+        const opt=ur?{unicodeRange:ur}:{};const f = new FontFace(name, `url('${src}')`, opt);
         f.load().then(ff => document.fonts.add(ff)).catch(() => { }).finally(end);
       } catch (e) { end(); }
     });
