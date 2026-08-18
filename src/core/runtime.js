@@ -151,7 +151,7 @@ const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:t
   walk:null,dialog:null,cam:0,camTarget:0,caption:'',captionT:0,
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
   era:'2088',shakeT:0,shakeA:0,endCard:null,fadeIn:0,prologueDone:false,
-  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,prologueT:0,warIntro:null};
+  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,prologueT:0,warIntro:null,bunkerIntro:null};
 let T=0; // waktu global detik
 
 /* ---------- Opsi & penyimpanan (localStorage) ---------- */

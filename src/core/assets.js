@@ -59,6 +59,7 @@ const ASSET_MANIFEST = {
   pose_elena_resolve: { src: 'assets/pose_elena_resolve.png', h: 112 },
   // ilustrasi prolog 2088: latar narator + dua ekspresi Elena beresolusi tinggi
   bgnarator: { src: 'assets/bgnarator.png' },
+  background_bawah_tanah: { src: 'assets/backgroundbawahtanah.jpg' },
   elena_dialog1: { src: 'assets/elenadialog1.png' },
   elena_dialog2_sedih: { src: 'assets/elenadialog2sedih.png' },
   // bidang ilustrasi Figma untuk intro judul parallax (PNG transparan; absen => cover lama)

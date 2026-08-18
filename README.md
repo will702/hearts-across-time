@@ -187,6 +187,7 @@ rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, C
 - **UI**: panel pilihan *pop-in* spring (ease-out-back), prolog 2088 memakai `bgnarator.png` dengan zoom-parallax sinematik, cross-fade ekspresi `elenadialog1.png` / `elenadialog2sedih.png`, serta vignette merah berdenyut sinkron detak jantung,
   kamera "bernafas" halus saat berjalan
 - **Intro 1944**: empat beat kamera Figma bergerak dari detail puing menuju ledakan utama, lalu menahan Elena setengah badan dan monolog sebelum kontrol berjalan aktif
+- **Intro 1968**: slow-pan empat beat pada `backgroundbawahtanah.jpg`, kemudian Elena sedih muncul di tengah sebelum adegan bunker/lab dimulai
 
 **v3 — Tampilan Valiant Hearts (komik perang):**
 

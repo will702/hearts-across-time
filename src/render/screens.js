@@ -113,6 +113,41 @@ function drawWarIntro(c){
   else{const p=clamp(G.warIntro.t/3.25,0,1);c.textAlign='center';c.fillStyle=`rgba(245,240,232,${.36+.28*Math.sin(T*3)})`;c.font='italic 14px Georgia,serif';c.fillText('1944 — GARIS DEPAN',W/2,H-30);c.fillStyle='rgba(245,240,232,.2)';rr(c,W/2-105,H-19,210,3,2);c.fill();c.fillStyle='#A85550';rr(c,W/2-105,H-19,210*p,3,2);c.fill();}
 }
 /* ============================================================
+   INTRO BUNKER 1968 — frame Figma 72:124 → 72:126 → 72:135
+   → 72:128. Kamera turun dari tangga lalu membuka seluruh ruang.
+   ============================================================ */
+const BUNKER_CAM=[
+  {z:3.25,fx:.80,fy:.28}, // tangga spiral dan lampu bunker
+  {z:3.25,fx:.75,fy:.69}, // turun mengikuti pipa ke lantai
+  {z:1.22,fx:.45,fy:.49}, // ruangan bawah tanah terungkap penuh
+  {z:1.22,fx:.45,fy:.49}, // tahan framing saat Elena masuk
+];
+function bunkerCamAt(t){
+  const q=clamp(t/4.6,0,1)*(BUNKER_CAM.length-1),i=Math.min(BUNKER_CAM.length-2,Math.floor(q)),u=easeIO(q-i),a=BUNKER_CAM[i],b=BUNKER_CAM[i+1];
+  return{z:lerp(a.z,b.z,u),fx:lerp(a.fx,b.fx,u),fy:lerp(a.fy,b.fy,u)};
+}
+function drawBunkerIntroBg(c){
+  const im=AS.imgs.background_bawah_tanah;if(!im||!im.width){bg1968(c,0,T,true);return;}
+  const k=OPTS.reduceMotion?BUNKER_CAM[BUNKER_CAM.length-1]:bunkerCamAt(G.bunkerIntro.t);
+  const base=Math.max(W/im.width,H/im.height),dw=im.width*base*k.z,dh=im.height*base*k.z;
+  c.drawImage(im,W*.5-k.fx*dw,H*.5-k.fy*dh,dw,dh);
+  spawnParts('1968');drawParts(c,1/60);
+  const cold=c.createLinearGradient(0,0,W,H);cold.addColorStop(0,'rgba(20,14,12,.25)');cold.addColorStop(.72,'rgba(20,48,67,.10)');cold.addColorStop(1,'rgba(5,12,18,.34)');c.fillStyle=cold;c.fillRect(0,0,W,H);
+  const vg=c.createRadialGradient(W*.52,H*.46,H*.22,W*.52,H*.46,H*.8);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(5,6,8,.48)');c.fillStyle=vg;c.fillRect(0,0,W,H);
+}
+function drawBunkerIntroElena(c){
+  const im=AS.imgs.elena_dialog2_sedih,a=easeO(G.bunkerIntro.reveal);if(!im||!im.width){c.save();c.globalAlpha=a;c.translate(W*.5,GROUND+18);c.scale(1.75,1.75);drawElena(c,T,0,false,'sad');c.restore();return;}
+  const sx=im.width*.345,sy=im.height*.03,sw=im.width*.31,sh=im.height*.48,dh=292,dw=dh*(sw/sh);
+  const y=H-dh+20+(1-a)*24,bob=OPTS.reduceMotion?0:Math.sin(T*1.35)*1.1;
+  c.save();c.globalAlpha=a;c.translate(0,bob);c.shadowColor='rgba(2,8,14,.78)';c.shadowBlur=20;c.drawImage(im,sx,sy,sw,sh,W*.5-dw*.5,y,dw,dh);c.restore();
+}
+function drawBunkerIntro(c){
+  drawBunkerIntroBg(c);
+  const top=c.createLinearGradient(0,0,0,190);top.addColorStop(0,'rgba(4,7,10,.72)');top.addColorStop(1,'rgba(4,7,10,0)');c.fillStyle=top;c.fillRect(0,0,W,190);
+  if(G.bunkerIntro.t>=4.6){drawBunkerIntroElena(c);if(D.line&&G.bunkerIntro.reveal>.15)drawNarr(c,D.line.text,D.prog,D.popT);if(D.line&&D.prog>=1)hintAdvance(c);}
+  else{const p=clamp(G.bunkerIntro.t/4.6,0,1);c.textAlign='center';c.fillStyle=`rgba(216,232,239,${.34+.22*Math.sin(T*2.2)})`;c.font='italic 14px Georgia,serif';c.fillText('1968 — BUNKER BAWAH TANAH',W/2,H-30);c.fillStyle='rgba(216,232,239,.17)';rr(c,W/2-112,H-19,224,3,2);c.fill();c.fillStyle='#6B91A8';rr(c,W/2-112,H-19,224*p,3,2);c.fill();}
+}
+/* ============================================================
    COVER / LAYAR JUDUL — poster sinematik: emblem jam pasir
    bercahaya + cincin waktu, ensemble Arthur lintas era
    mengapit Elena, judul berhierarki, pil MULAI berdenyut
@@ -255,6 +290,10 @@ function render(){
   }
   else if(G.state==='warintro'){
     drawWarIntro(ctx);
+    drawFFBtn(ctx);
+  }
+  else if(G.state==='bunkerintro'){
+    drawBunkerIntro(ctx);
     drawFFBtn(ctx);
   }
   else if(G.state==='walk'||G.state==='dialog'){
@@ -433,7 +472,7 @@ function drawFFBtn(c){ // tombol lewati (hanya jika node ini pernah dilihat)
   c.globalAlpha=1;
 }
 function drawPauseBtn(c){
-  if(G.paused||!(G.state==='walk'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'))return;
+  if(G.paused||!(G.state==='walk'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'))return;
   const x=W-72,y=26;c.save();c.globalAlpha=.65;c.fillStyle='#0a0806';c.beginPath();c.arc(x,y,15,0,TAU);c.fill();
   c.strokeStyle='#F5F0E8';c.lineWidth=1.6;c.beginPath();c.arc(x,y,15,0,TAU);c.stroke();
   c.fillStyle='#F5F0E8';c.font='13px sans-serif';c.textAlign='center';c.textBaseline='middle';

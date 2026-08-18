@@ -19,6 +19,12 @@ N('war_intro',[
   say('elena','Semuanya bermula di sini—tahun 1944. Di tengah hujan, api, dan suara bom... kali ini aku akan menyelamatkan Arthur. Apa pun harga yang harus kubayar.','angry'),
   {t:'walk',era:'1944'},
 ]);
+N('bunker_intro',[
+  say('elena','Arthur berjuang di bunker bawah tanah yang seperti ini... Karena itulah aku selalu mencintainya.','sad'),
+  say('elena','Ia tak pernah menyerah, bahkan ketika dunia melupakannya.','sad'),
+  say('elena','Aku akan segera menyelamatkannya... dan membalas seluruh perjuangannya!','sad'),
+  {t:'walk',era:'1968'},
+]);
 N('n_b1',()=>{
   const ops=[];
   if(S.loop>0){ // déjà-vu bertingkat mengikuti jumlah loop (C4)
