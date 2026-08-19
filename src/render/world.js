@@ -113,8 +113,15 @@ function drawProps(c,era,camX){ // frame deterministik dari T; reduceMotion => f
   const list=PROPS[era]||[],mot=OPTS.reduceMotion?0:1;
   for(const p of list){const sx=p.x-camX;if(sx<-130||sx>W+130)continue;
     drawPropFrame(c,p.id,sx,p.y,mot?Math.floor(T*p.fps)%3:0);}}
+const DIARY_X=760; // gerbang naratif wajib Babak 2, cukup jauh sebelum Arthur di x=1180
+function drawDiaryBook(c,cam){const x=DIARY_X-cam;if(x<-70||x>W+70)return;const hot=G.walk&&G.walk.diaryHot,read=G.walk&&G.walk.diaryRead;
+  c.save();c.translate(x,GROUND-9);c.rotate(-.07);c.fillStyle='#4A2525';rr(c,-22,-15,44,24,3);c.fill();c.strokeStyle='#C99A62';c.lineWidth=2;rr(c,-22,-15,44,24,3);c.stroke();
+  c.fillStyle='#E7D7B3';c.fillRect(-17,-12,34,17);c.strokeStyle='rgba(75,45,34,.5)';c.lineWidth=1;c.beginPath();c.moveTo(0,-12);c.lineTo(0,5);c.stroke();c.restore();
+  if(!read){const pu=OPTS.reduceMotion?1:.5+.5*Math.sin(T*3.1);c.save();c.globalAlpha=.45+.35*pu;const g=c.createRadialGradient(x,GROUND-19,1,x,GROUND-19,28);g.addColorStop(0,'rgba(255,204,125,.9)');g.addColorStop(1,'rgba(255,204,125,0)');c.fillStyle=g;c.beginPath();c.arc(x,GROUND-19,28,0,TAU);c.fill();c.restore();}
+  if(hot){c.save();c.fillStyle='#F5F0E8';c.font='bold 13px '+F_UI;c.textAlign='center';c.fillText('▼ PERIKSA BUKU HARIAN',x,GROUND-58-(OPTS.reduceMotion?0:Math.sin(T*2.6)*3));c.restore();}}
 function drawHotspots(c){ // penanda titik selidik: titik cahaya hangat berdenyut + petunjuk ▼ saat dekat
   if(!G.walk)return;const FE=G.era==='1968'?'1968'+S.routeB1:G.era;const cam=G.cam,mot=OPTS.reduceMotion?0:1;
+  if(G.era==='1968')drawDiaryBook(c,cam);
   for(const h of (HOTSPOTS[FE]||[])){if(SAVE.inspected[h.id])continue;const sx=h.x-cam;if(sx<-40||sx>W+40)continue;
     const pu=mot?(.5+.5*Math.sin(T*3.2+h.x)):1;
     c.save();c.globalAlpha=.55+.35*pu;
@@ -310,4 +317,3 @@ function grade(c,era){ // "cetakan buku harian perang": tint era + kertas + lift
     const g2=c.createRadialGradient(cx,cy,0,cx,cy,cr);g2.addColorStop(0,'rgba(8,5,3,.30)');g2.addColorStop(1,'rgba(8,5,3,0)');c.fillStyle=g2;c.beginPath();c.arc(cx,cy,cr,0,TAU);c.fill();}
   c.save();c.globalAlpha=.05;c.globalCompositeOperation='overlay';const gi=((Math.floor(T*10)%3)+3)%3;const gp=c.createPattern(grainCvs[gi],'repeat');c.fillStyle=gp;c.fillRect(0,0,W,H);c.restore();
 }
-

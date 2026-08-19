@@ -148,7 +148,7 @@ const advHit=()=>keyOnce(' ')||keyOnce('Enter')||keyOnce('Spacebar');
 /* ---------- State global ---------- */
 const S={empathy:0,logic:0,routeB1:'',routeB2:'',loop:0};
 const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:true,vx:0,stride:0,turnT:0,acc:0},
-  walk:null,dialog:null,cam:0,camTarget:0,caption:'',captionT:0,
+  walk:null,dialog:null,diary:null,cam:0,camTarget:0,caption:'',captionT:0,
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
   era:'2088',shakeT:0,shakeA:0,endCard:null,fadeIn:0,prologueDone:false,
   paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null};

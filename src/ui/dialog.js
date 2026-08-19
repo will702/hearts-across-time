@@ -41,6 +41,20 @@ function drawNarr(c,text,prog,pop=1){ // strip caption komik untuk narator
   if(isBracket)c.fillStyle='#94342E';
   lines.forEach((l,i)=>c.fillText(l,W/2,by+15+i*lh));
 }
+function drawDiaryPopup(c,d){ // lembar buku harian: modal khusus, bukan strip narator biasa
+  const bx=145,by=76,bw=670,bh=382,s=easeOB(d.popT),page=d.pages[d.i]||'',shown=page.slice(0,Math.ceil(page.length*d.prog));
+  c.save();c.fillStyle='rgba(8,10,13,.68)';c.fillRect(0,0,W,H);c.translate(W/2,H/2);c.scale(s,s);c.translate(-W/2,-H/2);
+  c.shadowColor='rgba(0,0,0,.65)';c.shadowBlur=28;sketchRR(c,bx,by,bw,bh,8);c.shadowBlur=0;
+  c.strokeStyle='rgba(123,82,54,.24)';c.lineWidth=1;for(let y=by+112;y<by+bh-48;y+=25){c.beginPath();c.moveTo(bx+38,y);c.lineTo(bx+bw-38,y);c.stroke();}
+  c.strokeStyle='rgba(148,52,46,.38)';c.lineWidth=2;c.beginPath();c.moveTo(bx+70,by+46);c.lineTo(bx+70,by+bh-42);c.stroke();
+  c.fillStyle='#2B211A';c.textAlign='center';c.font='bold 25px '+F_UI;c.fillText('BUKU HARIAN ARTHUR',W/2,by+44);
+  c.font='italic 13.5px Georgia,serif';c.fillStyle=d.nostalgia?'#94342E':'rgba(43,33,26,.62)';c.fillText(d.nostalgia?'“Terasa sedikit nostalgia”':d.meta,W/2,by+72);
+  c.textAlign='left';c.textBaseline='top';c.font='18px '+F_UI;c.fillStyle='#33261C';const ls=wrap(c,shown,bw-150);
+  ls.slice(0,9).forEach((l,i)=>c.fillText(l,bx+88,by+105+i*25));
+  c.textBaseline='alphabetic';c.textAlign='center';c.font='12.5px '+F_UI;c.fillStyle='rgba(43,33,26,.58)';
+  c.fillText(`HALAMAN ${d.i+1}/${d.pages.length}  •  ENTER / KLIK untuk ${d.i+1<d.pages.length?'membalik halaman':'menutup buku'}`,W/2,by+bh-25);
+  c.restore();
+}
 function drawChoices(c,opts,sel,mx,my,pr=1){ // panel pilihan kertas: opsi tinta, pilihan aktif bergaris spidol merah
   c.font='16px '+F_UI;
   const bw=560,bh=opts.length*58+22;const bx=(W-bw)/2,by=H-bh-24;
@@ -60,9 +74,10 @@ function drawChoices(c,opts,sel,mx,my,pr=1){ // panel pilihan kertas: opsi tinta
       c.fillStyle=PAPER_COL;c.fillText(o.tag,bx+26+7,oy+15);
       c.font='15px '+F_UI;c.fillStyle='#2B211A';
       const ls=wrap(c,o.label,bw-64);ls.slice(0,2).forEach((l,k)=>c.fillText(l,bx+26,oy+33+k*16));}
-    else{c.fillStyle=on?'#94342E':'#2B211A';c.font=(on?'bold ':'')+'16px '+F_UI;c.fillText((on?'▶ ':'  ')+o.label,bx+28,oy+26);}
+    else{c.fillStyle=on?'#94342E':'#2B211A';c.font=(on?'bold ':'')+'14.5px '+F_UI;
+      c.fillText(on?'▶':'•',bx+28,oy+26);const ls=wrap(c,o.label,bw-142),ly=ls.length>1?18:26;
+      ls.slice(0,2).forEach((l,k)=>c.fillText(l,bx+48,oy+ly+k*17));}
     if(SAVE.chosen[o.label]){c.font='12px '+F_UI;c.fillStyle='rgba(43,33,26,.55)';c.textAlign='right';c.fillText('⟲ pernah dipilih',bx+bw-16,oy+14);c.textAlign='left';}
     if(on){c.font='12px '+F_UI;c.fillStyle='rgba(43,33,26,.6)';c.textAlign='right';c.fillText('[ENTER]',bx+bw-16,oy+42);c.textAlign='left';}});
   c.restore();c.textBaseline='alphabetic';
 }
-

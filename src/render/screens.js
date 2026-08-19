@@ -26,7 +26,7 @@ function drawChars(c, mode, cam) {
   }
   else drawElena(c, t, p.phase, p.moving && mode === 'walk', D.elExpr, { vial: G.state === 'endcard' || (G.state === 'dialog' && D.node === 'true_end' && D.i > 4), lean: mode === 'walk' ? ((p.vx / 262) * .11 + clamp((p.acc || 0) / 900, -1, 1) * .03) * (p.facingRight ? 1 : -1) : 0, stride: mode === 'walk' ? p.stride : 1 });
   c.restore();
-  if (G.walk && G.walk.ar && (mode === 'walk' || mode === 'dialog')) {
+  if (G.walk && G.walk.ar && (mode === 'walk' || mode === 'dialog') && !(mode === 'walk' && G.era === '1968' && !G.walk.diaryRead)) {
     const ax = G.walk.arX - cam;
     const ab = speaking && speaking !== 'elena' && speaking !== 'narrator' ? Math.exp(-4.5 * G.speak.t) * Math.sin(13 * G.speak.t) * 3.5 : 0;
     const breathA = Math.sin(T * 1.6 + 2.2) * 1.0; // napas idle Arthur (beda fase)
@@ -332,13 +332,14 @@ function render() {
   else if (G.state === 'walk' || G.state === 'dialog') {
     const camDrift = G.cam + (OPTS.reduceMotion ? 0 : Math.sin(T * .4) * .9); // nafas kamera halus (nonaktif saat reduceMotion)
     drawScene(ctx, camDrift); drawChars(ctx, G.state, camDrift);
-    if (G.state === 'walk') drawHotspots(ctx);
     {
       const FE = G.era === '1968' ? (S.routeB1 === 'A' ? '1968A' : '1968B') : G.era; // okluder depan: lukis menang, siluet prosedural sbg fallback
       if (!bgFgImg(ctx, 'bg' + FE + '_fg', camDrift)) fgSilhouette(ctx, FE, camDrift);
     }
     grade(ctx, G.era === '1968' ? (S.routeB1 === 'A' ? '1968A' : '1968B') : G.era);
+    if (G.state === 'walk') drawHotspots(ctx); // indikator interaksi harus berada di atas foreground dan color grade
     if (G.lore) drawNarr(ctx, G.lore.lines[G.lore.i], G.lore.prog, G.lore.popT); // strip lore titik selidik
+    if (G.diary) drawDiaryPopup(ctx, G.diary); // catatan wajib Babak 2 di atas seluruh adegan
     if (G.skyFlash > 0 && !OPTS.reduceMotion) { const a = G.skyFlash; const g = ctx.createLinearGradient(0, 0, 0, H * .8); g.addColorStop(0, `rgba(255,190,120,${.34 * a})`); g.addColorStop(.55, `rgba(255,150,80,${.16 * a})`); g.addColorStop(1, 'rgba(255,150,80,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * .8); ctx.fillStyle = `rgba(255,214,150,${.08 * a})`; ctx.fillRect(0, 0, W, H); }
     // caption babak — kotak caption komik di kiri atas (ala panel komik perang)
     if (G.captionT > 0 && G.state === 'walk') {
@@ -367,15 +368,6 @@ function render() {
       }
       if (D.choices) drawChoices(ctx, D.choices, D.sel, ptr.x, ptr.y, D.choiceT);
       drawFFBtn(ctx);
-    }
-    // umpan balik pilihan: chip empati/logika berdenyut
-    if (G.pulse) {
-      const p = G.pulse, a = p.t < .12 ? p.t / .12 : clamp(1 - (p.t - .9) / .6, 0, 1);
-      ctx.save(); ctx.globalAlpha = a; ctx.font = 'bold 13.5px ' + F_UI;
-      const tw = ctx.measureText(p.txt).width + 22;
-      ctx.fillStyle = p.col; rr(ctx, W / 2 - tw / 2, 14, tw, 22, 10); ctx.fill();
-      ctx.fillStyle = '#FFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.txt, W / 2, 25);
-      ctx.textBaseline = 'alphabetic'; ctx.restore();
     }
     // HUD loop
     if (S.loop > 0) {
@@ -468,8 +460,6 @@ function render() {
       ctx.fillText(G.glitch.hint, W / 2, H / 2 + 86);
       ctx.font = '12.5px ' + F_UI; ctx.fillStyle = `rgba(226,90,70,${.8 * a})`;
       ctx.fillText('⟨ ' + G.glitch.kasus + ' ⟩', W / 2, H / 2 + 110);
-      ctx.fillStyle = `rgba(245,240,232,${.5 * a})`;
-      ctx.fillText(`siklus ini: ♥ empati ${G.glitch.emp} × ⚙ logika ${G.glitch.log}`, W / 2, H / 2 + 130);
     }
   }
   else if (G.state === 'endcard') {

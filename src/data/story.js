@@ -1,8 +1,9 @@
 /* ============================================================
    SCRIPT DIALOG (dari Yarn GDD — verbatim)
    ============================================================ */
-function tagEmp(l){return{tag:'PENUH EMPATI',tagCol:'#A85550',label:l}}
-function tagLog(l){return{tag:'DINGIN & LOGIS',tagCol:'#556B7F',label:l}}
+// Arah kepribadian sengaja disembunyikan: pemain menilai isi ucapan, bukan label statistik.
+function tagEmp(l){return{label:l}}
+function tagLog(l){return{label:l}}
 function tagR(l){return{tag:'RUTE',tagCol:'#55614C',label:l}}
 const NODES={};
 function N(id,ops){NODES[id]=ops;}
@@ -75,23 +76,78 @@ N('n_b2',()=>{
     ops.push(say('buron','Dulu kau bilang aku cuma alat untuk misimu, kan? Sekarang lihat, aku sudah menguasai seluruh rahasia formula ini.','angry'));}
   if(S.routeB1==='A'){
     ops.push(say('buron','Hidup sebagai buronan sangat menyiksa. Polisi rahasia mengepung area ini! Penelitianku baru setengah jalan.','sad'));
+    ops.push(say('buron','Elena... setelah semua yang kulalui, apakah kau masih melihatku sebagai manusia—atau hanya sebagai jalan menuju penawar?','sad'));
     ops.push({t:'choice',opts:[
-      {...tagR('2A1 — DESAK KABUR'),'label':'"Tinggalkan lab ini sekarang, nyawamu lebih berharga daripada formula ini!"',fx:()=>S.routeB2='A1',goto:'r2a1'},
-      {...tagR('2A2 — KUNCI DIRI DI BUNKER'),'label':'"Kunci pintu baja dari dalam! Jangan keluar sampai formulanya selesai, apapun yang terjadi!"',fx:()=>S.routeB2='A2',goto:'r2a2'}]});
+      {...tagEmp('"Aku melihatmu, Arthur. Bukan formulanya—dirimu. Kita hadapi ketakutan ini bersama."'),fx:()=>S.empathy++,goto:'b2a_emp'},
+      {...tagLog('"Perasaan kita tidak akan menghentikan pengepungan. Kendalikan dirimu dan selesaikan formulanya."'),fx:()=>S.logic++,goto:'b2a_log'}]});
   }else{
     ops.push(say('dewasa','Fasilitas pemerintah ini memberikanku sumber daya melimpah. Formula antibodinya hampir stabil sempurna.','neutral'));
     ops.push(say('dewasa','Tapi dewan militer mulai mencurigai tujuanku. Mereka ingin merebutnya sebagai amunisi baru.','sad'));
+    ops.push(say('dewasa','Jika mereka datang malam ini... apakah kau akan tetap di sisiku, atau hanya memastikan formula itu selamat?','sad'));
     ops.push({t:'choice',opts:[
-      {...tagR('2B1 — PUBLIKASIKAN KE DUNIA'),'label':'"Bocorkan datanya ke pers dan publik sekarang agar militer tidak bisa memonopolinya!"',fx:()=>S.routeB2='B1',goto:'r2b1'},
-      {...tagR('2B2 — KUNCI DI KAPSUL KRIOGENIK'),'label':'"Kunci formula murni ini di ruang isolasi beku sub-zero sampai tahun 1999!"',fx:()=>S.routeB2='B2',goto:'r2b2'}]});
+      {...tagEmp('"Aku tetap di sisimu. Penawar ini berarti karena kaulah yang memperjuangkannya, bukan karena hasil akhirnya saja."'),fx:()=>S.empathy++,goto:'b2b_emp'},
+      {...tagLog('"Yang utama adalah formula. Singkirkan keraguanmu dan pastikan hasil penelitian ini tidak jatuh ke tangan mereka."'),fx:()=>S.logic++,goto:'b2b_log'}]});
   }
   return ops;});
+N('b2a_emp',[say('buron','Untuk pertama kalinya sejak perang... aku merasa tidak sendirian. Terima kasih, Elena.','warm'),{t:'goto',id:'b2a_route'}]);
+N('b2a_log',[say('buron','Jadi bahkan sekarang, yang kau butuhkan tetap hanya hasil penelitianku... Baiklah.','sad'),{t:'goto',id:'b2a_route'}]);
+N('b2a_route',[
+  say('buron','Polisi rahasia semakin dekat. Kita harus menentukan langkah sebelum pintu ini dijebol.','shock'),
+  {t:'choice',opts:[
+    {...tagR('2A1 — DESAK KABUR'),'label':'"Tinggalkan bunker ini sekarang, nyawamu lebih berharga daripada formula ini!"',fx:()=>S.routeB2='A1',goto:'r2a1'},
+    {...tagR('2A2 — KUNCI DIRI DI BUNKER'),'label':'"Kunci pintu baja dari dalam! Jangan keluar sampai formulanya selesai, apa pun yang terjadi!"',fx:()=>S.routeB2='A2',goto:'r2a2'}]}]);
+N('b2b_emp',[say('dewasa','Kata-katamu mengingatkanku mengapa aku bertahan selama ini. Kita akan melindunginya bersama.','warm'),{t:'goto',id:'b2b_route'}]);
+N('b2b_log',[say('dewasa','Kupahami. Tidak ada ruang untuk diriku di antara kau dan masa depan yang ingin kau selamatkan.','sad'),{t:'goto',id:'b2b_route'}]);
+N('b2b_route',[
+  say('dewasa','Dewan militer bisa tiba kapan saja. Sekarang kita harus menentukan nasib formula ini.','shock'),
+  {t:'choice',opts:[
+    {...tagR('2B1 — PUBLIKASIKAN KE DUNIA'),'label':'"Bocorkan datanya ke pers dan publik sekarang agar militer tidak bisa memonopolinya!"',fx:()=>S.routeB2='B1',goto:'r2b1'},
+    {...tagR('2B2 — KUNCI DI KAPSUL KRIOGENIK'),'label':'"Kunci formula murni ini di ruang isolasi beku sub-zero sampai tahun 1999!"',fx:()=>S.routeB2='B2',goto:'r2b2'}]}]);
 N('r2a1',[say('buron','Akan kutinggalkan semuanya... demi bertahan hidup bersamamu!','warm'),{t:'vortex',to:'1999'}]);
 N('r2a2',[say('buron','Mengurung diri dalam kegelapan...? Baik, akan kulakukan demi janjiku padamu!','neutral'),{t:'vortex',to:'1999'}]);
 N('r2b1',[say('dewasa','Akan kusiarkan transmisi ini ke seluruh jaringan stasiun radio dunia!','neutral'),{t:'vortex',to:'1999'}]);
 N('r2b2',[say('dewasa','Ruang kriogenik... ide brilian. Tak ada seorang pun yang bisa menyentuhnya di sana.','warm'),{t:'vortex',to:'1999'}]);
 
+function arthurDiary(){
+  const warm=S.empathy>S.logic,escaped=S.routeB1==='A';let pages;
+  if(escaped&&warm)pages=[
+    '3 Oktober 1968. Sudah 8.741 malam aku hidup dengan nama palsu. Polisi menyebutku buronan; aku lebih suka menganggap diriku penjaga satu kemungkinan kecil agar dunia tetap hidup.',
+    'Aku masih mengingat tangan Elena di parit—hangat, meski hujan membekukan tulang. Kalau aku menyelesaikan penawar ini, mungkin suatu hari aku pantas menggenggam tangan itu lagi.',
+    'Formula bereaksi pada sampel terakhir. Aneh: semakin dekat jawabannya, semakin takut aku lupa suara orang yang membuatku bertahan.'
+  ];
+  else if(escaped)pages=[
+    '3 Oktober 1968. Bunker ini tidak mengenal pagi. Aku menghitung waktu dari bunyi pipa dan langkah polisi rahasia di atas langit-langit.',
+    'Elena pernah menyuruhku berhenti gemetar dan menyelesaikan tugas. Jadi kutulis semua rasa takut di sini, lalu kubuang kelemahannya ke dalam angka-angka.',
+    'Jika ia kembali, mungkin yang dicari bukan diriku—hanya formula. Tidak apa-apa. Sebuah alat tetap berguna meski tak pernah dicintai.'
+  ];
+  else if(warm)pages=[
+    '3 Oktober 1968. Mereka memberiku laboratorium, seragam, dan jabatan. Namun hanya kenangan tentang Elena yang membuat ruangan steril ini terasa seperti tempat manusia bisa pulang.',
+    'Dewan meminta formula sebagai senjata. Aku tersenyum, mengangguk, lalu menyembunyikan satu salinan murni di balik panel pendingin. Untuk pertama kalinya aku berbohong tanpa merasa bersalah.',
+    'Elena percaya tanganku dapat menyelamatkan jutaan orang. Semoga saat ia kembali, tangan ini masih cukup hangat untuk dikenali.'
+  ];
+  else pages=[
+    '3 Oktober 1968. Fasilitas ini sempurna: pendingin stabil, kultur bersih, komputasi tanpa henti. Seharusnya itu cukup. Anehnya, ruangan tetap terasa kosong.',
+    'Dewan menginginkan senjata. Elena menginginkan penawar. Tak seorang pun bertanya apa yang kuinginkan—mungkin karena ilmuwan yang baik memang tidak membutuhkan keinginan.',
+    'Aku akan menyelesaikan formula. Jika namaku hilang dari sejarah, setidaknya hasil kerjaku tidak ikut mati.'
+  ];
+  if(S.loop===1)pages[2]='Tadi malam aku bermimpi Elena membaca halaman ini, lalu semuanya kembali ke awal. Saat bangun, tintanya masih basah—padahal aku menulisnya bertahun-tahun lalu.';
+  else if(S.loop>=2)pages[2]='Aku tahu kalimat berikut sebelum penaku menyentuh kertas: Elena akan datang, membaca ini, menatapku, lalu waktu akan retak lagi. Anehnya, pengetahuan itu terasa sedikit seperti pulang.';
+  return{pages,meta:(escaped?'BUNKER BAWAH TANAH':'LABORATORIUM MILITER')+' • CATATAN PRIBADI, 1968',nostalgia:S.loop>=2};
+}
+
 N('n_b3',()=>{
+  const pre=[];
+  if(S.loop===1)pre.push(say('elena','Ruang kriogenik ini lagi... aku bahkan mengingat bau esnya. Kali ini harus berbeda.','sad'));
+  else if(S.loop>=2)pre.push(say('elena','Berapa kali lagi harus kulihat kau menua menungguku, Arthur... bertahanlah, aku hampir sampai.','sad'));
+  pre.push(say('tua','Elena... sebelum kita menentukan apa pun, jawab aku. Kau menemukan buku harianku di tahun 1968, bukan?','neutral'));
+  pre.push(say('tua','Setelah membaca semua halaman itu—apa yang sebenarnya kau lihat di dalam diriku?','sad'));
+  pre.push({t:'choice',opts:[
+    {...tagEmp('"Aku melihat seseorang yang terus bertahan meski ketakutan dan kesepian. Aku melihatmu, Arthur—bukan sekadar penawarnya."'),fx:()=>S.empathy++,goto:'b3_diary_emp'},
+    {...tagLog('"Aku melihat catatan penelitian yang membuktikan formulanya bisa diselamatkan. Itulah yang paling penting sekarang."'),fx:()=>S.logic++,goto:'b3_diary_log'}]});
+  return pre;});
+N('b3_diary_emp',[say('tua','Jadi... setidaknya sekali, seluruh hidupku benar-benar dibaca sebagai kehidupan. Terima kasih, Elena.','warm'),{t:'goto',id:'n_b3_final'}]);
+N('b3_diary_log',[say('tua','Begitu rupanya. Bahkan isi hatiku masih kau baca seperti laporan laboratorium.','sad'),{t:'goto',id:'n_b3_final'}]);
+N('n_b3_final',()=>{
   let ops=[];
   if(S.routeB2==='A1'){
     ops=[say('tua','Batuk... Elena... Maafkan aku. 55 tahun hidupku habis hanya untuk bersembunyi dari kejaran pembunuh bayaran.','sad'),
@@ -127,10 +183,7 @@ N('n_b3',()=>{
           {...tagR('PILIHAN IKHLAS'),label:'Terima serum & lepaskan Arthur bereinkarnasi.',goto:'true_end'}]}];
     }
   }
-  const pre=[]; // gema loop DIDAHULUKAN (cabang menimpa ops, bukan push)
-  if(S.loop===1)pre.push(say('elena','Ruang kriogenik ini lagi... aku bahkan mengingat bau esnya. Kali ini harus berbeda.','sad'));
-  else if(S.loop>=2)pre.push(say('elena','Berapa kali lagi harus kulihat kau menua menungguku, Arthur... bertahanlah, aku hampir sampai.','sad'));
-  return pre.concat(ops);});
+  return ops;});
 N('r3f',[say('tua','Kalau aku tidak bisa memilikimu, tak seorang pun di masa depan yang boleh hidup!','mad'),
   say('narrator','[ TIMELINE COLLAPSE: Formula hancur oleh dendam. ]'),{t:'ending',kind:'loop'}]);
 N('paradox',[
