@@ -151,7 +151,7 @@ const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:t
   walk:null,dialog:null,cam:0,camTarget:0,caption:'',captionT:0,
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
   era:'2088',shakeT:0,shakeA:0,endCard:null,fadeIn:0,prologueDone:false,
-  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false};
+  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null};
 let T=0; // waktu global detik
 
 /* ---------- Opsi & penyimpanan (localStorage) ---------- */
@@ -167,4 +167,3 @@ function applyVol(){if(AU.master&&!AU.muted)AU.master.gain.value=vGain(OPTS.vol)
   if(AU.sfxBus)AU.sfxBus.gain.value=vGain(OPTS.volSfx); // slider EFEK
   if(AU.musBus)duckMusic(D&&D.duckT?.55:.85,.06); // slider MUSIK via duckMusic agar transisi halus
   if(AU.ctx&&AU.ambBus&&!G.paused){const t=AU.ctx.currentTime;AU.ambBus.gain.cancelScheduledValues(t);AU.ambBus.gain.setValueAtTime(AU.ambBus.gain.value,t);AU.ambBus.gain.linearRampToValueAtTime(.9*vGain(OPTS.volSfx),t+.15);}}
-
