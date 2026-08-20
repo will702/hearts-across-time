@@ -12,5 +12,6 @@
 | 008 | Skill-audit pass: loop echoes 1968/1999 + glitch case-files + affinity-per-loop reset, 5 lore hotspots, walk pacing per era, camera look-ahead, vGain curves, 2 poses + 2 props, 1944 mid tone seam | MEDIUM | DONE |
 | 009 | Asset finalize: audit pakai semua aset gen, fix bocor pink flare/frost + serpih pose reach, flare ke parapet, QA cakupan penuh (15 tembakan) | MEDIUM | DONE |
 | 010 | Seam BG/FG & penempatan: bug rumus seam_blend ditutup (junction 0==w-1), 10 bg + 1968A_fg final difix (seamdiff→0), bohlam 1968A naik agar kordel nyambung langit2 | MEDIUM | DONE |
+| 011 | Onboarding, cover interaktif, peta waktu, dan tiga mini-game afinitas wajib | HIGH | DONE |
 
 Recommended order: 001 first (player locomotion is on screen ~60% of runtime), then 002 → 003 → 004. All landed.

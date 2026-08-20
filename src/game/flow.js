@@ -27,6 +27,7 @@ function step(){
 }
 function dialogAdvance(){
   if(D.choices){const o=D.choices[D.sel];SFX.confirm();if(o.fx)o.fx();
+    tutorialDone('dialog');
     SAVE.chosen[o.label]=1;persistSave(); // penanda "pernah dipilih" lintas loop
     G.pulse=null; // nilai kepribadian tetap tersembunyi agar pemain memilih dari isi dialog
     D.choices=null;startNode(o.goto);return;}
@@ -98,7 +99,7 @@ function startGlitch(){G.state='glitch';
   G.glitch={t:0,hint:loopHint(),kasus:CS[S.routeB2]||'BERKAS KASUS — timeline runtuh'};
   markEnd(S.routeB2==='A1'?'A1':S.routeB2==='B1'?'B1':S.routeB2==='B2'?'B2lock':null); // rute A2 tercatat lewat node paradox/r3f
   S.loop++;SFX.glitch();setAmbience(null);stopAmb();
-  S.empathy=0;S.logic=0;S.routeB1='';S.routeB2=''; // siklus baru = kepribadian Arthur ditentukan ulang oleh obrolan Babak 1 (sebelumnya bocor antar loop!)
+  S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.challenges=freshChallenges(); // seluruh afinitas, termasuk gameplay, direset per siklus
   SAVE.game=null; // autosave siklus yg runtuh tak boleh di-Continue (akan mengembalikan kepribadian lama)
   persistSave();}
 // remah roti: setiap kegagalan memberi tahu pemain mengapa loop pecah
@@ -109,17 +110,56 @@ function loopHint(){
   if(S.routeB2==='B2')return '⟩ Petunjuk: Arthur hanya terbuka pada kenangan yang hangat — jawablah dengan empati sejak 1944.';
   return '⟩ Petunjuk: setiap pilihanmu di masa lalu membentuk takdir 2088.';
 }
+const CHALLENGE_CONF={
+  '1944':{x:760,title:'PENYEBERANGAN LAMPU SOROT',left:'Alihkan sorot dari medis terluka',right:'Putus daya dan menyeberang langsung',targets:[.24,.68,.43]},
+  '1968':{x:500,title:'PENYETELAN SINYAL',left:'Ikuti frekuensi panggilan Arthur',right:'Isolasi pembawa data formula',targets:[.3,.72,.48]},
+  '1999':{x:690,title:'STABILISASI KRIO',left:'Dahulukan tanda vital Arthur',right:'Dahulukan kemurnian serum',targets:[.66,.34,.58]}};
+function saveCycle(){SAVE.game={era:G.era,S:{empathy:S.empathy,logic:S.logic,routeB1:S.routeB1,routeB2:S.routeB2,loop:S.loop,challenges:Object.assign({},S.challenges)}};persistSave();}
+function startChallenge(){const cfg=CHALLENGE_CONF[G.era];if(!cfg||S.challenges[G.era])return;
+  G.state='challenge';G.challenge={era:G.era,stage:'choose',sel:0,band:0,cursor:.5,dir:1,t:0,misses:0,assist:false,feedback:'',feedbackT:0,successT:0};
+  G.player.vx=0;tutorialDone('interact');SFX.select();}
+function finishChallenge(ch){if(S.challenges[ch.era])return;const approach=ch.sel===0?'empathy':'logic';S.challenges[ch.era]=approach;S[approach]++;ch.stage='success';ch.successT=0;
+  for(let i=0;i<18;i++)parts.push({x:W/2+(Math.random()-.5)*180,y:H/2+50,vx:(Math.random()-.5)*120,vy:-35-Math.random()*80,grav:55,l:0,ml:1.2+Math.random(),r:2+Math.random()*2,col:approach==='empathy'?'rgba(240,160,170,.9)':'rgba(120,220,255,.9)',shrink:1});
+  SFX.chime();saveCycle();tutorialDone('challenge');}
+function missChallenge(ch){ch.misses++;ch.feedback=ch.era==='1944'?'TERDETEK — KEMBALI KE PINTU MASUK':'SINYAL LEPAS — COBA LAGI';ch.feedbackT=.9;
+  if(ch.misses>=3)ch.assist=true;if(ch.era==='1944'){ch.band=0;G.player.x=CHALLENGE_CONF['1944'].x-80;G.camTarget=clamp(G.player.x-300,0,G.walk.len-W);}G.whiteFlash=OPTS.reduceMotion?.18:.55;G.shakeT=OPTS.reduceMotion?0:.22;G.shakeA=5;SFX.flash();}
+function updateChallenge(dt){const ch=G.challenge,cfg=CHALLENGE_CONF[ch.era];ch.t+=dt;if(ch.feedbackT>0)ch.feedbackT-=dt;
+  if(ch.stage==='success'){ch.successT+=dt;if(ch.successT>1.05){G.state='walk';G.player.x=cfg.x+65;G.challenge=null;G.fadeIn=.28;}return;}
+  if(ch.stage==='choose'){
+    if(keyOnce('ArrowLeft')||keyOnce('a')||keyOnce('A')){ch.sel=0;SFX.select();}
+    if(keyOnce('ArrowRight')||keyOnce('d')||keyOnce('D')){ch.sel=1;SFX.select();}
+    if(ptr.tap&&ptr.y>285&&ptr.y<390){ch.sel=ptr.x<W/2?0:1;ptr.tap=false;ch.stage='play';ch.t=0;SFX.confirm();return;}
+    if(advHit()){ch.stage='play';ch.t=0;SFX.confirm();}return;}
+  const win=ch.assist?.13:.075,speed=(ch.assist?.58:1)*(ch.era==='1999'?2.3:1.8),target=cfg.targets[ch.band];
+  if(ch.era==='1968'){
+    let d=0;if(keys['ArrowLeft']||keys['a']||keys['A'])d--;if(keys['ArrowRight']||keys['d']||keys['D'])d++;ch.cursor=clamp(ch.cursor+d*dt*(ch.assist?.45:.72),0,1);
+  }else ch.cursor=.5+.47*Math.sin(ch.t*speed+ch.band*1.7);
+  const touchLock=ptr.tap&&ptr.y>350;if(ptr.tap&&ptr.y<350){ch.cursor=clamp((ptr.x-190)/580,0,1);ptr.tap=false;}
+  if(advHit()||touchLock){ptr.tap=false;if(Math.abs(ch.cursor-target)<=win){ch.band++;SFX.confirm();ch.feedback='TERKUNCI '+ch.band+'/3';ch.feedbackT=.65;if(ch.band>=3)finishChallenge(ch);}else missChallenge(ch);}
+}
 function startWalk(era){
   G.era=era;G.state='walk';const cfg=ERA_CONF[era];
   G.walk={era,len:cfg.len,arX:cfg.arX,ar:era==='1968'?(S.routeB1==='A'?'buron':'dewasa'):cfg.ar,node:cfg.node,hot:null,diaryHot:false,diaryRead:era!=='1968',
     cap:era==='1968'?(S.routeB1==='A'?'BABAK 2 — BUNKER BAWAH TANAH, 1968':'BABAK 2 — LABORATORIUM MILITER, 1968'):cfg.cap};
   G.player.x=90;G.player.facingRight=true;G.player.vx=0;G.player.stride=0;G.player.turnT=0;G.player.acc=0;G.diary=null;G.caption=G.walk.cap;G.captionT=3.2;parts.length=0;
   setAmbience(cfg.amb);
-  SAVE.game={era,S:{empathy:S.empathy,logic:S.logic,routeB1:S.routeB1,routeB2:S.routeB2,loop:S.loop}};persistSave(); // autosave
+  saveCycle(); // autosave, termasuk hasil mini-game per siklus
 }
 function startEndCard(){G.state='endcard';G.endCard={t:0};SFX.chime();setAmbience('1999');setSong('end');duckMusic(1,1.2);SAVE.game=null;persistSave();}
-function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;
-  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.diary=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;parts.length=0;}
+function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;S.challenges=freshChallenges();
+  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.diary=null;G.challenge=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;parts.length=0;}
+function beginNewCycle(){resetAll();SAVE.game=null;persistSave();G.state='prologue';G.fadeIn=1;startNode('prologue');setAmbience('2088');SFX.heart();}
+function titleMenu(){return[{label:'LANJUTKAN',disabled:!SAVE.game,act:()=>{Object.assign(S,SAVE.game.S||{});normalizeRun();G.fadeIn=1;startWalk(SAVE.game.era||'1944');}},
+  {label:'SIKLUS BARU',act:()=>{if(SAVE.game){G.titleConfirm=true;G.confirmSel=0;}else beginNewCycle();}},
+  {label:'PUTAR ULANG INTRO',act:()=>{G.titleConfirm=false;playIntroVideo();}}];}
+function updateTitle(){const items=titleMenu();
+  if(G.titleConfirm){if(keyOnce('ArrowLeft')||keyOnce('a')||keyOnce('A'))G.confirmSel=0;if(keyOnce('ArrowRight')||keyOnce('d')||keyOnce('D'))G.confirmSel=1;
+    if(ptr.tap&&ptr.y>330&&ptr.y<390){G.confirmSel=ptr.x<W/2?0:1;ptr.tap=false;if(G.confirmSel===0)beginNewCycle();else G.titleConfirm=false;}
+    if(advHit()){if((G.confirmSel||0)===0)beginNewCycle();else G.titleConfirm=false;}return;}
+  if(keyOnce('ArrowUp')||keyOnce('w')||keyOnce('W')){do{G.titleSel=(G.titleSel+items.length-1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
+  if(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')){do{G.titleSel=(G.titleSel+1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
+  if(ptr.tap&&ptr.x>350&&ptr.x<610&&ptr.y>300&&ptr.y<426){const i=Math.floor((ptr.y-300)/42);ptr.tap=false;if(items[i]&&!items[i].disabled){G.titleSel=i;SFX.confirm();items[i].act();}return;}
+  if(advHit()){const it=items[G.titleSel];if(it&&!it.disabled){SFX.confirm();it.act();}}}
 
 /* ---------- update per-state ---------- */
 const SPD=[.5,1,2],SPD_N=['LAMBAT','NORMAL','CEPAT'];
@@ -140,7 +180,7 @@ function pauseItems(){return [
   {label:'UKURAN TEKS  ‹ '+TSZ_N[tszIdx()]+' ›',adj:d=>{OPTS.textScale=TSZ[(tszIdx()+d+TSZ.length)%TSZ.length];saveOpts();}},
   {label:'EFEK SINEMATIK  ‹ '+(OPTS.reduceMotion?'MATI':' ON')+' ›',adj:d=>{OPTS.reduceMotion=!OPTS.reduceMotion;saveOpts();}},
   {label:'ULANG DARI 1944',act:()=>{setPaused(false);resetAll();G.fadeIn=1;startVortex('1944',false);}},
-  {label:'KEMBALI KE MENU UTAMA',act:()=>{setPaused(false);G.state='title';G.t=0;G.titleT=0;G.titleReady=false;setAmbience('title');}},
+  {label:'KEMBALI KE MENU UTAMA',act:()=>{setPaused(false);G.state='title';G.t=0;G.titleT=8.4;G.titleReady=true;G.titleSel=SAVE.game?0:1;setAmbience('title');}},
 ];}
 function updatePause(){
   const items=pauseItems();
@@ -158,6 +198,7 @@ function updatePause(){
 }
 function update(dt){
   T+=dt;G.t+=dt;
+  if(G.tutorialFade>0)G.tutorialFade=Math.max(0,G.tutorialFade-dt*1.4);
   if(G.pulse){G.pulse.t+=dt;if(G.pulse.t>1.5)G.pulse=null;}
   if(G.whiteFlash>0)G.whiteFlash-=dt*2.2;
   if(G.skyFlash>0)G.skyFlash-=dt*1.4;
@@ -167,19 +208,18 @@ function update(dt){
   const mx=ptr.x,my=ptr.y;
   // hotspot UI pojok (mute/pause) via klik atau sentuhan — dicek DI SINI karena ptr.tap dibersihkan sebelum render()
   if(ptr.tap&&Math.hypot(ptr.x-(W-34),ptr.y-26)<20){toggleMute();ptr.tap=false;}
-  else if(ptr.tap&&!G.paused&&(G.state==='walk'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')&&Math.hypot(ptr.x-(W-72),ptr.y-26)<20){ptr.tap=false;setPaused(true);G.pSel=0;SFX.select();}
+  else if(ptr.tap&&!G.paused&&(G.state==='walk'||G.state==='challenge'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')&&Math.hypot(ptr.x-(W-72),ptr.y-26)<20){ptr.tap=false;setPaused(true);G.pSel=0;SFX.select();}
   if(G.paused){updatePause();}
-  else if(keyOnce('Escape')&&!G.logOpen&&(G.state==='walk'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')){setPaused(true);G.pSel=0;SFX.select();}
+  else if(keyOnce('Escape')&&!G.logOpen&&(G.state==='walk'||G.state==='challenge'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')){setPaused(true);G.pSel=0;SFX.select();}
   else switch(G.state){
     case 'load':
-      if(AS.ready){G.state='title';G.titleT=0;G.titleReady=false;}
+      if(AS.ready){G.state='title';G.titleReady=!!SAVE.introDone||!!OPTS.reduceMotion;G.titleT=G.titleReady?8.4:0;G.titleSel=SAVE.game?0:1;}
       break;
     case 'title':
       setAmbOnce('title');
-      G.titleT+=dt;G.titleReady=OPTS.reduceMotion||G.titleT>=8.4;
-      if(!G.titleReady&&(advHit()||ptr.tap)){ptr.tap=false;G.titleT=8.4;G.titleReady=true;SFX.select();break;}
-      if(G.titleReady&&SAVE.game&&(keyOnce('l')||keyOnce('L'))){SFX.confirm();Object.assign(S,SAVE.game.S);G.fadeIn=1;startWalk(SAVE.game.era);break;}
-      if(G.titleReady&&(advHit()||ptr.tap)){ptr.tap=false;SFX.confirm();resetAll();G.state='prologue';G.fadeIn=1;startNode('prologue');setAmbience('2088');SFX.heart();}
+      if(!G.titleReady){G.titleT+=dt;if(OPTS.reduceMotion||G.titleT>=8.4){G.titleT=8.4;G.titleReady=true;SAVE.introDone=true;persistSave();}
+        else if(advHit()||ptr.tap){ptr.tap=false;G.titleT=8.4;G.titleReady=true;SAVE.introDone=true;persistSave();SFX.select();}break;}
+      updateTitle();
       break;
     case 'prologue':
       G.prologueT+=dt;
@@ -231,7 +271,12 @@ function update(dt){
         p.vx+=clamp(dir*top-p.vx,-accel*dt,accel*dt);
         if(Math.abs(prevVx)<10)parts.push({x:p.x-G.cam,y:GROUND-3,vx:-dir*24,vy:-14,grav:80,l:0,ml:.4,r:2.4,col:'rgba(170,150,120,.5)',shrink:1}); // debu awal langkah
       }else p.vx-=clamp(p.vx,-fric*dt,fric*dt);
+      if(G.era==='1944'&&S.loop===0){if(dir!==0&&!SAVE.tutorial.move)tutorialDone('move');if(sprint&&!SAVE.tutorial.sprint)tutorialDone('sprint');}
       p.x=clamp(p.x+p.vx*dt,64,G.walk.len-40);
+      const cc=CHALLENGE_CONF[G.era];
+      if(cc&&!S.challenges[G.era]){if(p.x>cc.x-42){p.x=cc.x-42;if(p.vx>0)p.vx=0;}G.walk.challengeHot=Math.abs(p.x-(cc.x-42))<66;
+        if(G.walk.challengeHot&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||advHit()||(ptr.tap&&Math.abs(ptr.x-(cc.x-G.cam))<80))){ptr.tap=false;startChallenge();break;}}
+      else G.walk.challengeHot=false;
       if(G.era==='1968'&&!G.walk.diaryRead&&p.x>DIARY_X-34){p.x=DIARY_X-34;if(p.vx>0)p.vx=0;} // gerbang wajib sebelum Arthur
       if((p.x===64&&p.vx<0)||(p.x===G.walk.len-40&&p.vx>0))p.vx=0; // mentok dinding: nolkan dorongan
       p.acc=lerp(p.acc,(p.vx-prevVx)/Math.max(dt,1e-4),1-Math.pow(.01,dt)); // pitch badan saat akselerasi
@@ -259,6 +304,8 @@ function update(dt){
       if(p.x>G.walk.arX-175){G.state='dialog';G.camTarget=clamp(G.walk.arX-640,0,G.walk.len-W);
         D.arKind=G.walk.ar;D.arExpr='neutral';D.elExpr='neutral';startNode(G.walk.node);}
       break;}
+    case 'challenge':
+      updateChallenge(dt);break;
     case 'dialog':
       if(G.cam!==G.camTarget)G.cam=lerp(G.cam,G.camTarget,1-Math.pow(.002,dt));
       spawnParts(G.era==='1968'?'1968':G.era);
@@ -281,7 +328,7 @@ function update(dt){
       G.endCard.t+=dt;
       // sparkle hati merah muda & emas merayakan true ending
       if(Math.random()<.12)parts.push({x:Math.random()*W,y:H+10,vx:(Math.random()-.5)*16,vy:-22-Math.random()*26,l:0,ml:3.5+Math.random()*2,r:1+Math.random()*1.4,col:Math.random()<.6?'rgba(228,140,150,.85)':'rgba(240,205,130,.85)',pulse:1,heart:Math.random()<.45});
-      if((G.endCard.t>2)&&(advHit()||ptr.tap)){ptr.tap=false;SFX.confirm();G.state='title';G.t=0;G.titleT=0;G.titleReady=false;setAmbience('title');}
+      if((G.endCard.t>2)&&(advHit()||ptr.tap)){ptr.tap=false;SFX.confirm();G.state='title';G.t=0;G.titleT=8.4;G.titleReady=true;G.titleSel=1;setAmbience('title');}
       break;
   }
   ptr.tap=false;

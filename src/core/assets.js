@@ -32,7 +32,7 @@ const ASSET_MANIFEST = {
   arthur_dewasa: { src: 'assets/arthur_dewasa_sheet.png', fw: 150, fh: 210, h: 112 },
   arthur_buron: { src: 'assets/arthur_buron_sheet.png', fw: 150, fh: 210, h: 112 },
   arthur_tua: { src: 'assets/arthur_tua_sheet.png', fw: 150, fh: 210, h: 112 },
-  bg2088_far: { src: 'assets/bg2088_far.png' }, bg2088_mid: { src: 'assets/bg2088_mid.png' }, bg2088_near: { src: 'assets/bg2088_near.png' },
+  bg2088_far: { src: 'assets/bg2088_far.png' }, bg2088_near: { src: 'assets/bg2088_near.png' },
   bg1944_far: { src: 'assets/bg1944_far.png', scale: 0.75, yOff: 2000 }, bg1944_mid: { src: 'assets/bg1944_mid.png', scale: 0.75, yOff: 300 },
   bg1968A_far: { src: 'assets/bg1968A_far.png', scale: 0.75, yOff: 50 }, bg1968A_mid: { src: 'assets/bg1968A_mid.png', scale: 0.75 },
   bg1968B_far: { src: 'assets/bg1968B_far.png' }, bg1968B_mid: { src: 'assets/bg1968B_mid.png', scale: 0.5 },
@@ -65,7 +65,7 @@ const ASSET_MANIFEST = {
   laboratorium_militer: { src: 'assets/labotariummiliter.jpg' },
   title_cover_figma: { src: 'assets/title_cover_figma.png' },
   title_start_plate: { src: 'assets/title_start_plate.png' },
-  title_wordmark: { src: 'assets/JUDULL.png' },
+  title_wordmark: { src: 'assets/llJUDULL.png' },
   elena_dialog1: { src: 'assets/elenadialog1.png' },
   elena_dialog2_sedih: { src: 'assets/elenadialog2sedih.png' },
   // bidang ilustrasi Figma untuk intro judul parallax (PNG transparan; absen => cover lama)

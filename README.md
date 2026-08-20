@@ -18,7 +18,10 @@ Untuk deploy itch.io, zip `index.html`, `src/`, `vendor/`, dan `assets/`, lalu u
 
 | Aksi | Keyboard | Sentuh |
 |---|---|---|
+| Menu sampul | `↑ ↓` + `Enter` | ketuk menu |
 | Bergerak | `← →` atau `A D` (lari: `Shift`) | tombol ◀ ▶ (lari: tahan ≫) |
+| Interaksi / mulai tantangan | `↓`, `S`, atau `Enter` | ketuk penanda |
+| Mini-game | `← →` untuk memilih/menyetel, `Enter` / `Space` untuk mengunci | ketuk pilihan/jalur, lalu area bawah untuk mengunci |
 | Lanjut dialog | `Enter` / `Space` / klik | ketuk layar |
 | Pilih opsi | `↑ ↓` + `Enter`, atau tombol `1` / `2` | ketuk opsi |
 | Periksa titik lore (`✦` berdenyut) | `↓` atau `S` saat berdiri dekat | ketuk penanda |
@@ -32,7 +35,8 @@ Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungs
 
 | Fitur GDD | Status |
 |---|---|
-| Sistem Kepribadian tersembunyi (Empati vs Logika) | ✔ 2 pertanyaan sikap di Babak 1 → menentukan Arthur Hangat / Sinis di 1968 |
+| Sistem Kepribadian tersembunyi (Empati vs Logika) | ✔ Dialog dan tiga pendekatan gameplay bersama-sama menentukan Arthur Hangat / Sinis |
+| Tantangan era wajib dan ramah gagal | ✔ Lampu sorot 1944, penyetelan sinyal 1968, stabilisasi krio 1999; assist otomatis setelah 3 miss |
 | Percabangan pohon waktu 2 → 4 → 8 | ✔ Rute 1A/1B × 2A1/2A2/2B1/2B2 → 4 kasus akhir + sub-kondisi |
 | Looping System (`loop_count++`) | ✔ Layar glitch RGB-strip + "⟲ LOOP n", reset ke Babak 1, HUD penghitung loop |
 | True Ending (Empati tinggi → B → B2 → Ikhlas) | ✔ Termasuk rahasia: statistik *hidden affinity* terungkap di kartu ending |
@@ -111,7 +115,7 @@ nearest-neighbor (tanpa blur).
 
 | Era | far | mid | near |
 |---|---|---|---|
-| 2088 | `bg2088_far` (.1) | `bg2088_mid` (.3) | `bg2088_near` (.85) |
+| 2088 | `bg2088_far` (.1) | — | `bg2088_near` (.85) |
 | 1944 | `bg1944_far` (.14) | `bg1944_mid` (.45) | — (tanah prosedural) |
 | 1968 bunker (rute A) | `bg1968A_far` (.2) | `bg1968A_mid` (.5) | — |
 | 1968 lab (rute B) | `bg1968B_far` (.2) | `bg1968B_mid` (.5) | — |
@@ -172,7 +176,9 @@ rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, C
 
 ## ✨ Efek Visual (v2 — Juice Pass)
 
-**Onboarding Figma:** layar judul kini dibuka oleh sequence parallax autoplay ±8,4 detik dari tujuh komposisi Figma. Delapan belas-plus lapisan PNG transparan di `assets/onboarding/` bergerak dengan kedalaman berbeda, lalu dissolve ke cover interaktif; tombol mulai baru aktif sesudah sequence selesai. Enter/sentuh pertama melewati intro, input berikutnya memulai game, dan opsi `reduceMotion` langsung menampilkan cover.
+**Intro sinematik:** `assets/intro.mp4` diputar sebelum sampul dengan suara setelah pemain menekan **Putar Intro** (kebijakan autoplay browser), dapat dilewati, dan dapat dibuka lagi lewat **Putar Ulang Intro**. Bila video gagal dimuat, sequence parallax Figma 8,4 detik tetap menjadi fallback sebelum cover interaktif. Siklus Baru meminta konfirmasi bila autosave aktif. Peta waktu prosedural menautkan 1944–2088 dan menampilkan ending yang ditemukan sebagai segel tanpa membocorkan yang belum ditemukan. `reduceMotion` hanya menonaktifkan animasi Canvas, bukan video prarender.
+
+Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan, dan pilihan dialog muncul hanya ketika relevan lalu disimpan sebagai selesai. Setiap era memiliki mini-game wajib dengan dua pendekatan naratif tanpa label statistik. Penyelesaian memberi tepat satu poin tersembunyi Empati atau Logika; miss tidak memberi poin dan tidak mereset timeline. Setelah tiga miss, tempo melambat dan jendela target melebar. Hasil ketiga tantangan ikut autosave **Lanjutkan** dan direset bersama afinitas ketika loop gagal.
 
 - **Karakter**: bayangan lembut di kaki, siklus kaki elips ayun/tumpu (kaki tumpu menapak, kaki ayun melengkung), fisika rambut & ayunan gaun dengan follow-through tertinggal dari langkah, condong saat berjalan + pitch badan saat akselerasi,
   kilau rambut ala anime, air mata (ekspresi sedih) & butir keringat (kaget)
@@ -251,6 +257,7 @@ update/render  — state machine: load → title → prologue → walk → dialo
 
 - Rute golden penuh: Prologue → Empati×2 → 1B → 2B2 → Ikhlas → **True Ending** (0 error)
 - Rute gagal: Logika×2 → 1A → 2A1 → TIMELINE COLLAPSE → **glitch loop** → kembali ke 1944 dengan intro loop
+- Pass 011: rute golden, failA, dan dialog campuran melewati tiga mini-game lewat kontrol nyata; cover first/return/replay/continue/confirm, assist 3-miss, touch, `reduceMotion`, dan zero 404/error diverifikasi oleh `qa/pass011.cjs`
 - Verifikasi audio: AnalyserNode memastikan musik benar2 bersuara, scheduler 5 lagu maju, ducking bus bekerja
 - Verifikasi aset: dummy spritesheet PNG dimuat & digambar (jalur `drawCharSheet`), fallback prosedural saat file hilang
 - Verifikasi desain: GIF diekstrak (2 frame unik), palet diukur per-piksel (rambut `#D8CCA8`, gaun `#C28279`, boot `#F1E6DC`+strap `#44240A`, skin `#F0E4D8`), sprite baru diverifikasi cocok (median boot `#F0E4D4` exact) + QA vision fitur lengkap tanpa artefak

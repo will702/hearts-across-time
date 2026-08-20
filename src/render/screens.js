@@ -15,7 +15,7 @@ function drawChars(c, mode, cam) {
   const bnc = w => speaking === w ? Math.exp(-4.5 * G.speak.t) * Math.sin(13 * G.speak.t) * 3.5 : 0; // pantul halus karakter yang bicara
   const breathE = (mode !== 'walk' || !p.moving) ? Math.sin(T * 1.6) * 1.1 : 0; // tarikan napas idle
   const elScreenX = mode === 'walk' ? p.x - cam : (mode === 'prologue' ? W * 0.42 : (G.walk ? G.walk.arX - 190 - cam : W * 0.42));
-  c.save(); c.translate(elScreenX, GROUND - bnc('elena') + breathE); groundShadow(c, p.moving && mode === 'walk' ? .82 : 1);
+  c.save(); c.translate(elScreenX, GROUND - bnc('elena') + breathE);c.scale(mode==='dialog'?1.16:1.1,mode==='dialog'?1.16:1.1); groundShadow(c, p.moving && mode === 'walk' ? .82 : 1);
   if (mode === 'walk' && p.turnT > 0) c.scale(1 - .18 * Math.sin(Math.PI * (1 - clamp(p.turnT / .14, 0, 1))), 1); // squash berganti arah
   if (!p.facingRight && mode === 'walk') c.scale(-1, 1);
   const pz = POSES[D.node];
@@ -30,7 +30,7 @@ function drawChars(c, mode, cam) {
     const ax = G.walk.arX - cam;
     const ab = speaking && speaking !== 'elena' && speaking !== 'narrator' ? Math.exp(-4.5 * G.speak.t) * Math.sin(13 * G.speak.t) * 3.5 : 0;
     const breathA = Math.sin(T * 1.6 + 2.2) * 1.0; // napas idle Arthur (beda fase)
-    c.save(); c.translate(ax, GROUND - ab + breathA); groundShadow(c); c.scale(-1, 1); // menghadap kiri (ke Elena)
+    c.save(); c.translate(ax, GROUND - ab + breathA);c.scale(mode==='dialog'?1.16:1.1,mode==='dialog'?1.16:1.1); groundShadow(c); c.scale(-1, 1); // menghadap kiri (ke Elena)
     const posA = (mode === 'dialog' && pz && pz.side === 'arthur' && (!pz.expr || pz.expr === D.arExpr)) ? pz.id :
       ((mode === 'dialog' && D.node === 'n_b3' && D.line && D.line.who === 'tua' && (D.arExpr === 'warm' || D.arExpr === 'happy')) ? 'pose_arthur_tua_reach' : null);
     if (posA) { c.globalAlpha = poseFade(posA); if (!drawPoseImage(c, posA)) { c.globalAlpha = 1; drawArthur(c, D.arKind, t, D.arExpr, { tremble: D.arKind === 'tua' && D.arExpr === 'mad' }); } c.globalAlpha = 1; }
@@ -267,29 +267,48 @@ function drawCover(c) {
   let g = c.createLinearGradient(0, 0, 0, 210); g.addColorStop(0, 'rgba(2,5,13,.72)'); g.addColorStop(.6, 'rgba(2,5,13,.12)'); g.addColorStop(1, 'rgba(2,5,13,0)'); c.fillStyle = g; c.fillRect(0, 0, W, 210);
   g = c.createLinearGradient(0, 330, 0, H); g.addColorStop(0, 'rgba(2,4,10,0)'); g.addColorStop(.45, 'rgba(2,4,10,.7)'); g.addColorStop(1, 'rgba(1,2,7,.96)'); c.fillStyle = g; c.fillRect(0, 330, W, H - 330);
   const glow = c.createRadialGradient(W * .5, 142, 10, W * .5, 142, 210); glow.addColorStop(0, `rgba(255,215,110,${.12 + .06 * pul})`); glow.addColorStop(1, 'rgba(255,215,110,0)'); c.fillStyle = glow; c.fillRect(255, 0, 450, 310);
-  // Wordmark resmi dari aset gambar (assets/JUDULL.png)
+  // Wordmark resmi dari aset gambar yang tersedia di repo.
   const mark = AS.imgs.title_wordmark;
   if (mark && mark.width) { const dw = 510, dh = dw * (mark.height / mark.width); c.save(); c.shadowColor = `rgba(255,223,135,${.35 + .22 * pul})`; c.shadowBlur = 13; c.drawImage(mark, 0, 0, mark.width, mark.height, W / 2 - dw / 2, 55, dw, dh); c.restore(); }
   // Kode teks prosedural di-comment out karena diganti gambar:
   // else{goldTitle(c,'HE',W/2-86,132,66);goldTitle(c,'RT',W/2+84,132,66);c.save();c.shadowColor=`rgba(255,223,135,${.55+.3*pul})`;c.shadowBlur=16+8*pul;drawHourglass(c,W/2,101,1.72,t);c.restore();goldTitle(c,'ACROSS TIME',W/2,191,43);}
   // c.save();c.textAlign='center';c.font='400 14px '+F_META;c.fillStyle='#FFFDF4';c.strokeStyle='rgba(7,8,18,.78)';c.lineWidth=3;c.shadowColor='rgba(245,255,196,.8)';c.shadowBlur=7;spacedText(c,'BREAK THE LOOP',W/2,225,7);c.restore();
-  // Tombol START berupa plakat emas bersudut, bukan pil sementara lama.
-  const bw = 300, bh = 62, bx = W / 2 - bw / 2, by = 302, hov = ptr.x > bx && ptr.x < bx + bw && ptr.y > by && ptr.y < by + bh;
-  c.save(); c.shadowColor = `rgba(255,218,95,${.34 + .32 * pul + (hov ? .18 : 0)})`; c.shadowBlur = 20 + 10 * pul;
-  const plate = AS.imgs.title_start_plate;
-  if (plate && plate.width) { c.globalAlpha = hov ? 1 : .92 + .08 * pul; c.drawImage(plate, bx - 10, by - 7, bw + 20, bh + 14); }
-  else { c.beginPath(); c.moveTo(bx + 22, by); c.lineTo(bx + bw - 22, by); c.lineTo(bx + bw, by + bh / 2); c.lineTo(bx + bw - 22, by + bh); c.lineTo(bx + 22, by + bh); c.lineTo(bx, by + bh / 2); c.closePath(); g = c.createLinearGradient(0, by, 0, by + bh); g.addColorStop(0, '#F2D57B'); g.addColorStop(.5, hov ? '#DDB54D' : '#C99A36'); g.addColorStop(1, '#8A5A17'); c.fillStyle = g; c.fill(); c.lineWidth = 2; c.strokeStyle = '#FFEBA0'; c.stroke(); } c.restore();
-  c.save(); c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '400 32px ' + F_TITLE; c.fillStyle = '#FFFDF2'; c.strokeStyle = 'rgba(83,48,10,.65)'; c.lineWidth = 2; c.shadowColor = 'rgba(73,152,132,.75)'; c.shadowBlur = 7; c.strokeText('START', W / 2, by + bh / 2 + 2); c.fillText('START', W / 2, by + bh / 2 + 2); c.restore();
+  // Peta waktu prosedural: hasil yang belum ditemukan tetap berupa segel tanpa spoiler.
+  const years=['1944','1968','1999','2088'],xs=[250,403,557,710],my=242;c.save();c.strokeStyle='rgba(242,210,125,.55)';c.lineWidth=2;c.beginPath();c.moveTo(xs[0],my);for(let i=1;i<xs.length;i++){c.quadraticCurveTo((xs[i-1]+xs[i])/2,my+(i%2?14:-14),xs[i],my);}c.stroke();
+  years.forEach((y,i)=>{c.fillStyle=i===0||SAVE.game&&+SAVE.game.era>=+y?'#F1D58B':'rgba(245,240,232,.5)';c.beginPath();c.arc(xs[i],my,7,0,TAU);c.fill();c.font='11px '+F_META;c.textAlign='center';c.fillText(y,xs[i],my+23);});
+  const found=END_TOTAL.filter(k=>SAVE.endings&&SAVE.endings[k]).length;c.font='11px '+F_META;END_TOTAL.forEach((k,i)=>{const x=345+i*54,on=!!(SAVE.endings&&SAVE.endings[k]);c.fillStyle=on?'#F1D58B':'rgba(245,240,232,.28)';c.fillText(on?'✦':'◇',x,277);});c.restore();
+  const items=titleMenu(),bx=350,by=300,bw=260,bh=36;c.save();c.textAlign='center';c.textBaseline='middle';items.forEach((it,i)=>{const y=by+i*42,on=i===G.titleSel&&!it.disabled,hov=ptr.x>bx&&ptr.x<bx+bw&&ptr.y>y&&ptr.y<y+bh;
+    c.fillStyle=on||hov?'rgba(211,168,72,.9)':'rgba(8,10,18,.72)';rr(c,bx,y,bw,bh,4);c.fill();c.strokeStyle=on?'#FFF0A0':'rgba(241,213,139,.48)';c.lineWidth=on?2:1;rr(c,bx,y,bw,bh,4);c.stroke();c.fillStyle=it.disabled?'rgba(245,240,232,.3)':'#FFFDF2';c.font=(on?'bold ':'')+'16px '+F_TITLE;c.fillText((on?'▶ ':'')+it.label,W/2,y+bh/2);});c.restore();
+  if(G.titleConfirm){c.fillStyle='rgba(2,3,8,.82)';c.fillRect(0,0,W,H);sketchRR(c,250,235,460,170,8);c.textAlign='center';c.fillStyle='#94342E';c.font='bold 20px '+F_UI;c.fillText('TIMPA AUTOSAVE SIKLUS AKTIF?',W/2,278);c.fillStyle='#2B211A';c.font='15px '+F_UI;c.fillText('Progres siklus saat ini akan dimulai ulang dari 1944.',W/2,308);['YA, MULAI BARU','BATAL'].forEach((s,i)=>{const x=320+i*210,on=(G.confirmSel||0)===i;c.fillStyle=on?'#94342E':'#6A5B4B';rr(c,x,338,160,38,5);c.fill();c.fillStyle='#FFF8EA';c.fillText(s,x+80,363);});}
   // Informasi progres dan save dipertahankan sesuai permintaan.
-  const nE = END_TOTAL.filter(k => SAVE.endings && SAVE.endings[k]).length, iy = 423;
+  const nE = found, iy = 445;
   c.textBaseline = 'middle'; c.textAlign = 'left'; c.font = '400 13px ' + F_META; c.fillStyle = nE >= END_TOTAL.length ? '#F7D984' : 'rgba(247,242,226,.76)';
   c.fillText('⏳  ENDING ' + nE + '/' + END_TOTAL.length + (SAVE.endings && SAVE.endings.true ? '  ★ SEJATI' : ''), 24, iy);
-  if (SAVE.game) { c.textAlign = 'right'; c.fillStyle = '#F1D58B'; c.fillText('⟲ LANJUT SIKLUS — tekan L (' + SAVE.game.era + ')', W - 24, iy); }
+  if (SAVE.game) { c.textAlign = 'right'; c.fillStyle = '#F1D58B'; c.fillText('AUTOSAVE • '+SAVE.game.era, W - 24, iy); }
   c.textAlign = 'center'; c.fillStyle = 'rgba(247,242,226,.72)'; c.font = '400 12px ' + F_META;
   c.fillText('← → / A D gerak  •  ENTER dialog  •  tahan CTRL lewati teks  •  ESC jeda', W / 2, 487);
   c.fillStyle = 'rgba(247,242,226,.5)'; c.font = '400 10.5px ' + F_META;
   c.fillText('2D Narrative Puzzle • Psychological Time-Loop • COMPFEST Indie Game Jam • berdasarkan GDD “FIKS IDE”', W / 2, 514);
   c.textBaseline = 'alphabetic';
+}
+function drawTutorial(c,kind){let text='';
+  if(kind==='walk'&&G.era==='1944'&&S.loop===0){if(!SAVE.tutorial.move)text=IS_TOUCH?'Tahan ◀ / ▶ untuk bergerak':'Gerak dengan ← → atau A D';else if(!SAVE.tutorial.sprint)text=IS_TOUCH?'Tahan ≫ untuk berlari':'Tahan SHIFT untuk berlari';else if(G.walk&&G.walk.challengeHot&&!SAVE.tutorial.interact)text=IS_TOUCH?'Ketuk penanda untuk berinteraksi':'Tekan ↓ / S / ENTER untuk berinteraksi';}
+  else if(kind==='dialog'&&D.choices&&!SAVE.tutorial.dialog)text=IS_TOUCH?'Ketuk jawaban yang terasa tepat':'Pilih dengan ↑ ↓, lalu ENTER (atau 1 / 2)';
+  if(!text&&G.tutorialFade>0)text='✓ Dipahami';if(!text)return;
+  const a=text[0]==='✓'?G.tutorialFade:1;c.save();c.globalAlpha=clamp(a,0,1);c.textAlign='center';c.font='bold 15px '+F_UI;const tw=c.measureText(text).width;sketchRR(c,W/2-tw/2-20,92,tw+40,38,5,{shadow:false});c.fillStyle=text[0]==='✓'?'#567A61':'#94342E';c.fillText(text,W/2,117);c.restore();}
+function drawChallenge(c){const ch=G.challenge,cfg=CHALLENGE_CONF[ch.era];c.fillStyle='rgba(4,6,10,.72)';c.fillRect(0,0,W,H);sketchRR(c,135,82,690,390,9);c.textAlign='center';c.fillStyle='#94342E';c.font='bold 23px '+F_UI;c.fillText(cfg.title,W/2,122);
+  c.fillStyle='#5A4A3C';c.font='13px '+F_META;c.fillText(ch.era+' • PILIH PENDEKATAN TANPA LABEL',W/2,146);
+  if(ch.stage==='choose'){
+    [cfg.left,cfg.right].forEach((s,i)=>{const x=170+i*330,on=ch.sel===i;c.fillStyle=on?'rgba(148,52,46,.13)':'rgba(90,74,60,.06)';rr(c,x,205,290,130,7);c.fill();c.strokeStyle=on?'#94342E':'rgba(43,33,26,.4)';c.lineWidth=on?3:1.5;rr(c,x,205,290,130,7);c.stroke();c.fillStyle='#2B211A';c.font=(on?'bold ':'')+'17px '+F_UI;wrap(c,s,250).forEach((ln,k)=>c.fillText(ln,x+145,250+k*23));});
+    c.fillStyle='#6A5B4B';c.font='14px '+F_UI;c.fillText(IS_TOUCH?'Ketuk pilihan':'← → pilih  •  ENTER konfirmasi',W/2,398);return;}
+  const target=cfg.targets[Math.min(ch.band,2)],win=ch.assist?.13:.075,tx=190+target*580,rawX=190+ch.cursor*580,cx=OPTS.reduceMotion?190+Math.round(ch.cursor*10)/10*580:rawX;
+  c.fillStyle='#D8CDB9';rr(c,190,244,580,28,7);c.fill();c.fillStyle=ch.assist?'rgba(82,129,98,.45)':'rgba(194,90,90,.4)';rr(c,tx-win*580,244,win*1160,28,6);c.fill();c.strokeStyle='#2B211A';c.lineWidth=2;c.beginPath();c.moveTo(cx,232);c.lineTo(cx,284);c.stroke();c.fillStyle='#94342E';c.beginPath();c.moveTo(cx-7,231);c.lineTo(cx+7,231);c.lineTo(cx,241);c.closePath();c.fill();
+  c.fillStyle='#2B211A';c.font='bold 16px '+F_UI;c.fillText(ch.era==='1968'?'Selaraskan penanda dengan gelombang, lalu kunci':'Kunci saat penanda berada di zona aman',W/2,202);
+  for(let i=0;i<3;i++){c.fillStyle=i<ch.band?'#5F9270':'#B7AA95';c.beginPath();c.arc(W/2-34+i*34,318,9,0,TAU);c.fill();}
+  c.fillStyle='#6A5B4B';c.font='14px '+F_UI;c.fillText(ch.era==='1968'?(IS_TOUCH?'Ketuk jalur untuk menyetel • ketuk bawah untuk kunci':'← → setel  •  ENTER kunci'):(IS_TOUCH?'Ketuk bawah untuk kunci':'ENTER / SPACE untuk kunci'),W/2,365);
+  if(ch.assist){c.fillStyle='#567A61';c.font='bold 14px '+F_UI;c.fillText('BANTUAN AKTIF — tempo melambat, zona diperlebar',W/2,398);}
+  if(ch.feedbackT>0){c.fillStyle=ch.feedback.startsWith('TERKUNCI')?'#567A61':'#A83E38';c.font='bold 16px '+F_UI;c.fillText(ch.feedback,W/2,428);}
+  if(ch.stage==='success'){c.fillStyle='rgba(243,234,218,.95)';c.fillRect(150,180,660,210);c.fillStyle='#567A61';c.font='bold 28px '+F_UI;c.fillText('JALUR STABIL',W/2,260);c.fillStyle='#2B211A';c.font='16px '+F_UI;c.fillText('Pilihanmu meninggalkan jejak pada siklus ini.',W/2,300);}
 }
 function render() {
   ctx.save();
@@ -337,7 +356,7 @@ function render() {
       if (!bgFgImg(ctx, 'bg' + FE + '_fg', camDrift)) fgSilhouette(ctx, FE, camDrift);
     }
     grade(ctx, G.era === '1968' ? (S.routeB1 === 'A' ? '1968A' : '1968B') : G.era);
-    if (G.state === 'walk') drawHotspots(ctx); // indikator interaksi harus berada di atas foreground dan color grade
+    if (G.state === 'walk') {drawHotspots(ctx);drawTutorial(ctx,'walk');} // indikator interaksi harus berada di atas foreground dan color grade
     if (G.lore) drawNarr(ctx, G.lore.lines[G.lore.i], G.lore.prog, G.lore.popT); // strip lore titik selidik
     if (G.diary) drawDiaryPopup(ctx, G.diary); // catatan wajib Babak 2 di atas seluruh adegan
     if (G.skyFlash > 0 && !OPTS.reduceMotion) { const a = G.skyFlash; const g = ctx.createLinearGradient(0, 0, 0, H * .8); g.addColorStop(0, `rgba(255,190,120,${.34 * a})`); g.addColorStop(.55, `rgba(255,150,80,${.16 * a})`); g.addColorStop(1, 'rgba(255,150,80,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * .8); ctx.fillStyle = `rgba(255,214,150,${.08 * a})`; ctx.fillRect(0, 0, W, H); }
@@ -361,12 +380,13 @@ function render() {
         else {
           const isE = D.line.who === 'elena';
           const x = isE ? (G.walk.arX - 190 - G.cam) : (G.walk.arX - G.cam);
-          const headY = GROUND - 124;
+          const headY = GROUND - 140;
           drawBubble(ctx, x, headY, D.line.text, D.line.who, D.prog, false, D.popT);
         }
         if (!D.choices && D.prog >= 1 && G.state === 'dialog') hintAdvance(ctx);
       }
       if (D.choices) drawChoices(ctx, D.choices, D.sel, ptr.x, ptr.y, D.choiceT);
+      drawTutorial(ctx,'dialog');
       drawFFBtn(ctx);
     }
     // HUD loop
@@ -389,6 +409,10 @@ function render() {
       ctx.fillStyle = rOn ? 'rgba(255,217,168,.5)' : 'rgba(245,240,232,.25)'; ctx.beginPath(); ctx.arc(W - 36, H - 162, 28, 0, TAU); ctx.fill();
       ctx.fillStyle = 'rgba(30,23,16,.85)'; ctx.font = 'bold 19px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('≫', W - 36, H - 155);
     }
+  }
+  else if(G.state==='challenge'){
+    const camDrift=G.cam+(OPTS.reduceMotion?0:Math.sin(T*.4)*.5);drawScene(ctx,camDrift);drawChars(ctx,'walk',camDrift);
+    const FE=G.era==='1968'?(S.routeB1==='A'?'1968A':'1968B'):G.era;if(!bgFgImg(ctx,'bg'+FE+'_fg',camDrift))fgSilhouette(ctx,FE,camDrift);grade(ctx,FE);drawChallenge(ctx);
   }
   else if (G.state === 'vortex') {
     const v = G.vortex, pr = easeIO(clamp(v.t, 0, 1));
@@ -511,7 +535,7 @@ function drawFFBtn(c) { // tombol lewati (hanya jika node ini pernah dilihat)
   c.globalAlpha = 1;
 }
 function drawPauseBtn(c) {
-  if (G.paused || !(G.state === 'walk' || G.state === 'dialog' || G.state === 'prologue' || G.state === 'warintro' || G.state === 'bunkerintro' || G.state === 'labintro')) return;
+  if (G.paused || !(G.state === 'walk' || G.state === 'challenge' || G.state === 'dialog' || G.state === 'prologue' || G.state === 'warintro' || G.state === 'bunkerintro' || G.state === 'labintro')) return;
   const x = W - 72, y = 26; c.save(); c.globalAlpha = .65; c.fillStyle = '#0a0806'; c.beginPath(); c.arc(x, y, 15, 0, TAU); c.fill();
   c.strokeStyle = '#F5F0E8'; c.lineWidth = 1.6; c.beginPath(); c.arc(x, y, 15, 0, TAU); c.stroke();
   c.fillStyle = '#F5F0E8'; c.font = '13px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';

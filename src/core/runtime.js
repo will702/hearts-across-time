@@ -146,23 +146,27 @@ function keyOnce(k){if(pressed[k]){pressed[k]=false;return true;}return false;}
 const advHit=()=>keyOnce(' ')||keyOnce('Enter')||keyOnce('Spacebar');
 
 /* ---------- State global ---------- */
-const S={empathy:0,logic:0,routeB1:'',routeB2:'',loop:0};
+const freshChallenges=()=>({'1944':null,'1968':null,'1999':null});
+const S={empathy:0,logic:0,routeB1:'',routeB2:'',loop:0,challenges:freshChallenges()};
 const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:true,vx:0,stride:0,turnT:0,acc:0},
   walk:null,dialog:null,diary:null,cam:0,camTarget:0,caption:'',captionT:0,
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
   era:'2088',shakeT:0,shakeA:0,endCard:null,fadeIn:0,prologueDone:false,
-  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null};
+  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,titleSel:1,titleConfirm:false,challenge:null,tutorialFade:0,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null};
 let T=0; // waktu global detik
 
 /* ---------- Opsi & penyimpanan (localStorage) ---------- */
 const OPTS=Object.assign({vol:.9,textSpd:1},(()=>{try{return JSON.parse(localStorage.getItem('hat_opts')||'{}')}catch(e){return{}}})());
 const vGain=v=>Math.pow(v===undefined?1:v,2.2); // kurva persepsi (audio-design): slider linier → gain; 0 tetap senyap
 function saveOpts(){try{localStorage.setItem('hat_opts',JSON.stringify(OPTS));}catch(e){}}
-const SAVE={seen:{},chosen:{},game:null,endings:{},inspected:{}}; // node terlihat / pilihan pernah dipilih / autosave siklus / ending terungkap / titik lore pernah dibuka
+const SAVE={seen:{},chosen:{},game:null,endings:{},inspected:{},introDone:false,tutorial:{}}; // progres permanen + autosave siklus
 const END_TOTAL=['A1','B1','B2lock','rebut','paradox','true']; // 5 rute gagal + true ending
 function markEnd(k){if(!k)return;if(!SAVE.endings)SAVE.endings={};if(!SAVE.endings[k]){SAVE.endings[k]=1;persistSave();}}
 try{Object.assign(SAVE,JSON.parse(localStorage.getItem('hat_save')||'{}'));}catch(e){}
+SAVE.seen=SAVE.seen||{};SAVE.chosen=SAVE.chosen||{};SAVE.endings=SAVE.endings||{};SAVE.inspected=SAVE.inspected||{};SAVE.tutorial=SAVE.tutorial||{};
 function persistSave(){try{localStorage.setItem('hat_save',JSON.stringify(SAVE));}catch(e){}}
+function tutorialDone(id){if(SAVE.tutorial[id])return;SAVE.tutorial[id]=1;G.tutorialFade=1;persistSave();}
+function normalizeRun(){S.challenges=Object.assign(freshChallenges(),S.challenges||{});}
 function applyVol(){if(AU.master&&!AU.muted)AU.master.gain.value=vGain(OPTS.vol);
   if(AU.sfxBus)AU.sfxBus.gain.value=vGain(OPTS.volSfx); // slider EFEK
   if(AU.musBus)duckMusic(D&&D.duckT?.55:.85,.06); // slider MUSIK via duckMusic agar transisi halus

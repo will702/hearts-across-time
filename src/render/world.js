@@ -100,11 +100,11 @@ function fgSilhouette(c,era,camX){
 }
 /* --- properti animasi per era (strip 3 frame AI; file absen => tak digambar) --- */
 const PROPS={
-  '1944':[{id:'prop_flag1944',x:430,y:444,fps:5},{id:'prop_lantern1944',x:905,y:436,fps:3.2},{id:'prop_flare1944',x:1235,y:336,fps:4}],
+  '1944':[{id:'prop_flag1944',x:390,y:444,fps:5},{id:'prop_lantern1944',x:650,y:436,fps:3.2},{id:'prop_flare1944',x:1215,y:422,fps:4}],
   '2088':[{id:'prop_barrel2088',x:380,y:444,fps:4.5},{id:'prop_poster2088',x:1240,y:392,fps:3}],
-  '1968A':[{id:'prop_bulb1968A',x:990,y:200,fps:3},{id:'prop_radio1968A',x:250,y:444,fps:2.5}], // bohlam: kordel harus menembus langit2 gelap (y-h=92), bukan menggantung 45px di bawahnya
-  '1968B':[{id:'prop_beacon1968B',x:1310,y:268,fps:2.2},{id:'prop_steam1968B',x:540,y:330,fps:4}],
-  '1999':[{id:'prop_consoleWave1999',x:1005,y:444,fps:3.5},{id:'prop_frost1999',x:620,y:444,fps:2.5}]};
+  '1968A':[{id:'prop_bulb1968A',x:1040,y:200,fps:3},{id:'prop_radio1968A',x:500,y:444,fps:2.5}], // radio challenge terpisah dari buku/lore
+  '1968B':[{id:'prop_beacon1968B',x:500,y:444,fps:2.2},{id:'prop_steam1968B',x:1080,y:330,fps:4}],
+  '1999':[{id:'prop_consoleWave1999',x:690,y:444,fps:3.5},{id:'prop_frost1999',x:470,y:444,fps:2.5}]};
 function drawPropFrame(c,id,sx,y,frame){ // satu frame strip di (sx,y) jangkar tengah-bawah
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!cfg||!im||!im.width)return false;
   const s=cfg.h/cfg.fh,dw=cfg.fw*s,dh=cfg.fh*s;
@@ -130,7 +130,8 @@ function drawHotspots(c){ // penanda titik selidik: titik cahaya hangat berdenyu
     c.globalAlpha=1;c.fillStyle='#F5E6C0';c.font='bold 15px '+F_UI;c.textAlign='center';
     c.fillText('✦',sx,GROUND-20-mot*Math.sin(T*2.6+h.x)*4);c.restore();}
   const hot=G.walk.hot;if(hot){const sx=hot.x-cam;c.save();c.globalAlpha=.9;c.fillStyle='#F5F0E8';c.font='12px '+F_UI;c.textAlign='center';
-    c.fillText('▼ periksa',sx,GROUND-44-mot*Math.sin(T*2.6)*3);c.restore();}}
+    c.fillText('▼ periksa',sx,GROUND-44-mot*Math.sin(T*2.6)*3);c.restore();}
+  if(G.walk.challengeHot){const cfg=CHALLENGE_CONF[G.era],sx=cfg.x-cam;c.save();c.fillStyle='#F5E6C0';c.font='bold 14px '+F_UI;c.textAlign='center';c.fillText('▼ AKTIFKAN',sx,GROUND-78-mot*Math.sin(T*2.6)*3);c.strokeStyle='#F1D58B';c.lineWidth=2;c.beginPath();c.arc(sx,GROUND-42,18,0,TAU);c.stroke();c.restore();}}
 function bgFgImg(c,id,camX){ // lapisan foreground lukis (parallax 1.18); false => pemanggil pakai fgSilhouette
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!cfg||!im||!im.width)return false;
   const dh=cfg.h||150,dw=Math.round(im.width*dh/im.height),off=-((camX*1.18)%dw);

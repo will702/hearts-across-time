@@ -34,6 +34,20 @@ const PHASER_CONFIG={
 };
 const HAT_GAME=new Phaser.Game(PHASER_CONFIG);
 
+/* Intro MP4 memakai elemen native agar audio/video tetap sinkron. Tombol mulai diperlukan
+   karena browser memblokir autoplay bersuara; onboarding Canvas tetap menjadi fallback. */
+const introShell=document.getElementById('cinematic'),introVideo=document.getElementById('intro-video'),introStart=document.getElementById('intro-start'),introSkip=document.getElementById('intro-skip');
+let introResumeAudio=false;
+function finishIntroVideo(done=true){introVideo.pause();introShell.hidden=true;introStart.hidden=false;pressed[' ']=pressed.Enter=ptr.tap=false;
+  if(introResumeAudio&&AU.ctx)AU.ctx.resume();introResumeAudio=false;if(done){SAVE.introDone=true;persistSave();G.titleT=8.4;G.titleReady=true;}if(G.state==='title')setAmbience('title');}
+function playIntroVideo(){setAmbience(null);introResumeAudio=introResumeAudio||!!AU.ctx&&AU.ctx.state==='running';if(AU.ctx&&AU.ctx.state==='running')AU.ctx.suspend();introShell.hidden=false;introStart.hidden=false;introVideo.currentTime=0;introVideo.muted=AU.muted;introVideo.volume=vGain(OPTS.vol);
+  introVideo.play().then(()=>{introStart.hidden=true;introSkip.focus();}).catch(()=>{introStart.focus();});}
+introStart.addEventListener('click',()=>playIntroVideo());
+introSkip.addEventListener('click',()=>finishIntroVideo());
+introVideo.addEventListener('ended',()=>finishIntroVideo());
+introVideo.addEventListener('error',()=>finishIntroVideo(false));
+playIntroVideo();
+
 // Hemat audio saat tab tidak terlihat; Phaser otomatis menghentikan tick rendernya.
 document.addEventListener('visibilitychange',()=>{if(!AU.ctx)return;
   if(document.hidden)AU.ctx.suspend();else if(!G.paused)AU.ctx.resume();});

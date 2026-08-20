@@ -97,6 +97,12 @@ Konvensi seni: gaya watercolor-storybook (garis pensil grafit + wash muted), lat
 
 ## 6. QA / Testing
 
+**Kebijakan kerja agen:** agen hanya mengimplementasikan atau memperbaiki fitur. Seluruh QA,
+Playwright, screenshot, inspeksi visual, playtest, pemeriksaan console/404, dan validasi akhir
+dijalankan oleh developer manusia. Agen **jangan menjalankan QA atau membuat/mengubah skrip
+QA dan hasil screenshot**, kecuali developer memintanya secara eksplisit. Saat menyerahkan
+perubahan, nyatakan bahwa hasil belum diverifikasi oleh agen dan siap diperiksa developer.
+
 Tidak ada unit test framework — QA = **Playwright headless + screenshot + zero-error console**:
 
 ```
@@ -110,9 +116,8 @@ Catatan header skrip menyebut `NODE_PATH=/opt/homebrew/lib/node_modules` (Playwr
 `node_modules/` lokal kini juga ada, jadi dua-duanya bisa. `qa/route.cjs` menerima prefix
 opsional arg ketiga untuk nama file screenshot. Skrip meng-klik rute penuh (prologue →
 dialog → pilihan → dua era jalan → ending) dan **gagal bila ada `pageerror`/console error**
-atau state tak mencapai target. Hasil ditulis sebagai PNG ke `qa/` (gitignored). Alur
-kerja menambah fitur: tambahkan tembakan/asersi di skrip QA terkait, jalankan rute golden +
-failA, periksa screenshot akhir secara visual.
+atau state tak mencapai target. Hasil ditulis sebagai PNG ke `qa/` (gitignored). Developer
+manusia menentukan cakupan, menjalankan rute golden + failA, dan memeriksa screenshot akhir.
 
 ## 7. Keamanan & Git
 
@@ -138,8 +143,8 @@ failA, periksa screenshot akhir secara visual.
 - Setiap fitur visual baru wajib terus bekerja dengan **fallback prosedural** bila PNG absen
   (cek `AS.imgs[id]` / `im.width` sebelum gambar), dan hormati `reduceMotion`.
 - Perubahan cerita/dialog: edit `NODES` di `index.html`; `FIKS IDE.md` adalah GDD referensi —
-  sinkronkan bila struktur cabang berubah, dan uji kedua rute (`golden` dan `failA`).
-- Perubahan pipeline aset: uji dengan `build_sheets.py` subcommand langsung; jangan
+  sinkronkan bila struktur cabang berubah; developer manusia menguji kedua rute (`golden` dan `failA`).
+- Perubahan pipeline aset: serahkan kepada developer untuk diuji dengan `build_sheets.py`; jangan
   regenerate sedangkan game sedang diverifikasi dari PNG yang ada.
-- Sebelum selesai menambah fitur, pastikan: rute golden & failA lolos tanpa error, screenshot
-  akhir benar, dan README/`plans/` diperbarui bila konvensinya berubah.
+- Sebelum selesai menambah fitur, agen cukup menyelesaikan implementasi dan memperbarui
+  README/`plans/` bila konvensinya berubah; QA dan persetujuan akhir tetap milik developer.
