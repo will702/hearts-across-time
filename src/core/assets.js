@@ -66,6 +66,7 @@ const ASSET_MANIFEST = {
   title_cover_figma: { src: 'assets/title_cover_figJma.png' },
   title_start_plate: { src: 'assets/title_start_plate.png' },
   title_wordmark: { src: 'assets/llJUDULL.png' },
+  time_vortex: { src: 'assets/time_vortex.png' }, // absen => pusaran ruang-waktu prosedural
   elena_dialog1: { src: 'assets/elenadialog1.png' },
   elena_dialog2_sedih: { src: 'assets/elenadialog2sedih.png' },
   // bidang ilustrasi Figma untuk intro judul parallax (PNG transparan; absen => cover lama)

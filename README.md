@@ -188,7 +188,7 @@ Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan,
 - **1968 lab**: strip neon langit-langit + kerucut cahaya berkedip; mainframe berkedip tetap
 - **1999**: *god rays* berayun dari langit-langit, lantai reflektif dingin, gelembung & es kapsul
 - **2088**: matahari Crimson dengan kabut radial, api jauh berkedip antar bangunan
-- **Vortex**: angka tahun **RGB-split** makin lebar, partikel streaks
+- **Vortex**: latar ruang-waktu watercolor `time_vortex.png`, angka tahun **RGB-split** makin lebar, dan partikel streaks; PNG absen → pusaran prosedural
 - **Glitch**: sobekan strip + *ghosting* duplikat layar (screen blend)
 - **UI**: panel pilihan *pop-in* spring (ease-out-back), prolog 2088 memakai `bgnarator.png` dengan zoom-parallax sinematik, cross-fade ekspresi `elenadialog1.png` / `elenadialog2sedih.png`, serta vignette merah berdenyut sinkron detak jantung,
   kamera "bernafas" halus saat berjalan

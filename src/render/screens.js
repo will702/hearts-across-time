@@ -415,6 +415,7 @@ function render() {
   else if (G.state === 'vortex') {
     const v = G.vortex, pr = easeIO(clamp(v.t, 0, 1));
     ctx.fillStyle = '#050508'; ctx.fillRect(0, 0, W, H);
+    const vortexBg = AS.imgs.time_vortex; if (vortexBg && vortexBg.width) ctx.drawImage(vortexBg, 0, 0, W, H);
     ctx.save(); ctx.translate(W / 2, H / 2);
     const rot = (v.rewind ? -1 : 1) * pr * TAU * 2.2;
     ctx.rotate(rot * .25);
