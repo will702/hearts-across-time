@@ -60,21 +60,21 @@ title: Scene_Babak1_1944
 
 Arthur_Muda: "S-siapa kau?! Tolong jangan tembak! Aku bukan tentara tempur... aku cuma asisten lab medis!"
 
-// DIALOG SIKAP 1: Menentukan Skor Empati vs Logika
+// DIALOG SIKAP 1: arah skor tersembunyi; UI hanya memperlihatkan isi ucapan
 Arthur_Muda: "Tanganku gemetar... Di luar sana bom berjatuhan, dan komandan menyuruhku membawa tabung racun ini ke garis depan."
--> [Penuh Empati] (Genggam tangannya) "Tanganmu ini yang akan menyelamatkan jutaan orang nanti. Tenang, aku bersamamu."
+-> (Genggam tangannya) "Tanganmu ini yang akan menyelamatkan jutaan orang nanti. Tenang, aku bersamamu."
     <<set $empathy =$empathy + 1>>
     Arthur_Muda: "Kau... begitu hangat. Terima kasih, nona..."
--> [Dingin & Logis] "Kepanikan tidak akan menghentikan bom. Berdiri dan amankan tabung itu sekarang."
+-> "Kepanikan tidak akan menghentikan bom. Berdiri dan amankan tabung itu sekarang."
     <<set $logic =$logic + 1>>
     Arthur_Muda: "B-baik... maafkan kelemahanku."
 
 // DIALOG SIKAP 2
 Arthur_Muda: "Nona... jika kita selamat dari perang mengerikan ini, apakah ada masa depan yang bahagia untuk orang sepertiku?"
--> [Penuh Empati] "Ada. Di masa depanku, kau adalah orang paling berharga yang sangat kucintai."
+-> "Ada. Di masa depanku, kau adalah orang paling berharga yang sangat kucintai."
     <<set $empathy =$empathy + 1>>
     Arthur_Muda: "Dicintai...? Aku akan mengingat kata-katamu, Elena."
--> [Dingin & Logis] "Masa depan itu hancur total kalau sampel ini lepas. Berhenti berkhayal."
+-> "Masa depan itu hancur total kalau sampel ini lepas. Berhenti berkhayal."
     <<set $logic =$logic + 1>>
     Arthur_Muda: "Benar juga... dunia ini memang kejam."
 
@@ -93,6 +93,9 @@ Arthur_Muda: "Komandan menunggu di seberang barikade. Apa yang harus kulakukan d
 title: Scene_Babak2_1968
 ---
 // Visual: bg_coldwar_lab. Elena melompat ke 24 tahun berikutnya dan berjalan ke kanan.
+// GERBANG WAJIB: sebelum bertemu Arthur, Elena berhenti di buku harian. Pemain harus memilih PERIKSA
+// dan membaca semua halaman sebelum bisa berjalan lagi. Isi berubah menurut route_b1, skor sikap Babak 1,
+// dan loop_count. Pada siklus ketiga dan seterusnya, header berbunyi "Terasa sedikit nostalgia".
 
 <<if $empathy >$logic>>
     // Tipe Arthur: Lembut & Hangat
@@ -108,7 +111,15 @@ title: Scene_Babak2_1968
 <<if $route_b1 == "A">>
     // Status: Arthur adalah buronan
     Arthur_Dewasa: "Hidup sebagai buronan sangat menyiksa. Polisi rahasia mengepung area ini! Penelitianku baru setengah jalan."
-    -> [PILIHAN 2A1: Desak Kabur] "Tinggalkan lab ini sekarang, nyawamu lebih berharga daripada formula ini!"
+    Arthur_Dewasa: "Elena... setelah semua yang kulalui, apakah kau masih melihatku sebagai manusia—atau hanya sebagai jalan menuju penawar?"
+    -> "Aku melihatmu, Arthur. Bukan formulanya—dirimu. Kita hadapi ketakutan ini bersama."
+        <<set $empathy = $empathy + 1>>
+        Arthur_Dewasa: "Untuk pertama kalinya sejak perang... aku merasa tidak sendirian. Terima kasih, Elena."
+    -> "Perasaan kita tidak akan menghentikan pengepungan. Kendalikan dirimu dan selesaikan formulanya."
+        <<set $logic = $logic + 1>>
+        Arthur_Dewasa: "Jadi bahkan sekarang, yang kau butuhkan tetap hanya hasil penelitianku... Baiklah."
+    Arthur_Dewasa: "Polisi rahasia semakin dekat. Kita harus menentukan langkah sebelum pintu ini dijebol."
+    -> [PILIHAN 2A1: Desak Kabur] "Tinggalkan bunker ini sekarang, nyawamu lebih berharga daripada formula ini!"
         <<set $route_b2 = "A1">>
         Arthur_Dewasa: "Akan kutinggalkan semuanya... demi bertahan hidup bersamamu!"
         <<jump Scene_Babak3_1999>>
@@ -120,6 +131,14 @@ title: Scene_Babak2_1968
     // Status: Arthur adalah kepala ilmuwan resmi
     Arthur_Dewasa: "Fasilitas pemerintah ini memberikanku sumber daya melimpah. Formula antibodinya hampir stabil sempurna."
     Arthur_Dewasa: "Tapi dewan militer mulai mencurigai tujuanku. Mereka ingin merebutnya sebagai amunisi baru."
+    Arthur_Dewasa: "Jika mereka datang malam ini... apakah kau akan tetap di sisiku, atau hanya memastikan formula itu selamat?"
+    -> "Aku tetap di sisimu. Penawar ini berarti karena kaulah yang memperjuangkannya, bukan karena hasil akhirnya saja."
+        <<set $empathy = $empathy + 1>>
+        Arthur_Dewasa: "Kata-katamu mengingatkanku mengapa aku bertahan selama ini. Kita akan melindunginya bersama."
+    -> "Yang utama adalah formula. Singkirkan keraguanmu dan pastikan hasil penelitian ini tidak jatuh ke tangan mereka."
+        <<set $logic = $logic + 1>>
+        Arthur_Dewasa: "Kupahami. Tidak ada ruang untuk diriku di antara kau dan masa depan yang ingin kau selamatkan."
+    Arthur_Dewasa: "Dewan militer bisa tiba kapan saja. Sekarang kita harus menentukan nasib formula ini."
     -> [PILIHAN 2B1: Publikasikan ke Dunia] "Bocorkan datanya ke pers dan publik sekarang agar militer tidak bisa memonopolinya!"
         <<set $route_b2 = "B1">>
         Arthur_Dewasa: "Akan kusiarkan transmisi ini ke seluruh jaringan stasiun radio dunia!"
@@ -134,6 +153,15 @@ title: Scene_Babak2_1968
 title: Scene_Babak3_1999
 ---
 // Visual: bg_time_chamber. Elena bertemu Arthur Tua di samping kapsul waktu.
+
+Arthur_Tua: "Elena... sebelum kita menentukan apa pun, jawab aku. Kau menemukan buku harianku di tahun 1968, bukan?"
+Arthur_Tua: "Setelah membaca semua halaman itu—apa yang sebenarnya kau lihat di dalam diriku?"
+-> "Aku melihat seseorang yang terus bertahan meski ketakutan dan kesepian. Aku melihatmu, Arthur—bukan sekadar penawarnya."
+    <<set $empathy = $empathy + 1>>
+    Arthur_Tua: "Jadi... setidaknya sekali, seluruh hidupku benar-benar dibaca sebagai kehidupan. Terima kasih, Elena."
+-> "Aku melihat catatan penelitian yang membuktikan formulanya bisa diselamatkan. Itulah yang paling penting sekarang."
+    <<set $logic = $logic + 1>>
+    Arthur_Tua: "Begitu rupanya. Bahkan isi hatiku masih kau baca seperti laporan laboratorium."
 
 <<if $route_b2 == "A1">>
     // KASUS 1: FORMULA GAGAL

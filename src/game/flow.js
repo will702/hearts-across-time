@@ -28,9 +28,7 @@ function step(){
 function dialogAdvance(){
   if(D.choices){const o=D.choices[D.sel];SFX.confirm();if(o.fx)o.fx();
     SAVE.chosen[o.label]=1;persistSave(); // penanda "pernah dipilih" lintas loop
-    const tg=o.tag||'';
-    G.pulse=tg.includes('EMPATI')?{txt:'♥ +EMPATI',col:'#A85550',t:0}:
-            tg.includes('LOGIS')?{txt:'⚙ +LOGIKA',col:'#556B7F',t:0}:null;
+    G.pulse=null; // nilai kepribadian tetap tersembunyi agar pemain memilih dari isi dialog
     D.choices=null;startNode(o.goto);return;}
   if(D.line){if(D.prog<1){D.prog=1;return;}D.line=null;step();return;}
 }
@@ -97,7 +95,7 @@ function startLabIntro(){
 }
 function startGlitch(){G.state='glitch';
   const CS={A1:'BERKAS KASUS A1 — misi ditinggalkan: penelitian tak pernah selesai',A2:'BERKAS KASUS A2 — obsesi & paradoks mengunci masa depan',B1:'BERKAS KASUS B1 — formula bocor, disalahgunakan jadi senjata',B2:'BERKAS KASUS B2 — kapsul terkunci oleh kebencian'};
-  G.glitch={t:0,hint:loopHint(),kasus:CS[S.routeB2]||'BERKAS KASUS — timeline runtuh',emp:S.empathy,log:S.logic};
+  G.glitch={t:0,hint:loopHint(),kasus:CS[S.routeB2]||'BERKAS KASUS — timeline runtuh'};
   markEnd(S.routeB2==='A1'?'A1':S.routeB2==='B1'?'B1':S.routeB2==='B2'?'B2lock':null); // rute A2 tercatat lewat node paradox/r3f
   S.loop++;SFX.glitch();setAmbience(null);stopAmb();
   S.empathy=0;S.logic=0;S.routeB1='';S.routeB2=''; // siklus baru = kepribadian Arthur ditentukan ulang oleh obrolan Babak 1 (sebelumnya bocor antar loop!)
@@ -113,15 +111,15 @@ function loopHint(){
 }
 function startWalk(era){
   G.era=era;G.state='walk';const cfg=ERA_CONF[era];
-  G.walk={era,len:cfg.len,arX:cfg.arX,ar:era==='1968'?(S.routeB1==='A'?'buron':'dewasa'):cfg.ar,node:cfg.node,hot:null,
+  G.walk={era,len:cfg.len,arX:cfg.arX,ar:era==='1968'?(S.routeB1==='A'?'buron':'dewasa'):cfg.ar,node:cfg.node,hot:null,diaryHot:false,diaryRead:era!=='1968',
     cap:era==='1968'?(S.routeB1==='A'?'BABAK 2 — BUNKER BAWAH TANAH, 1968':'BABAK 2 — LABORATORIUM MILITER, 1968'):cfg.cap};
-  G.player.x=90;G.player.facingRight=true;G.player.vx=0;G.player.stride=0;G.player.turnT=0;G.player.acc=0;G.caption=G.walk.cap;G.captionT=3.2;parts.length=0;
+  G.player.x=90;G.player.facingRight=true;G.player.vx=0;G.player.stride=0;G.player.turnT=0;G.player.acc=0;G.diary=null;G.caption=G.walk.cap;G.captionT=3.2;parts.length=0;
   setAmbience(cfg.amb);
   SAVE.game={era,S:{empathy:S.empathy,logic:S.logic,routeB1:S.routeB1,routeB2:S.routeB2,loop:S.loop}};persistSave(); // autosave
 }
 function startEndCard(){G.state='endcard';G.endCard={t:0};SFX.chime();setAmbience('1999');setSong('end');duckMusic(1,1.2);SAVE.game=null;persistSave();}
 function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;
-  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;parts.length=0;}
+  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.diary=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;parts.length=0;}
 
 /* ---------- update per-state ---------- */
 const SPD=[.5,1,2],SPD_N=['LAMBAT','NORMAL','CEPAT'];
@@ -204,6 +202,13 @@ function update(dt){
       break;}
     case 'walk':{
       setAmbOnce(ERA_CONF[G.era].amb);
+      if(G.diary){ // buku harian wajib: baca seluruh halaman sebelum gerak dibuka kembali
+        G.player.vx-=clamp(G.player.vx,-1400*dt,1400*dt);G.player.moving=false;
+        G.diary.prog=Math.min(1,G.diary.prog+dt*2.1);G.diary.popT=Math.min(1,G.diary.popT+dt*5);
+        if(advHit()||ptr.tap||keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')){ptr.tap=false;
+          if(G.diary.prog<1)G.diary.prog=1;
+          else{G.diary.i++;SFX.select();if(G.diary.i>=G.diary.pages.length){G.walk.diaryRead=true;G.walk.diaryHot=false;G.diary=null;SFX.confirm();}else{G.diary.prog=0;G.diary.popT=0;}}}
+        break;}
       if(G.lore){ // sedang membaca titik selidik: langkah berhenti halus; ENTER/↓/ketuk memajukan baris
         G.player.vx-=clamp(G.player.vx,-1400*dt,1400*dt);G.player.moving=false;
         G.lore.prog=Math.min(1,G.lore.prog+dt*2.4);G.lore.popT=Math.min(1,G.lore.popT+dt*5);
@@ -227,6 +232,7 @@ function update(dt){
         if(Math.abs(prevVx)<10)parts.push({x:p.x-G.cam,y:GROUND-3,vx:-dir*24,vy:-14,grav:80,l:0,ml:.4,r:2.4,col:'rgba(170,150,120,.5)',shrink:1}); // debu awal langkah
       }else p.vx-=clamp(p.vx,-fric*dt,fric*dt);
       p.x=clamp(p.x+p.vx*dt,64,G.walk.len-40);
+      if(G.era==='1968'&&!G.walk.diaryRead&&p.x>DIARY_X-34){p.x=DIARY_X-34;if(p.vx>0)p.vx=0;} // gerbang wajib sebelum Arthur
       if((p.x===64&&p.vx<0)||(p.x===G.walk.len-40&&p.vx>0))p.vx=0; // mentok dinding: nolkan dorongan
       p.acc=lerp(p.acc,(p.vx-prevVx)/Math.max(dt,1e-4),1-Math.pow(.01,dt)); // pitch badan saat akselerasi
       if(dir===0&&Math.abs(prevVx)>140&&Math.abs(p.vx)<10)for(let k=0;k<3;k++)parts.push({x:p.x-G.cam+(Math.random()-.5)*10,y:GROUND-3,vx:(p.facingRight?1:-1)*(14+Math.random()*22)+(Math.random()-.5)*10,vy:-8-Math.random()*16,grav:80,l:0,ml:.45+Math.random()*.2,r:2+Math.random()*2,col:'rgba(170,150,120,.5)',shrink:1}); // debu berhenti keras
@@ -240,6 +246,10 @@ function update(dt){
       G.camTarget=clamp(p.x-300+clamp(p.vx*.22,-75,75),0,G.walk.len-W);G.cam=lerp(G.cam,G.camTarget,1-Math.pow(.001,dt)); // look-ahead 22% kecepatan (camera-systems) di atas exp-smoothing yg sudah ada
       spawnParts(G.era); // partikel mengikuti era aktif (1999: motes biru, bukan abu 1944)
       if(G.era==='1944'){AU.boomTimer-=dt;if(AU.boomTimer<=0){AU.boomTimer=6+Math.random()*7;G.skyFlash=1;noise(1.4,70,.14);}}
+      // buku harian Arthur: wajib diperiksa di setiap siklus, tidak memakai SAVE.inspected permanen
+      G.walk.diaryHot=G.era==='1968'&&!G.walk.diaryRead&&Math.abs(p.x-DIARY_X)<76;
+      if(G.walk.diaryHot&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||(ptr.tap&&Math.hypot(ptr.x-(DIARY_X-G.cam),ptr.y-(GROUND-30))<55))){ptr.tap=false;
+        SFX.select();G.diary=arthurDiary();G.diary.i=0;G.diary.prog=0;G.diary.popT=0;break;}
       // titik selidik: deteksi kedekatan + picu (↓ / S / ketuk penanda)
       const FEh=G.era==='1968'?'1968'+S.routeB1:G.era;
       const hs=(HOTSPOTS[FEh]||[]).find(h=>!SAVE.inspected[h.id]&&Math.abs(p.x-h.x)<52);

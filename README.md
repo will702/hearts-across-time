@@ -220,9 +220,13 @@ rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, C
 - **Titik selidik (lore hotspots)**: 5 penanda `✦` berdenyut di adegan jalan (2×1944, 2×1968, 1×1999) —
   `↓`/`S` atau ketuk → strip narator lore 2 baris (pakai kit kertas yang sama); tersimpan permanen di save
 - **Gema loop lintas era**: déjà-vu bertingkat kini juga di pembuka 1968 (3 tingkat) & 1999 (2 tingkat);
-  layar glitch menampilkan **berkas kasus** + sebaran ♥/⚙ siklus yg baru runtuh
+  layar glitch menampilkan **berkas kasus** + petunjuk naratif tanpa membocorkan statistik kepribadian
 - **Fix logika kepribadian**: empati/logika & rute **direset tiap loop** — sebelumnya bocor antar-loop
   (true ending bisa digrinding); kini tiap siklus menentukan Arthur-nya sendiri
+- **Pilihan kepribadian tersembunyi**: opsi dialog tidak menampilkan label atau angka empati/logika;
+  Babak 2 menambah satu pilihan sikap khusus di bunker dan laboratorium sebelum keputusan rute akhir
+- **Buku harian wajib Babak 2**: Elena tertahan sebelum Arthur sampai pemain memeriksa seluruh halaman;
+  isi bercabang menurut rute, sikap Babak 1, dan loop, lalu menjadi pertanyaan sikap baru di Babak 3
 - **Pacing level**: segmen jalan dibedakan per era (1944: 1800px pendekatan tegang · 1968: 1500 · 1999: 1300 rapat)
 - **Kamera look-ahead** 22% kecepatan (di atas exp-smoothing) + bob halus indikator `▼ ENTER`
 - **Mixer persepsi**: slider volume kini lewat kurva `v^2.2` (dB-feel) untuk MASTER/MUSIK/EFEK+ambience
