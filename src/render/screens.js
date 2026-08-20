@@ -286,9 +286,7 @@ function drawCover(c) {
   c.fillText('⏳  ENDING ' + nE + '/' + END_TOTAL.length + (SAVE.endings && SAVE.endings.true ? '  ★ SEJATI' : ''), 24, iy);
   if (SAVE.game) { c.textAlign = 'right'; c.fillStyle = '#F1D58B'; c.fillText('AUTOSAVE • '+SAVE.game.era, W - 24, iy); }
   c.textAlign = 'center'; c.fillStyle = 'rgba(247,242,226,.72)'; c.font = '400 12px ' + F_META;
-  c.fillText('← → / A D gerak  •  ENTER dialog  •  tahan CTRL lewati teks  •  ESC jeda', W / 2, 487);
-  c.fillStyle = 'rgba(247,242,226,.5)'; c.font = '400 10.5px ' + F_META;
-  c.fillText('2D Narrative Puzzle • Psychological Time-Loop • COMPFEST Indie Game Jam • berdasarkan GDD “FIKS IDE”', W / 2, 514);
+  c.fillText(IS_TOUCH ? 'KETUK MENU UNTUK MEMILIH' : '↑ ↓ pilih  •  ENTER konfirmasi', W / 2, 500);
   c.textBaseline = 'alphabetic';
 }
 function drawTutorial(c,kind){let text='';

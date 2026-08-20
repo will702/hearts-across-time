@@ -63,7 +63,7 @@ const ASSET_MANIFEST = {
   bgnarator: { src: 'assets/bgnarator.png' },
   background_bawah_tanah: { src: 'assets/backgroundbawahtanah.jpg' },
   laboratorium_militer: { src: 'assets/labotariummiliter.jpg' },
-  title_cover_figma: { src: 'assets/title_cover_figma.png' },
+  title_cover_figma: { src: 'assets/title_cover_figJma.png' },
   title_start_plate: { src: 'assets/title_start_plate.png' },
   title_wordmark: { src: 'assets/llJUDULL.png' },
   elena_dialog1: { src: 'assets/elenadialog1.png' },

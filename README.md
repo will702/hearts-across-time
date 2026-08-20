@@ -195,7 +195,7 @@ Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan,
 - **Intro 1944**: empat beat kamera Figma bergerak dari detail puing menuju ledakan utama, lalu menahan Elena setengah badan dan monolog sebelum kontrol berjalan aktif
 - **Intro 1968**: slow-pan empat beat pada `backgroundbawahtanah.jpg`, kemudian Elena sedih muncul di tengah sebelum adegan bunker/lab dimulai
 - **Intro laboratorium 1968 (rute B)**: empat framing kamera pada `labotariummiliter.jpg`, kemudian Elena bersemangat menyampaikan monolog tiga beat sebelum gameplay laboratorium
-- **Layar judul Figma**: ilustrasi kosmik `title_cover_figma.png`, wordmark resmi `JUDUL.png`, plakat START, serta footer progres ending, Continue, kontrol, dan kredit yang tetap utuh
+- **Layar judul Figma**: ilustrasi kosmik tanpa teks `title_cover_figJma.png`, satu wordmark resmi `llJUDULL.png`, plakat START, serta footer ringkas untuk progres ending, autosave, dan kontrol menu
 
 **v3 — Tampilan Valiant Hearts (komik perang):**
 
