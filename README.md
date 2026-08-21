@@ -73,6 +73,12 @@ otomatis fallback ke Trebuchet tanpa error.
 Sprite & latar masih bisa di-tweak: regenerasi sel lewat skrip di atas, atau tweak konstanta `PAL`
 untuk fallback prosedural.
 
+**Frame bicara & potret dialog (opsional, pass 013):** sheet karakter mendukung **6 kolom** — kolom
+F4/F5 = mulut tertutup/terbuka yang otomatis dianimasikan selama baris dialog diketik (`drawCharSheet`,
+nonaktif saat `reduceMotion`; sheet 4-kolom lama tetap valid tanpa flap). Potret bust
+`assets/portrait_*.png` muncul di tepi bawah saat pembicara aktif (`drawPortrait`) — file absen =
+skip senyap. Spesifikasi lengkap generasi via agy/codex + komposisi offline: `plans/013-asset-spec-handoff.md`.
+
 **Asset-rich pass (v4)** menambah, lewat pipeline yang sama (`scripts/gen_props.py` →
 `scripts/build_props.py`, `scripts/gen_extra.py` → `scripts/build_extra.py`):
 

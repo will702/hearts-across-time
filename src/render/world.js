@@ -163,6 +163,21 @@ const LORE={
     '[ Di baliknya, tinta pudar: "Andai waktu bisa kuputar... aku akan memilih kalimat yang lebih hangat." ]'],
   lore_clip:['[ Papan jepit berembun: log pemeriksaan kapsul, 1999. Kolom KONDISI diisi tangan yang sama selama 31 tahun: STABIL. ]',
     '[ Baris terbawah, tinta yang lebih baru: "Dia datang lagi. Hari ini." ]']};
+const LORE_IDS=Object.values(HOTSPOTS).flat().map(h=>h.id); // P3: hadiah kelima jejak kisah
+const loreFoundCount=()=>LORE_IDS.filter(id=>SAVE.inspected[id]).length;
+const TOUCH_ACT={x:W/2,y:H-64,w:138,h:44}; // tombol sentuh ▼ PERIKSA (P6) — dipakai flow (hit-test) & screens (gambar)
+function drawEchoGhost(c,cam){ // P2+G5 gema loop: Elena siklus sebelumnya mengulang jejaknya, tembus cahaya
+  if(G.state!=='walk'||!G.walk||G.diary||G.lore||OPTS.reduceMotion)return;
+  const rec=ECHO.prev&&ECHO.prev[G.era==='1968'?'1968'+S.routeB1:G.era];
+  if(!rec||rec.length<8)return;
+  const N=rec.length,f=((G.segT||0)/.12)%N,i0=Math.floor(f),a=f-i0;
+  const gx=lerp(rec[i0],rec[(i0+1)%N],a)-cam;
+  if(gx<-70||gx>W+70)return;
+  c.save();c.globalAlpha=.24+.07*Math.sin(T*2.3);
+  c.translate(gx,GROUND+Math.sin(T*1.7)*1.2);c.scale(1.05,1.05);
+  drawElena(c,T,f*2.4,true,'neutral',{stride:.7});
+  c.restore();
+}
 function bg1968(c,camX,t,routeA){
   if(routeA){ // bunker persembunyian
     const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#241d18');g.addColorStop(1,'#372c22');c.fillStyle=g;c.fillRect(0,0,W,H);
@@ -317,4 +332,47 @@ function grade(c,era){ // "cetakan buku harian perang": tint era + kertas + lift
   const cr=215;for(const [cx,cy] of [[0,0],[W,0],[0,H],[W,H]]){ // sudut gelap panel cetak komik
     const g2=c.createRadialGradient(cx,cy,0,cx,cy,cr);g2.addColorStop(0,'rgba(8,5,3,.30)');g2.addColorStop(1,'rgba(8,5,3,0)');c.fillStyle=g2;c.beginPath();c.arc(cx,cy,cr,0,TAU);c.fill();}
   c.save();c.globalAlpha=.05;c.globalCompositeOperation='overlay';const gi=((Math.floor(T*10)%3)+3)%3;const gp=c.createPattern(grainCvs[gi],'repeat');c.fillStyle=gp;c.fillRect(0,0,W,H);c.restore();
+}
+
+/* --- G2: lapisan atmosfer layar-penuh per era — di atas grade, di bawah UI ---
+   1999 = selaput beku tepi layar (statis, aman utk reduceMotion) •
+   1968B = shimmer scanline CRT + band fosfor jalan •
+   1944 = tetes hujan merayap di "lensa" kamera */
+let frostCvs=null;
+function getFrost(){if(frostCvs)return frostCvs;frostCvs=document.createElement('canvas');frostCvs.width=W;frostCvs.height=H;
+  const c=frostCvs.getContext('2d'),r=mulberry32(199);
+  for(let i=0;i<96;i++){ // kristal ranting dari tepi layar (deterministik)
+    const edge=r()*4|0;let x,y,a;
+    if(edge===0){x=-4;y=r()*H;a=(r()-.5)*.9;}
+    else if(edge===1){x=W+4;y=r()*H;a=Math.PI+(r()-.5)*.9;}
+    else if(edge===2){x=r()*W;y=-4;a=Math.PI/2+(r()-.5)*.9;}
+    else{x=r()*W;y=H+4;a=-Math.PI/2+(r()-.5)*.9;}
+    const len=14+r()*46;c.save();c.translate(x,y);c.rotate(a);c.globalAlpha=.18+r()*.4;
+    c.strokeStyle='rgba(208,233,252,.75)';c.lineWidth=.8+r();c.lineCap='round';
+    c.beginPath();c.moveTo(0,0);c.lineTo(len,0);
+    for(let k=1;k<=3;k++){const bx=len*k/3,bl=(4-k)*(2.5+r()*3);c.moveTo(bx,-bl);c.lineTo(bx,bl);}
+    c.stroke();c.restore();}
+  const g=c.createRadialGradient(W/2,H/2,H*.44,W/2,H/2,H*.92);
+  g.addColorStop(0,'rgba(180,220,250,0)');g.addColorStop(.72,'rgba(190,225,252,.05)');g.addColorStop(1,'rgba(205,235,255,.17)');
+  c.fillStyle=g;c.fillRect(0,0,W,H);return frostCvs;}
+let scanPat=null;
+function getScanPat(c){if(scanPat)return scanPat;const pc=document.createElement('canvas');pc.width=4;pc.height=3;
+  const p=pc.getContext('2d');p.fillStyle='rgba(6,12,16,.15)';p.fillRect(0,2,4,1);p.fillStyle='rgba(165,222,242,.05)';p.fillRect(0,0,4,1);
+  scanPat=c.createPattern(pc,'repeat');return scanPat;}
+const lensDrops=[];for(let i=0;i<4;i++)lensDrops.push({x:70+i*230+((i*97)%80),y:(i*137)%H,v:7+((i*53)%12),r:1.5+((i*29)%10)/6});
+function drawLensRain(c){ // tetesan pelan di kaca "lensa" 1944 — tipis agar tak mengganggu baca
+  const dt=1/60;
+  for(const d of lensDrops){
+    d.y+=d.v*dt;d.x+=Math.sin(T*.7+d.y*.01)*.16;
+    if(d.y>H+22){d.y=-22;d.x=40+Math.random()*(W-80);}
+    c.strokeStyle='rgba(222,233,240,.055)';c.lineWidth=d.r*.9;c.beginPath();c.moveTo(d.x,d.y-d.r*6);c.lineTo(d.x,d.y-d.r);c.stroke();
+    c.fillStyle='rgba(222,233,240,.10)';c.beginPath();c.ellipse(d.x,d.y,d.r,d.r*2.2,0,0,TAU);c.fill();}
+}
+function eraPostFX(c,FE){
+  if(FE==='1999'){c.save();c.globalAlpha=OPTS.reduceMotion?.55:.42+.1*Math.sin(T*.8);c.drawImage(getFrost(),0,0);c.restore();return;} // beku: bukan animasi, boleh tetap
+  if(OPTS.reduceMotion)return;
+  if(FE==='1968B'){ // CRT laboratorium: garis pindai jalan + sesekali band fosfor
+    const off=(T*14)%3;c.save();c.translate(0,off);c.fillStyle=getScanPat(c);c.fillRect(-off,0,W,H+3);c.restore();
+    if(((T*7|0)%11)===0){c.save();c.globalAlpha=.055;c.fillStyle='#cfe8f4';c.fillRect(0,(T*260)%H,W,26);c.restore();}
+  }else if(FE==='1944')drawLensRain(c);
 }

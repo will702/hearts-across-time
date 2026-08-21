@@ -277,6 +277,9 @@ function drawCover(c) {
   const years=['1944','1968','1999','2088'],xs=[250,403,557,710],my=242;c.save();c.strokeStyle='rgba(242,210,125,.55)';c.lineWidth=2;c.beginPath();c.moveTo(xs[0],my);for(let i=1;i<xs.length;i++){c.quadraticCurveTo((xs[i-1]+xs[i])/2,my+(i%2?14:-14),xs[i],my);}c.stroke();
   years.forEach((y,i)=>{c.fillStyle=i===0||SAVE.game&&+SAVE.game.era>=+y?'#F1D58B':'rgba(245,240,232,.5)';c.beginPath();c.arc(xs[i],my,7,0,TAU);c.fill();c.font='11px '+F_META;c.textAlign='center';c.fillText(y,xs[i],my+23);});
   const found=END_TOTAL.filter(k=>SAVE.endings&&SAVE.endings[k]).length;c.font='11px '+F_META;END_TOTAL.forEach((k,i)=>{const x=345+i*54,on=!!(SAVE.endings&&SAVE.endings[k]);c.fillStyle=on?'#F1D58B':'rgba(245,240,232,.28)';c.fillText(on?'✦':'◇',x,277);});c.restore();
+  if(loreFoundCount()>=LORE_IDS.length){ // P3: segel kisah lengkap — kelima jejak selidik ditemukan
+    c.save();c.textAlign='left';c.font='400 12px '+F_META;c.fillStyle='#F1D58B';c.shadowColor='rgba(241,213,139,.55)';c.shadowBlur=6;
+    c.fillText('✦ KISAH LENKAP '+LORE_IDS.length+'/'+LORE_IDS.length,24,464);c.restore();}
   const items=titleMenu(),bx=350,by=300,bw=260,bh=36;c.save();c.textAlign='center';c.textBaseline='middle';items.forEach((it,i)=>{const y=by+i*42,on=i===G.titleSel&&!it.disabled,hov=ptr.x>bx&&ptr.x<bx+bw&&ptr.y>y&&ptr.y<y+bh;
     c.fillStyle=on||hov?'rgba(211,168,72,.9)':'rgba(8,10,18,.72)';rr(c,bx,y,bw,bh,4);c.fill();c.strokeStyle=on?'#FFF0A0':'rgba(241,213,139,.48)';c.lineWidth=on?2:1;rr(c,bx,y,bw,bh,4);c.stroke();c.fillStyle=it.disabled?'rgba(245,240,232,.3)':'#FFFDF2';c.font=(on?'bold ':'')+'16px '+F_TITLE;c.fillText((on?'▶ ':'')+it.label,W/2,y+bh/2);});c.restore();
   if(G.titleConfirm){c.fillStyle='rgba(2,3,8,.82)';c.fillRect(0,0,W,H);sketchRR(c,250,235,460,170,8);c.textAlign='center';c.fillStyle='#94342E';c.font='bold 20px '+F_UI;c.fillText('TIMPA AUTOSAVE SIKLUS AKTIF?',W/2,278);c.fillStyle='#2B211A';c.font='15px '+F_UI;c.fillText('Progres siklus saat ini akan dimulai ulang dari 1944.',W/2,308);['YA, MULAI BARU','BATAL'].forEach((s,i)=>{const x=320+i*210,on=(G.confirmSel||0)===i;c.fillStyle=on?'#94342E':'#6A5B4B';rr(c,x,338,160,38,5);c.fill();c.fillStyle='#FFF8EA';c.fillText(s,x+80,363);});}
@@ -299,14 +302,88 @@ function drawChallenge(c){const ch=G.challenge,cfg=CHALLENGE_CONF[ch.era];c.fill
   if(ch.stage==='choose'){
     [cfg.left,cfg.right].forEach((s,i)=>{const x=170+i*330,on=ch.sel===i;c.fillStyle=on?'rgba(148,52,46,.13)':'rgba(90,74,60,.06)';rr(c,x,205,290,130,7);c.fill();c.strokeStyle=on?'#94342E':'rgba(43,33,26,.4)';c.lineWidth=on?3:1.5;rr(c,x,205,290,130,7);c.stroke();c.fillStyle='#2B211A';c.font=(on?'bold ':'')+'17px '+F_UI;wrap(c,s,250).forEach((ln,k)=>c.fillText(ln,x+145,250+k*23));});
     c.fillStyle='#6A5B4B';c.font='14px '+F_UI;c.fillText(IS_TOUCH?'Ketuk pilihan':'← → pilih  •  ENTER konfirmasi',W/2,398);return;}
-  const target=cfg.targets[Math.min(ch.band,2)],win=ch.assist?.13:.075,tx=190+target*580,rawX=190+ch.cursor*580,cx=OPTS.reduceMotion?190+Math.round(ch.cursor*10)/10*580:rawX;
-  c.fillStyle='#D8CDB9';rr(c,190,244,580,28,7);c.fill();c.fillStyle=ch.assist?'rgba(82,129,98,.45)':'rgba(194,90,90,.4)';rr(c,tx-win*580,244,win*1160,28,6);c.fill();c.strokeStyle='#2B211A';c.lineWidth=2;c.beginPath();c.moveTo(cx,232);c.lineTo(cx,284);c.stroke();c.fillStyle='#94342E';c.beginPath();c.moveTo(cx-7,231);c.lineTo(cx+7,231);c.lineTo(cx,241);c.closePath();c.fill();
-  c.fillStyle='#2B211A';c.font='bold 16px '+F_UI;c.fillText(ch.era==='1968'?'Selaraskan penanda dengan gelombang, lalu kunci':'Kunci saat penanda berada di zona aman',W/2,202);
-  for(let i=0;i<3;i++){c.fillStyle=i<ch.band?'#5F9270':'#B7AA95';c.beginPath();c.arc(W/2-34+i*34,318,9,0,TAU);c.fill();}
-  c.fillStyle='#6A5B4B';c.font='14px '+F_UI;c.fillText(ch.era==='1968'?(IS_TOUCH?'Ketuk jalur untuk menyetel • ketuk bawah untuk kunci':'← → setel  •  ENTER kunci'):(IS_TOUCH?'Ketuk bawah untuk kunci':'ENTER / SPACE untuk kunci'),W/2,365);
+  if(cfg.mode==='dodge'){ // P1: koridor parit top-down + kerucut sorot menyapu
+    const bx=ch.bx||484,bw=ch.bw||112;
+    c.fillStyle='#241b13';rr(c,190,232,580,100,8);c.fill();outline(c,1.6);rr(c,190,232,580,100,8);c.stroke();
+    const g=c.createLinearGradient(0,206,0,332);g.addColorStop(0,'rgba(255,236,180,.34)');g.addColorStop(1,'rgba(255,214,140,.10)');
+    c.fillStyle=g;c.beginPath();c.moveTo(bx-bw*.16,206);c.lineTo(bx+bw*.16,206);c.lineTo(bx+bw/2,332);c.lineTo(bx-bw/2,332);c.closePath();c.fill();
+    c.strokeStyle='rgba(255,220,150,.45)';c.lineWidth=1.2;c.stroke();
+    c.fillStyle='#3a2f24';c.fillRect(bx-3,194,6,14); // beacon sorot
+    [300,480,660].forEach(cx=>{ // karung pasir = zona aman
+      c.fillStyle='#6a5a45';rr(c,cx-27,297,54,15,5);c.fill();rr(c,cx-27,313,54,15,5);c.fill();
+      outline(c,1.4);rr(c,cx-27,297,54,31,5);c.stroke();
+      c.strokeStyle='rgba(46,40,32,.55)';c.lineWidth=1.2;c.beginPath();c.moveTo(cx-27,313);c.lineTo(cx+27,313);c.stroke();});
+    c.strokeStyle='rgba(241,213,139,.85)';c.lineWidth=2;c.setLineDash([4,4]);c.beginPath();c.moveTo(752,238);c.lineTo(752,330);c.stroke();c.setLineDash([]); // garis goal
+    c.save();c.translate(ch.px,320); // Elena mini
+    c.fillStyle='rgba(10,8,6,.32)';c.beginPath();c.ellipse(0,3,11,3.4,0,0,TAU);c.fill();
+    c.fillStyle=PAL.dress;rr(c,-7,-18,14,18,4);c.fill();outline(c,1.5);rr(c,-7,-18,14,18,4);c.stroke();
+    c.fillStyle=PAL.skin;c.beginPath();c.arc(0,-24,6,0,TAU);c.fill();outline(c,1.5);c.beginPath();c.arc(0,-24,6,0,TAU);c.stroke();
+    c.fillStyle=PAL.hairEs;c.beginPath();c.arc(0,-27,6,Math.PI,0);c.fill();c.restore();
+    const dv=(ch.det||0)/.42; // vignette merah mengikuti deteksi
+    if(dv>0){const vg=c.createRadialGradient(W/2,H/2,H*.22,W/2,H/2,H*.62);vg.addColorStop(0,'rgba(170,30,30,0)');vg.addColorStop(1,`rgba(190,30,30,${.42*dv})`);c.fillStyle=vg;c.fillRect(0,0,W,H);}
+    c.fillStyle='#2B211A';c.font='bold 15px '+F_UI;c.fillText('LUNCUR ANTARA KARUNG SAMPAI GARIS — JANGAN TERTANGKAP SOROT',W/2,214);
+    c.fillStyle='#6A5B4B';c.font='13px '+F_UI;c.fillText(IS_TOUCH?'tahan ◀ / ▶ di bawah layar untuk berlari':'← → lari antara karung',W/2,352);
+  } else if(cfg.mode==='balance'){ // P1: dua meter krio saling tarik
+    const meter=(v,col,lbl,y)=>{
+      c.fillStyle='rgba(245,240,232,.13)';rr(c,W/2-186,y,400,20,9);c.fill();
+      c.fillStyle=col;rr(c,W/2-186,y,400*clamp(v,0,1),20,9);c.fill();
+      c.strokeStyle='#2B211A';c.lineWidth=1.5;rr(c,W/2-186,y,400,20,9);c.stroke();
+      c.strokeStyle='rgba(148,52,46,.85)';c.lineWidth=2;c.beginPath();c.moveTo(W/2-186+400*.22,y-3);c.lineTo(W/2-186+400*.22,y+23);c.stroke(); // ambang aman
+      c.font='bold 11.5px '+F_UI;c.fillStyle='#F3EADA';c.textAlign='right';c.fillText(lbl,W/2-194,y+15);c.textAlign='center';};
+    meter(ch.vit,'rgba(168,85,80,.95)','VITAL',250);
+    meter(ch.ser,'rgba(90,150,180,.95)','SERUM',280);
+    c.fillStyle='rgba(245,240,232,.13)';rr(c,W/2-160,314,320,12,6);c.fill();
+    c.fillStyle='#567A61';rr(c,W/2-160,314,320*clamp((ch.stable||0)/5,0,1),12,6);c.fill(); // progres stabilisasi 5 dtk
+    c.fillStyle='#2B211A';c.font='bold 15px '+F_UI;c.fillText('SEIMBANGKAN KEDUA GARIS DI ATAS AMBANG MERAH',W/2,214);
+    c.fillStyle='#6A5B4B';c.font='13px '+F_UI;c.fillText(IS_TOUCH?'tahan sisi kiri / kanan bawah layar':'tahan ← = VITAL naik • tahan → = SERUM naik • stabil 5 detik',W/2,346);
+    if(!ch.ok&&(ch.vit<.32||ch.ser<.32)){c.fillStyle=`rgba(168,62,56,${.55+.45*Math.sin(T*11)})`;c.font='bold 14px '+F_UI;c.fillText('KRITIS',W/2,372);}
+  } else { // tune (1968): bar setelan asli
+    const target=cfg.targets[Math.min(ch.band,2)],win=ch.assist?.13:.075,tx=190+target*580,rawX=190+ch.cursor*580,cx=OPTS.reduceMotion?190+Math.round(ch.cursor*10)/10*580:rawX;
+    c.fillStyle='#D8CDB9';rr(c,190,244,580,28,7);c.fill();c.fillStyle=ch.assist?'rgba(82,129,98,.45)':'rgba(194,90,90,.4)';rr(c,tx-win*580,244,win*1160,28,6);c.fill();c.strokeStyle='#2B211A';c.lineWidth=2;c.beginPath();c.moveTo(cx,232);c.lineTo(cx,284);c.stroke();c.fillStyle='#94342E';c.beginPath();c.moveTo(cx-7,231);c.lineTo(cx+7,231);c.lineTo(cx,241);c.closePath();c.fill();
+    c.fillStyle='#2B211A';c.font='bold 16px '+F_UI;c.fillText('Selaraskan penanda dengan gelombang, lalu kunci',W/2,202);
+    for(let i=0;i<3;i++){c.fillStyle=i<ch.band?'#5F9270':'#B7AA95';c.beginPath();c.arc(W/2-34+i*34,318,9,0,TAU);c.fill();}
+    c.fillStyle='#6A5B4B';c.font='14px '+F_UI;c.fillText(IS_TOUCH?'Ketuk jalur untuk menyetel • ketuk bawah untuk kunci':'← → setel  •  ENTER kunci',W/2,365);
+  }
   if(ch.assist){c.fillStyle='#567A61';c.font='bold 14px '+F_UI;c.fillText('BANTUAN AKTIF — tempo melambat, zona diperlebar',W/2,398);}
   if(ch.feedbackT>0){c.fillStyle=ch.feedback.startsWith('TERKUNCI')?'#567A61':'#A83E38';c.font='bold 16px '+F_UI;c.fillText(ch.feedback,W/2,428);}
   if(ch.stage==='success'){c.fillStyle='rgba(243,234,218,.95)';c.fillRect(150,180,660,210);c.fillStyle='#567A61';c.font='bold 28px '+F_UI;c.fillText('JALUR STABIL',W/2,260);c.fillStyle='#2B211A';c.font='16px '+F_UI;c.fillText('Pilihanmu meninggalkan jejak pada siklus ini.',W/2,300);}
+}
+const PORTRAIT_CARD={}; // cache deteksi: true = gambar tanpa alpha (ilustrasi penuh) -> dirender kartu polaroid
+function drawPortrait(c) { // A2: potret bust pembicara di tepi bawah — file absen => skip senyap
+  if (!D.line || D.choices) return;
+  const who = D.line.who; if (who === 'narrator') return;
+  const el = who === 'elena';
+  const id = el ? 'portrait_elena_' + (D.elExpr || 'neutral')
+    : 'portrait_arthur_' + (D.arKind || 'muda') + '_' + (D.arExpr || 'neutral');
+  const im = AS.imgs[id]; if (!im || !im.width) return;
+  let card = PORTRAIT_CARD[id];
+  if (card === undefined) { // deteksi sekali: sampel alpha 32x32
+    try {
+      const t = document.createElement('canvas'); t.width = t.height = 32;
+      const tc = t.getContext('2d'); tc.drawImage(im, 0, 0, 32, 32);
+      const d = tc.getImageData(0, 0, 32, 32).data; let op = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 40) op++;
+      card = PORTRAIT_CARD[id] = op / 1024 > .9;
+    } catch (e) { card = PORTRAIT_CARD[id] = false; }
+  }
+  const dw0 = im.width * 290 / im.height, x0 = el ? 16 : (W - Math.abs(dw0) - 16);
+  const y0 = H - 290 - 84 + (OPTS.reduceMotion ? 0 : Math.sin(T * 1.4) * 2);
+  c.save(); c.globalAlpha = Math.min(.96, .1 + D.popT * .9);
+  if (card) { // ilustrasi penuh: bingkai kertas + kemiringan + selotip ala foto tempel buku harian
+    const s = 290 / im.height, dw = im.width * s, rot = (el ? -1 : 1) * .045, bw = dw + 24, bh = 290 + 34;
+    c.translate(x0 + dw / 2, y0 + 145); c.rotate(OPTS.reduceMotion ? 0 : rot);
+    c.shadowColor = 'rgba(6,4,2,.5)'; c.shadowBlur = 18; c.shadowOffsetY = 6;
+    c.fillStyle = '#F7F2E6'; rr(c, -bw / 2, -bh / 2, bw, bh, 4); c.fill();
+    c.shadowColor = 'transparent';
+    c.strokeStyle = 'rgba(30,23,16,.28)'; c.lineWidth = 1.2; rr(c, -bw / 2, -bh / 2, bw, bh, 4); c.stroke();
+    c.drawImage(im, -dw / 2, -bh / 2 + 9, dw, 290);
+    c.rotate(-.05); c.fillStyle = 'rgba(232,222,192,.88)'; rr(c, -36, -bh / 2 - 11, 72, 21, 2); c.fill();
+    c.strokeStyle = 'rgba(43,33,26,.25)'; c.lineWidth = 1; rr(c, -36, -bh / 2 - 11, 72, 21, 2); c.stroke();
+  } else {
+    c.shadowColor = 'rgba(6,4,2,.5)'; c.shadowBlur = 18; c.shadowOffsetY = 6;
+    c.drawImage(im, x0, y0, dw0, 290);
+  }
+  c.restore();
 }
 function render() {
   ctx.save();
@@ -348,12 +425,15 @@ function render() {
   }
   else if (G.state === 'walk' || G.state === 'dialog') {
     const camDrift = G.cam + (OPTS.reduceMotion ? 0 : Math.sin(T * .4) * .9); // nafas kamera halus (nonaktif saat reduceMotion)
+    const FE2 = G.era === '1968' ? (S.routeB1 === 'A' ? '1968A' : '1968B') : G.era;
+    const zOn = G.state === 'dialog' && !OPTS.reduceMotion && G.zoom > 1.004; // G1: dunia di-zoom mendekat ke pembicara, UI tetap datar
+    ctx.save();
+    if (zOn) { const fx = G.zwx - camDrift, fy = GROUND - 72; ctx.translate(fx, fy); ctx.scale(G.zoom, G.zoom); ctx.translate(-fx, -fy); }
     drawScene(ctx, camDrift); drawChars(ctx, G.state, camDrift);
-    {
-      const FE = G.era === '1968' ? (S.routeB1 === 'A' ? '1968A' : '1968B') : G.era; // okluder depan: lukis menang, siluet prosedural sbg fallback
-      if (!bgFgImg(ctx, 'bg' + FE + '_fg', camDrift)) fgSilhouette(ctx, FE, camDrift);
-    }
-    grade(ctx, G.era === '1968' ? (S.routeB1 === 'A' ? '1968A' : '1968B') : G.era);
+    drawEchoGhost(ctx, camDrift); // P2: hantu siklus sebelumnya (di bawah okluder depan)
+    if (!bgFgImg(ctx, 'bg' + FE2 + '_fg', camDrift)) fgSilhouette(ctx, FE2, camDrift); // okluder depan: lukis menang, siluet prosedural sbg fallback
+    grade(ctx, FE2); eraPostFX(ctx, FE2);
+    ctx.restore();
     if (G.state === 'walk') {drawHotspots(ctx);drawTutorial(ctx,'walk');} // indikator interaksi harus berada di atas foreground dan color grade
     if (G.lore) drawNarr(ctx, G.lore.lines[G.lore.i], G.lore.prog, G.lore.popT); // strip lore titik selidik
     if (G.diary) drawDiaryPopup(ctx, G.diary); // catatan wajib Babak 2 di atas seluruh adegan
@@ -372,14 +452,15 @@ function render() {
       ctx.restore(); ctx.textBaseline = 'alphabetic';
     }
     if (G.state === 'dialog') {
+      drawPortrait(ctx); // potret bust pembicara (opsional)
       // bubble aktif
       if (D.line) {
         if (D.line.who === 'narrator') drawNarr(ctx, D.line.text, D.prog, D.popT);
         else {
           const isE = D.line.who === 'elena';
-          const x = isE ? (G.walk.arX - 190 - G.cam) : (G.walk.arX - G.cam);
-          const headY = GROUND - 140;
-          drawBubble(ctx, x, headY, D.line.text, D.line.who, D.prog, false, D.popT);
+          let bx2 = isE ? (G.walk.arX - 190 - camDrift) : (G.walk.arX - camDrift), hy2 = GROUND - 140;
+          if (zOn) { const fx = G.zwx - camDrift, fy = GROUND - 72; bx2 = fx + (bx2 - fx) * G.zoom; hy2 = fy + (hy2 - fy) * G.zoom; } // jangkar bubble ikut zoom agar ekor menunjuk mulut
+          drawBubble(ctx, bx2, hy2, D.line.text, D.line.who, D.prog, false, D.popT);
         }
         if (!D.choices && D.prog >= 1 && G.state === 'dialog') hintAdvance(ctx);
       }
@@ -399,18 +480,34 @@ function render() {
       ctx.restore();
     }
     // kontrol sentuh
-    if (IS_TOUCH && G.state === 'walk') {
-      ctx.fillStyle = 'rgba(245,240,232,.25)';
-      [[36, '◀'], [W - 36, '▶']].forEach(([x, s]) => { ctx.beginPath(); ctx.arc(x, H - 70, 30, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(30,23,16,.8)'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(s, x, H - 62); ctx.fillStyle = 'rgba(245,240,232,.25)'; });
-      // tombol lari ≫ (hold) — di atas tombol ▶
+    if (IS_TOUCH && G.state === 'walk') { // P6: pad kertas-tinta terlihat + umpan balik tekan
+      const zoneL = ptr.down && ptr.x < 140 && ptr.y > H - 130, zoneR = ptr.down && ptr.x > W - 140 && ptr.y > H - 130;
       const rOn = ptr.down && Math.hypot(ptr.x - (W - 36), ptr.y - (H - 162)) < 30;
-      ctx.fillStyle = rOn ? 'rgba(255,217,168,.5)' : 'rgba(245,240,232,.25)'; ctx.beginPath(); ctx.arc(W - 36, H - 162, 28, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(30,23,16,.85)'; ctx.font = 'bold 19px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('≫', W - 36, H - 155);
+      const pad = (x, y, r, icon, on) => {
+        ctx.save(); ctx.translate(x, y); if (on) ctx.scale(.93, .93);
+        ctx.globalAlpha = on ? .8 : .45;
+        ctx.fillStyle = '#0a0806'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+        ctx.strokeStyle = on ? '#E8C88A' : 'rgba(245,240,232,.8)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+        ctx.strokeStyle = 'rgba(245,240,232,.22)'; ctx.lineWidth = .8; ctx.beginPath(); ctx.arc(0, 0, r - 3.5, 0, TAU); ctx.stroke(); // bingkai ganda ala tinta
+        ctx.globalAlpha = on ? 1 : .85; ctx.fillStyle = on ? '#FFE2AC' : '#F5F0E8';
+        ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, 0, 1);
+        ctx.restore(); ctx.textBaseline = 'alphabetic';
+      };
+      pad(70, H - 65, 31, '◀', zoneL); pad(W - 70, H - 65, 31, '▶', zoneR); pad(W - 36, H - 162, 27, '≫', rOn);
+      // tombol ▼ kontekstual — interaksi tanpa harus menembak penanda kecil
+      if (G.walk.hot || G.walk.diaryHot || G.walk.challengeHot) {
+        const pu = OPTS.reduceMotion ? 1 : .94 + .06 * Math.sin(T * 3);
+        sketchRR(ctx, TOUCH_ACT.x - TOUCH_ACT.w / 2, TOUCH_ACT.y - TOUCH_ACT.h / 2, TOUCH_ACT.w, TOUCH_ACT.h, 9, { shadow: false });
+        ctx.save(); ctx.translate(TOUCH_ACT.x, TOUCH_ACT.y); ctx.scale(pu, pu);
+        ctx.fillStyle = '#94342E'; ctx.font = 'bold 13px ' + F_UI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(G.walk.challengeHot ? '▼ AKTIFKAN' : G.walk.diaryHot ? '▼ BUKU' : '▼ PERIKSA', 0, 1);
+        ctx.restore(); ctx.textBaseline = 'alphabetic';
+      }
     }
   }
   else if(G.state==='challenge'){
     const camDrift=G.cam+(OPTS.reduceMotion?0:Math.sin(T*.4)*.5);drawScene(ctx,camDrift);drawChars(ctx,'walk',camDrift);
-    const FE=G.era==='1968'?(S.routeB1==='A'?'1968A':'1968B'):G.era;if(!bgFgImg(ctx,'bg'+FE+'_fg',camDrift))fgSilhouette(ctx,FE,camDrift);grade(ctx,FE);drawChallenge(ctx);
+    const FE=G.era==='1968'?(S.routeB1==='A'?'1968A':'1968B'):G.era;if(!bgFgImg(ctx,'bg'+FE+'_fg',camDrift))fgSilhouette(ctx,FE,camDrift);grade(ctx,FE);eraPostFX(ctx,FE);drawChallenge(ctx);
   }
   else if (G.state === 'vortex') {
     const v = G.vortex, pr = easeIO(clamp(v.t, 0, 1));
@@ -457,7 +554,7 @@ function render() {
       const FE = G.era === '1968' ? (S.routeB1 === 'A' ? '1968A' : '1968B') : G.era;
       if (!bgFgImg(ctx, 'bg' + FE + '_fg', G.cam)) fgSilhouette(ctx, FE, G.cam);
     }
-    grade(ctx, G.era);
+    grade(ctx, G.era); eraPostFX(ctx, G.era === '1968' ? (S.routeB1 === 'A' ? '1968A' : '1968B') : G.era);
     // efek glitch strip (dimatikan oleh reduceMotion — sisakan teks LOOP & petunjuk)
     const gt = G.glitch.t;
     if (!OPTS.reduceMotion) {
@@ -491,22 +588,54 @@ function render() {
     if (!drawPoseImage(ctx, 'pose_elena_kneel')) drawElena(ctx, T, 0, false, 'warm', { vial: true });
     ctx.restore();
     if (!bgFgImg(ctx, 'bg1999_fg', 120)) fgSilhouette(ctx, '1999', 120); // okluder depan sama seperti walk/dialog
-    grade(ctx, '1999');
+    grade(ctx, '1999'); eraPostFX(ctx, '1999');
     const a = clamp(G.endCard.t / 2, 0, 1);
     ctx.fillStyle = `rgba(10,8,6,${.55 * a})`; ctx.fillRect(0, 0, W, H);
     drawParts(ctx, 1 / 60); // partikel di atas overlay agar sparkle terlihat
     ctx.textAlign = 'center';
     ctx.fillStyle = `rgba(245,240,232,${a})`; ctx.font = 'italic 26px Georgia,serif'; ctx.fillText('THE END', W / 2, 168);
     ctx.fillStyle = `rgba(194,59,59,${a})`; ctx.font = 'bold 30px Georgia,serif'; ctx.fillText('HEARTS ACROSS TIME: BREAK THE LOOP', W / 2, 208);
-    // statistik hidden affinity terungkap
+    // statistik hidden affinity terungkap + rekap siklus (P4)
     if (G.endCard.t > 1.6) {
       const a2 = clamp((G.endCard.t - 1.6) / 1.4, 0, 1);
       ctx.fillStyle = `rgba(245,240,232,${.85 * a2})`; ctx.font = '16px ' + F_UI;
       ctx.fillText(`Siklus ditempuh : ${S.loop}× loop`, W / 2, 286);
-      ctx.fillStyle = `rgba(168,85,80,${.9 * a2})`; ctx.fillText(`♥ Empati : ${S.empathy}`, W / 2 - 120, 316);
-      ctx.fillStyle = `rgba(85,107,127,${.9 * a2})`; ctx.fillText(`⚙ Logika : ${S.logic}`, W / 2 + 120, 316);
+      const eG = OPTS.reduceMotion ? 1 : easeO(clamp((G.endCard.t - 1.9) / .9, 0, 1)), tot = Math.max(1, S.empathy + S.logic);
+      const bar = (lbl, val, col, y) => { // batang afinitas tumbuh pelan ala tinta
+        ctx.font = '13px ' + F_UI; ctx.textAlign = 'right'; ctx.fillStyle = `rgba(245,240,232,${.85 * a2})`; ctx.fillText(lbl, W / 2 - 172, y + 4);
+        ctx.fillStyle = 'rgba(245,240,232,.13)'; rr(ctx, W / 2 - 160, y - 9, 300, 17, 8); ctx.fill();
+        ctx.strokeStyle = `rgba(22,16,10,${.5 * a2})`; ctx.lineWidth = 1.2; rr(ctx, W / 2 - 160, y - 9, 300, 17, 8); ctx.stroke();
+        const w = val > 0 ? Math.max(7, 300 * (val / tot) * eG) : 0;
+        if (w > 0) { ctx.fillStyle = col; rr(ctx, W / 2 - 160, y - 9, w, 17, 8); ctx.fill(); }
+        ctx.font = '11px ' + F_META; ctx.textAlign = 'left'; ctx.fillStyle = `rgba(245,240,232,${.75 * a2})`;
+        ctx.fillText(String(val), W / 2 - 152 + Math.min(w, 284), y + 3.5); };
+      bar('♥ Empati', S.empathy, 'rgba(168,85,80,.92)', 315);
+      bar('⚙ Logika', S.logic, 'rgba(85,107,127,.92)', 341);
+      if (G.endCard.t > 2.2) { // chip pendekatan tantangan + rute yang ditempuh siklus ini
+        const a3 = clamp((G.endCard.t - 2.2) / .8, 0, 1), chips = [];
+        if (S.routeB1) chips.push('RUTE 1' + S.routeB1);
+        if (S.routeB2) chips.push('RUTE 2' + S.routeB2);
+        Object.keys(S.challenges).sort().forEach(e => { const v = S.challenges[e]; if (v) chips.push(e + ' ' + (v === 'empathy' ? '♥' : '⚙')); });
+        ctx.font = '10.5px ' + F_UI;
+        const cws = chips.map(s => ctx.measureText(s).width + 20), tw = cws.reduce((a, b) => a + b, 0) + Math.max(0, chips.length - 1) * 8;
+        let cx = W / 2 - tw / 2;
+        chips.forEach((s, i) => {
+          ctx.save(); ctx.globalAlpha = a3;
+          inkTag(ctx, cx, 360, cws[i], 19, s.includes('♥') ? '#7E4A46' : s.includes('⚙') ? '#48596B' : '#55614C', 0);
+          ctx.fillStyle = '#F3EADA'; ctx.font = 'bold 10.5px ' + F_UI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(s, cx + cws[i] / 2, 370);
+          ctx.restore(); ctx.textBaseline = 'alphabetic';
+          cx += cws[i] + 8;
+        });
+      }
+      if (loreFoundCount() >= LORE_IDS.length && G.endCard.t > 2.5) { // hadiah P3: pengakuan pembaca sejati
+        ctx.save(); ctx.globalAlpha = clamp((G.endCard.t - 2.5) / .9, 0, 1);
+        ctx.fillStyle = '#F1D58B'; ctx.font = 'italic 13.5px Georgia,serif'; ctx.textAlign = 'center';
+        ctx.fillText('✦ Kelima jejak kisah ditemukan — kau membaca hidup Arthur sampai habis.', W / 2, 397);
+        ctx.restore();
+      }
       ctx.fillStyle = `rgba(245,240,232,${.55 * a2})`; ctx.font = 'italic 14px Georgia,serif';
-      ctx.fillText('"...di tahun 2088, kita akan bertemu lagi sebagai dua orang biasa yang saling jatuh cinta."', W / 2, 364);
+      ctx.fillText('"...di tahun 2088, kita akan bertemu lagi sebagai dua orang biasa yang saling jatuh cinta."', W / 2, 420);
     }
     if (G.endCard.t > 2.6 && Math.floor(T * 2) % 2 === 0) { ctx.fillStyle = 'rgba(245,240,232,.75)'; ctx.font = '15.5px ' + F_UI; ctx.fillText('▶ MAIN LAGI (ENTER / SENTUH)', W / 2, 452); }
     // bingkai ganda kartu komik penutup

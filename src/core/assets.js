@@ -69,6 +69,15 @@ const ASSET_MANIFEST = {
   time_vortex: { src: 'assets/time_vortex.png' }, // absen => pusaran ruang-waktu prosedural
   elena_dialog1: { src: 'assets/elenadialog1.png' },
   elena_dialog2_sedih: { src: 'assets/elenadialog2sedih.png' },
+  // A2 potret bust dialog (opsional; absen => tak digambar, bubble tetap jalan)
+  portrait_elena_neutral: { src: 'assets/portrait_elena_neutral.png', h: 290 },
+  portrait_elena_sad: { src: 'assets/portrait_elena_sad.png', h: 290 },
+  portrait_elena_shock: { src: 'assets/portrait_elena_shock.png', h: 290 },
+  portrait_elena_warm: { src: 'assets/portrait_elena_warm.png', h: 290 },
+  portrait_arthur_muda_shock: { src: 'assets/portrait_arthur_muda_shock.png', h: 290 },
+  portrait_arthur_muda_warm: { src: 'assets/portrait_arthur_muda_warm.png', h: 290 },
+  portrait_arthur_tua_warm: { src: 'assets/portrait_arthur_tua_warm.png', h: 290 },
+  portrait_arthur_tua_sad: { src: 'assets/portrait_arthur_tua_sad.png', h: 290 },
   // bidang ilustrasi Figma untuk intro judul parallax (PNG transparan; absen => cover lama)
   intro01: { src: 'assets/onboarding/layer_01.png' }, intro02: { src: 'assets/onboarding/layer_02.png' }, intro03: { src: 'assets/onboarding/layer_03.png' },
   intro04: { src: 'assets/onboarding/layer_04.png' }, intro05: { src: 'assets/onboarding/layer_05.png' }, intro06: { src: 'assets/onboarding/layer_06.png' },
@@ -143,6 +152,12 @@ function drawCharSheet(c, id, expr, phase, moving, opt = {}) { // false => peman
     const pick = k => seq ? seq[k % 4] : k % cols; col = pick(i0);
     blend = clamp((a - .7) / .3, 0, 1); if (blend > 0) col2 = pick(i0 + 1);
   } // siklus w1→w2→w3→w2 dgn cross-fade pada 30% akhir tiap substep (anti pop)
+  else if (!moving && cols >= 6) { // A1 frame bicara F4/F5: mulut buka-tutup selama baris diketik
+    const spk = G.speak && D.line && D.prog < 1 ? G.speak.who : null;
+    const mine = id === 'elena' ? spk === 'elena'
+      : !!spk && spk !== 'elena' && spk !== 'narrator' && id === 'arthur_' + (D.arKind || '');
+    if (mine && !OPTS.reduceMotion) col = 4 + (Math.floor(T * 10) % 2); // ±5 flap/dtk
+  }
   const s = (cfg.h || 112) / cfg.fh, dw = cfg.fw * s, dh = cfg.fh * s;
   if (opt.tremble) c.translate(Math.sin(T * 31) * .9, 0);
   else if (moving) { const st = opt.stride === undefined ? 1 : opt.stride; c.rotate(Math.sin(phase) * .03 * st); c.translate(Math.sin(phase * 2 - .4) * (0.6 + 0.5 * st), -Math.abs(Math.sin(phase)) * (1.6 + 1.4 * st)); } // bob langkah: counter-rock 1× + sway 2× melambai

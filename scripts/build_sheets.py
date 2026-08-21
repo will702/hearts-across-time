@@ -162,10 +162,12 @@ def anchor_cell(im: Image.Image, target_h=192) -> Image.Image:
 
 
 def compose(spec_path: str, out_path: str):
-    """SPEC: {"rows": [[cell0..cell3] x8]} of RGBA png paths ("" = skip)."""
+    """SPEC: {"rows": [[cell0..cellN] x8], "cols": 4|6} of RGBA png paths ("" = skip).
+    cols=6 -> kolom F4/F5 = frame bicara (mulut tertutup/terbuka)."""
     spec = json.loads(Path(spec_path).read_text())
     rows = spec["rows"]
-    sheet = Image.new("RGBA", (CELL_W * 4, CELL_H * 8), (0, 0, 0, 0))
+    cols = int(spec.get("cols", 4))
+    sheet = Image.new("RGBA", (CELL_W * cols, CELL_H * 8), (0, 0, 0, 0))
     for r, row in enumerate(rows):
         for cidx, p in enumerate(row):
             if not p:

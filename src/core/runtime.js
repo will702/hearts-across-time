@@ -111,21 +111,29 @@ const MUS={name:'',song:null,map:null,step:0,nextT:0};
 function buildMap(s){const m={};s.tracks.forEach(tr=>tr.ev.forEach(e=>{(m[e[0]]=m[e[0]]||[]).push({v:tr.v,notes:Array.isArray(e[1])?e[1]:[e[1]],dur:e[2]||6,vel:e[3]||1});}));return m;}
 function setSong(nm){if(MUS.name===nm)return;MUS.name=nm;MUS.song=SONGS[nm]||null;MUS.map=MUS.song?buildMap(MUS.song):null;MUS.step=0;if(AU.ctx)MUS.nextT=AU.ctx.currentTime+.06;}
 function duckMusic(level,rel){if(!AU.ctx||!AU.musBus)return;const t=AU.ctx.currentTime;try{AU.musBus.gain.cancelScheduledValues(t);AU.musBus.gain.setValueAtTime(AU.musBus.gain.value,t);AU.musBus.gain.linearRampToValueAtTime(.8*vGain(OPTS.volMus)*level,t+(rel||.4));}catch(e){}}
-function vMusicbox(f,t,g){const c=AU.ctx;[[1,1],[3.98,.16],[6.1,.05]].forEach(([r,a])=>{const o=c.createOscillator();o.type='sine';o.frequency.value=f*r;const og=c.createGain();og.gain.setValueAtTime(g*a,t);og.gain.exponentialRampToValueAtTime(.0001,t+1.4/Math.sqrt(r));o.connect(og);og.connect(AU.mIn);o.start(t);o.stop(t+1.5);});}
-function vBell(f,t,g){const c=AU.ctx;const car=c.createOscillator();car.type='sine';car.frequency.value=f;const mod=c.createOscillator();mod.type='sine';mod.frequency.value=f*2.4;const mg=c.createGain();mg.gain.setValueAtTime(f*1.6,t);mg.gain.exponentialRampToValueAtTime(f*.02,t+1.1);mod.connect(mg);mg.connect(car.frequency);const bg=c.createGain();bg.gain.setValueAtTime(g,t);bg.gain.exponentialRampToValueAtTime(.0001,t+2.2);car.connect(bg);bg.connect(AU.mIn);car.start(t);mod.start(t);car.stop(t+2.3);mod.stop(t+2.3);}
+function vMusicbox(f,t,g,det){const c=AU.ctx;[[1,1],[3.98,.16],[6.1,.05]].forEach(([r,a])=>{const o=c.createOscillator();o.type='sine';o.frequency.value=f*r;if(det)o.detune.value=det*(r>2?1.7:1); // kotak musik mulai fals: partial atas lebih pelewot
+  const og=c.createGain();og.gain.setValueAtTime(g*a,t);og.gain.exponentialRampToValueAtTime(.0001,t+1.4/Math.sqrt(r));o.connect(og);og.connect(AU.mIn);o.start(t);o.stop(t+1.5);});}
+function vBell(f,t,g,det){const c=AU.ctx;const car=c.createOscillator();car.type='sine';car.frequency.value=f;if(det)car.detune.value=det;const mod=c.createOscillator();mod.type='sine';mod.frequency.value=f*2.4;if(det)mod.detune.value=det*1.4;const mg=c.createGain();mg.gain.setValueAtTime(f*1.6,t);mg.gain.exponentialRampToValueAtTime(f*.02,t+1.1);mod.connect(mg);mg.connect(car.frequency);const bg=c.createGain();bg.gain.setValueAtTime(g,t);bg.gain.exponentialRampToValueAtTime(.0001,t+2.2);car.connect(bg);bg.connect(AU.mIn);car.start(t);mod.start(t);car.stop(t+2.3);mod.stop(t+2.3);}
 function vPad(f,t,dur,g){const c=AU.ctx;const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=850;const vg=c.createGain();vg.gain.setValueAtTime(.0001,t);vg.gain.linearRampToValueAtTime(g,t+.5);vg.gain.setValueAtTime(g,t+dur*.6);vg.gain.linearRampToValueAtTime(.0001,t+dur);lp.connect(vg);vg.connect(AU.mIn);[-4,4].forEach(d2=>{const o=c.createOscillator();o.type='triangle';o.frequency.value=f;o.detune.value=d2;o.connect(lp);o.start(t);o.stop(t+dur+.1);});}
 function vBass(f,t,dur,g){const c=AU.ctx;const o=c.createOscillator();o.type='triangle';o.frequency.value=f;const o2=c.createOscillator();o2.type='sine';o2.frequency.value=f*2;const g2=c.createGain();g2.gain.value=.35;const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420;const bg=c.createGain();bg.gain.setValueAtTime(.0001,t);bg.gain.linearRampToValueAtTime(g,t+.02);bg.gain.setValueAtTime(g*.7,t+dur*.7);bg.gain.linearRampToValueAtTime(.0001,t+dur);o.connect(lp);o2.connect(g2);g2.connect(lp);lp.connect(bg);bg.connect(AU.mIn);o.start(t);o.stop(t+dur+.05);o2.start(t);o2.stop(t+dur+.05);}
 function vTick(t,g){const c=AU.ctx;const s=c.createBufferSource();s.buffer=noiseBuf(c,.02);const f=c.createBiquadFilter();f.type='highpass';f.frequency.value=6000;const tg=c.createGain();tg.gain.setValueAtTime(g,t);tg.gain.exponentialRampToValueAtTime(.0001,t+.03);s.connect(f);f.connect(tg);tg.connect(AU.mIn);s.start(t);}
-function musTick(){const c=AU.ctx;if(!c||!MUS.song||AU.muted)return;if(!MUS.nextT||MUS.nextT<c.currentTime-.5)MUS.nextT=c.currentTime+.05;const s=MUS.song,spb=60/s.bpm/4;
+function musTick(){const c=AU.ctx;if(!c||!MUS.song||AU.muted)return;if(!MUS.nextT||MUS.nextT<c.currentTime-.5)MUS.nextT=c.currentTime+.05;const s=MUS.song;
+  // kelelahan loop (P5): makin banyak siklus, leitmotif makin pelan, nada melodi mulai hilang & fals —
+  // "fatigue" pendengaran yang mengikuti tema; lagu 'end' dikecualikan agar katarsis tetap bersih.
+  const wear=(MUS.name==='end')?0:Math.min(S.loop||0,4)/4,spb=60/(s.bpm*(1-wear*.035))/4;
   while(MUS.nextT<c.currentTime+.16){const evs=MUS.map[MUS.step];
     if(evs)evs.forEach(e=>{const t=MUS.nextT,spbDur=e.dur*spb,g=.26*e.vel;e.notes.forEach(n=>{
       if(e.v==='tick'){vTick(t,g*.5);return;}
+      let det=0;
+      if(wear>0&&(e.v==='musicbox'||e.v==='bell')){ // hash deterministik per langkah+nada: selalu titik sama yang rusak
+        const h=(MUS.step*7+n.charCodeAt(0)*29+n.charCodeAt(1)*13)%100;
+        if(h<wear*14)return; // nada tenggelam — ingatan mulai berlubang
+        det=(((h*37)%200)/100-1)*(4+9*wear);}
       const f=NF(n);
       if(e.v==='pad')vPad(f,t,spbDur+.15,g*.5);
       else if(e.v==='bass')vBass(f,t,spbDur,g);
-      else if(e.v==='bell')vBell(f,t,g);
-      else if(e.v==='tick')vTick(t,g*.5);
-      else{vMusicbox(f,t,g);if(s.dbl)vBell(f*2,t,g*.35);}});});
+      else if(e.v==='bell')vBell(f,t,g,det);
+      else{vMusicbox(f,t,g,det);if(s.dbl)vBell(f*2,t,g*.35);}});});
     MUS.step=(MUS.step+1)%s.len;MUS.nextT+=spb;}}
 setInterval(musTick,42);
 
@@ -152,6 +160,7 @@ const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:t
   walk:null,dialog:null,diary:null,cam:0,camTarget:0,caption:'',captionT:0,
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
   era:'2088',shakeT:0,shakeA:0,endCard:null,fadeIn:0,prologueDone:false,
+  zoom:1,zt:1,zwx:W/2, // G1 kamera emosional: zoom aktual / target / fokus dunia-X pembicara
   paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,titleSel:1,titleConfirm:false,challenge:null,tutorialFade:0,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null};
 let T=0; // waktu global detik
 
