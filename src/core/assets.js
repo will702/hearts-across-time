@@ -38,9 +38,9 @@ const ASSET_MANIFEST = {
   bg1968B_far: { src: 'assets/bg1968B_far.png' }, bg1968B_mid: { src: 'assets/bg1968B_mid.png', scale: 0.5 },
   bg1999_far: { src: 'assets/bg1999_far.png' }, bg1999_mid: { src: 'assets/bg1999_mid.png' },
   // lapisan foreground lukis (okluder dekat kamera; absen => fgSilhouette prosedural)
-  bg2088_fg: { src: 'assets/bg2088_fg.png', h: 150 }, bg1944_fg: { src: 'assets/bg1944_fg.png', h: 200 },
-  bg1968A_fg: { src: 'assets/bg1968A_fg.png', h: 150 }, bg1968B_fg: { src: 'assets/bg1968B_fg.png', h: 150 },
-  bg1999_fg: { src: 'assets/bg1999_fg.png', h: 150 },
+  bg2088_fg: { src: 'assets/bg2088_fg.png', h: 150, yOff: 36 }, bg1944_fg: { src: 'assets/bg1944_fg.png', h: 200, yOff: 72 },
+  bg1968A_fg: { src: 'assets/bg1968A_fg.png', h: 150, yOff: 36 }, bg1968B_fg: { src: 'assets/bg1968B_fg.png', h: 150, yOff: 36 },
+  bg1999_fg: { src: 'assets/bg1999_fg.png', h: 150, yOff: 36 },
   // properti animasi strip 3 frame (sel 200px; h = tinggi tampil px)
   prop_flag1944: { src: 'assets/prop_flag1944.png', fw: 200, fh: 200, h: 132 },
   prop_barrel2088: { src: 'assets/prop_barrel2088.png', fw: 200, fh: 200, h: 86 },
@@ -170,7 +170,7 @@ function drawCharSheet(c, id, expr, phase, moving, opt = {}) { // false => peman
   }
   const s = (cfg.h || 112) / cfg.fh, dw = cfg.fw * s, dh = cfg.fh * s;
   if (opt.tremble) c.translate(Math.sin(T * 31) * .9, 0);
-  else if (moving) { const st = opt.stride === undefined ? 1 : opt.stride; c.rotate(Math.sin(phase) * .03 * st); c.translate(Math.sin(phase * 2 - .4) * (0.6 + 0.5 * st), -Math.abs(Math.sin(phase)) * (1.6 + 1.4 * st)); } // bob langkah: counter-rock 1× + sway 2× melambai
+  else if (moving) { const st = opt.stride === undefined ? 1 : opt.stride, impact = OPTS.reduceMotion ? 0 : Math.pow(Math.abs(Math.cos(phase)), 8) * st; c.rotate(Math.sin(phase) * .022 * st); c.translate(Math.sin(phase * 2 - .4) * (0.6 + 0.5 * st), -Math.abs(Math.sin(phase)) * (1.6 + 1.4 * st)); c.scale(1 + impact * .012, 1 - impact * .018); } // bob langkah: counter-rock 1× + sway 2× melambai
   if (cfg.pixel) { c.save(); c.imageSmoothingEnabled = false; }
   if (col2 < 0) c.drawImage(im, col * cfg.fw, row * cfg.fh, cfg.fw, cfg.fh, -dw / 2, -dh, dw, dh);
   else { // lebur antar frame

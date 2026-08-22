@@ -21,13 +21,13 @@ function drawChars(c, mode, cam) {
   const pz = POSES[D.node];
   const posE = (mode === 'dialog' && pz && pz.side === 'elena' && (!pz.expr || pz.expr === D.elExpr)) ? pz.id : null; // pose lukis momen kunci (filter ekspresi opsional)
   if (posE) {
-    c.save(); c.globalAlpha = poseFade(posE); const okPose = drawPoseImage(c, posE); c.restore();
+    c.save(); c.globalAlpha = poseFade(posE); if(posE === 'pose_elena_hold')c.scale(-1,1); const okPose = drawPoseImage(c, posE); c.restore();
     if (!okPose) drawElena(c, t, p.phase, p.moving && mode === 'walk', D.elExpr, { vial: G.state === 'endcard' || (G.state === 'dialog' && D.node === 'true_end' && D.i > 7), lean: 0, stride: 1 });
   }
   else drawElena(c, t, p.phase, p.moving && mode === 'walk', D.elExpr, { vial: G.state === 'endcard' || (G.state === 'dialog' && D.node === 'true_end' && D.i > 7), lean: mode === 'walk' ? ((p.vx / 262) * .11 + clamp((p.acc || 0) / 900, -1, 1) * .03) * (p.facingRight ? 1 : -1) : 0, stride: mode === 'walk' ? p.stride : 1 });
   c.restore();
   if (G.walk && G.walk.ar && (mode === 'walk' || mode === 'dialog') && !(mode === 'walk' && G.era === '1968' && !G.walk.diaryRead)) {
-    const ax = G.walk.arX - cam;
+    const ax = G.walk.arX - cam - (pz && pz.id === 'pose_elena_hold' ? 130 : 0); // rapatkan Arthur agar tangannya bertemu pose genggam Elena
     const ab = speaking && speaking !== 'elena' && speaking !== 'narrator' ? Math.exp(-4.5 * G.speak.t) * Math.sin(13 * G.speak.t) * 3.5 : 0;
     const breathA = Math.sin(T * 1.6 + 2.2) * 1.0; // napas idle Arthur (beda fase)
     c.save(); c.translate(ax, GROUND - ab + breathA);c.scale(mode==='dialog'?1.16:1.1,mode==='dialog'?1.16:1.1); groundShadow(c); c.scale(-1, 1); // menghadap kiri (ke Elena)

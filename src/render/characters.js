@@ -36,10 +36,11 @@ function groundShadow(c,w=1,a=.28){const g=c.createRadialGradient(0,0,2,0,0,26);
 function drawElena(c,t,phase,moving,expr='neutral',opt={}){
   if(drawCharSheet(c,'elena',expr,phase,moving,opt)){if(opt.vial)drawVialOverlay(c,ASSET_MANIFEST.elena);return;}
   const st=opt.stride===undefined?1:opt.stride;
+  const impact=OPTS.reduceMotion?0:Math.pow(Math.abs(Math.cos(phase)),8)*st;
   const bob=moving?Math.abs(Math.sin(phase))*(1.6+1.4*st):Math.sin(t*2)*0.9;
   const sw=moving?Math.sin(phase)*(0.75+0.4*st):Math.sin(t*1.4)*.1;
   const sway=moving?Math.sin(phase-.9)*.05:Math.sin(t*1.3)*.018; // rambut: follow-through, tertinggal dari langkah
-  c.save();c.translate(0,-bob);
+  c.save();c.translate(0,-bob);c.scale(1+impact*.012,1-impact*.018);
   if(moving&&opt.lean)c.rotate(opt.lean);
   // rambut belakang: sepanjang tulang belikat, ujung ikal ke DALAM (referensi GIF)
   c.save();c.rotate(sway*.7);c.translate(0,-59);
@@ -195,4 +196,3 @@ function drawArthur(c,kind,t,expr='neutral',opt={}){
   c.restore();
   c.restore();c.restore();
 }
-

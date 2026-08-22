@@ -100,11 +100,11 @@ function fgSilhouette(c,era,camX){
 }
 /* --- properti animasi per era (strip 3 frame AI; file absen => tak digambar) --- */
 const PROPS={
-  '1944':[{id:'prop_flag1944',x:390,y:444,fps:5},{id:'prop_lantern1944',x:650,y:436,fps:3.2},{id:'prop_flare1944',x:1215,y:422,fps:4}],
+  '1944':[{id:'prop_flag1944',x:390,y:444,fps:5},{id:'prop_lantern1944',x:620,y:436,fps:3.2},{id:'prop_flare1944',x:1000,y:440,fps:4}],
   '2088':[{id:'prop_barrel2088',x:380,y:444,fps:4.5},{id:'prop_poster2088',x:1240,y:392,fps:3}],
-  '1968A':[{id:'prop_bulb1968A',x:1040,y:200,fps:3},{id:'prop_radio1968A',x:500,y:444,fps:2.5}], // radio challenge terpisah dari buku/lore
-  '1968B':[{id:'prop_beacon1968B',x:500,y:444,fps:2.2},{id:'prop_steam1968B',x:1080,y:330,fps:4}],
-  '1999':[{id:'prop_consoleWave1999',x:690,y:444,fps:3.5},{id:'prop_frost1999',x:470,y:444,fps:2.5}]};
+  '1968A':[{id:'prop_bulb1968A',x:850,y:200,fps:3},{id:'prop_radio1968A',x:500,y:444,fps:2.5}], // radio challenge terpisah dari buku/lore
+  '1968B':[{id:'prop_beacon1968B',x:500,y:444,fps:2.2},{id:'prop_steam1968B',x:850,y:330,fps:4}],
+  '1999':[{id:'prop_consoleWave1999',x:590,y:444,fps:3.5},{id:'prop_frost1999',x:470,y:444,fps:2.5}]};
 function drawPropFrame(c,id,sx,y,frame){ // satu frame strip di (sx,y) jangkar tengah-bawah
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!cfg||!im||!im.width)return false;
   const s=cfg.h/cfg.fh,dw=cfg.fw*s,dh=cfg.fh*s;
@@ -113,7 +113,7 @@ function drawProps(c,era,camX){ // frame deterministik dari T; reduceMotion => f
   const list=PROPS[era]||[],mot=OPTS.reduceMotion?0:1;
   for(const p of list){const sx=p.x-camX;if(sx<-130||sx>W+130)continue;
     drawPropFrame(c,p.id,sx,p.y,mot?Math.floor(T*p.fps)%3:0);}}
-const DIARY_X=760; // gerbang naratif wajib Babak 2, cukup jauh sebelum Arthur di x=1180
+const DIARY_X=700; // gerbang naratif wajib Babak 2, di tableau terakhir sebelum Arthur
 function drawBrokenWatch(c,cam){if(G.era!=='1944'||S.watchRepaired)return;const x=WATCH_X-cam,hot=G.walk&&G.walk.watchHot,mot=OPTS.reduceMotion?0:1;
   if(x<-60||x>W+60)return;c.save();c.translate(x,GROUND-8);c.rotate(-.24);c.shadowColor='rgba(255,204,110,.55)';c.shadowBlur=hot?20:10;c.fillStyle='#B98A3D';c.beginPath();c.arc(0,-12,18,0,TAU);c.fill();c.shadowBlur=0;c.strokeStyle='#F1D58B';c.lineWidth=2;c.beginPath();c.arc(0,-12,18,0,TAU);c.stroke();
   c.fillStyle='#E8DAB7';c.beginPath();c.arc(0,-12,13,0,TAU);c.fill();c.strokeStyle='#493822';c.lineWidth=1.4;c.beginPath();c.moveTo(0,-12);c.lineTo(6,-20);c.moveTo(0,-12);c.lineTo(-7,-9);c.stroke();c.strokeStyle='#94342E';c.beginPath();c.moveTo(-9,-23);c.lineTo(9,-2);c.stroke();c.fillStyle='#B98A3D';rr(c,-5,-34,10,5,2);c.fill();c.restore();
@@ -155,7 +155,7 @@ function drawHotspots(c){ // penanda titik selidik: titik cahaya hangat berdenyu
 function bgFgImg(c,id,camX){ // lapisan foreground lukis (parallax 1.18); false => pemanggil pakai fgSilhouette
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!cfg||!im||!im.width)return false;
   const dh=cfg.h||150,dw=Math.round(im.width*dh/im.height),off=-((camX*1.18)%dw);
-  for(let x=off-dw;x<W;x+=dw)c.drawImage(im,0,0,im.width,im.height,x,H-dh,dw,dh);
+  for(let x=off-dw;x<W;x+=dw)c.drawImage(im,0,0,im.width,im.height,x,H-dh+(cfg.yOff||0),dw,dh);
   return true;}
 function drawPoseImage(c,id){ // gambar pose lukis momen kunci, jangkar tengah-bawah di titik saat ini
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!cfg||!im||!im.width)return false;
@@ -168,9 +168,9 @@ const POSES={c1e:{side:'elena',id:'pose_elena_hold'},c2e:{side:'elena',id:'pose_
   n_b1:{side:'elena',id:'pose_elena_resolve',expr:'angry'},r1b:{side:'arthur',id:'pose_arthur_muda_vial'}};
 /* --- TITIK SELIDIK (lore hotspot) per era — ↓ ketika dekat; sekali seumur save (SAVE.inspected) --- */
 const HOTSPOTS={
-  '1944':[{x:480,id:'lore_crate'},{x:1235,id:'lore_flare'}],
-  '1968A':[{x:560,id:'lore_photo'},{x:940,id:'lore_tape'}],
-  '1968B':[{x:560,id:'lore_photo'},{x:940,id:'lore_tape'}],
+  '1944':[{x:480,id:'lore_crate'},{x:1000,id:'lore_flare'}],
+  '1968A':[{x:560,id:'lore_photo'},{x:780,id:'lore_tape'}],
+  '1968B':[{x:560,id:'lore_photo'},{x:780,id:'lore_tape'}],
   '1999':[{x:420,id:'lore_clip'}]};
 const LORE={
   lore_crate:['[ Peti obat tergeletak — morfin habis, perban berlumpur, satu ampul tanpa label. ]',

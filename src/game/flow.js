@@ -83,9 +83,9 @@ function updateDialog(dt,mx,my){
 const ECHO={cur:{},prev:{}}; // P2 gema loop: rekam jejak jalan per era; prev = siklus sebelumnya (sesi berjalan saja)
 function echoKey(){return G.era==='1968'?'1968'+S.routeB1:G.era;}
 const ERA_CONF={
-  '1944':{amb:'1944',ar:'muda',node:'n_b1',cap:'BABAK 1 — GARIS DEPAN, 1944',from:1944,len:1800,arX:1480}, // parit diperpanjang: pendekatan menegangkan di tengah gerimis
-  '1968':{amb:'1968',ar:null,node:'n_b2',cap:'BABAK 2 — 1968',from:1968,len:1500,arX:1180},
-  '1999':{amb:'1999',ar:'tua',node:'n_b3',cap:'BABAK 3 — RUANG OBSERVASI KAPSUL, 1999',from:1999,len:1300,arX:1000}}; // lab lebih rapat: kapsul jadi pusat
+  '1944':{amb:'1944',ar:'muda',node:'n_b1',cap:'BABAK 1 — GARIS DEPAN, 1944',from:1944,len:1450,arX:1240}, // tiga tableau rapat: arloji/lore → sorot → suar/Arthur
+  '1968':{amb:'1968',ar:null,node:'n_b2',cap:'BABAK 2 — 1968',from:1968,len:1200,arX:1000},
+  '1999':{amb:'1999',ar:'tua',node:'n_b3',cap:'BABAK 3 — RUANG OBSERVASI KAPSUL, 1999',from:1999,len:1100,arX:900}}; // perjalanan hanya menghubungkan temuan, challenge, dan dialog
 function startVortex(to,rewind){
   G.vortex={to,t:0,rewind,from:rewind?1999:(G.era==='2088'?2088:ERA_CONF[G.era].from)};
   G.state='vortex';G.zoom=G.zt=1;setAmbience(null);rewind?SFX.vortexR():SFX.vortexF();
@@ -125,9 +125,9 @@ function loopHint(){
 }
 const CHALLENGE_CONF={
   // P1: mekanik berbeda per era — dodge sorot 1944 • tune sinyal 1968 • balance krio 1999
-  '1944':{mode:'dodge',x:760,title:'PENYEBERANGAN LAMPU SOROT',left:'Alihkan sorot dari medis terluka',right:'Putus daya dan menyeberang langsung',targets:[.24,.68,.43]},
+  '1944':{mode:'dodge',x:700,title:'PENYEBERANGAN LAMPU SOROT',left:'Alihkan sorot dari medis terluka',right:'Putus daya dan menyeberang langsung',targets:[.24,.68,.43]},
   '1968':{mode:'tune',x:500,title:'PENYETELAN SINYAL',left:'Ikuti frekuensi panggilan Arthur',right:'Isolasi pembawa data formula',targets:[.3,.72,.48]},
-  '1999':{mode:'balance',x:690,title:'STABILISASI KRIO',left:'Dahulukan tanda vital Arthur',right:'Dahulukan kemurnian serum',targets:[.66,.34,.58]}};
+  '1999':{mode:'balance',x:590,title:'STABILISASI KRIO',left:'Dahulukan tanda vital Arthur',right:'Dahulukan kemurnian serum',targets:[.66,.34,.58]}};
 const WATCH_X=420,WATCH_START=[.68,.08,.39]; // arloji ditemukan saat traversal Babak 1, sebelum lampu sorot
 function randomWatchTargets(){return WATCH_START.map(start=>{let v=start;for(let n=0;n<12&&Math.min(Math.abs(v-start),1-Math.abs(v-start))<.14;n++)v=Math.round((.04+Math.random()*.92)*48)/48;return v;});}
 function watchTargets(){if(!Array.isArray(S.watchTargets)||S.watchTargets.length!==3)S.watchTargets=randomWatchTargets();return S.watchTargets;}
