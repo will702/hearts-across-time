@@ -112,7 +112,7 @@ function startGlitch(){G.state='glitch';G.zoom=G.zt=1;
   G.glitch={t:0,hint:loopHint(),kasus:CS[S.routeB2]||'BERKAS KASUS — timeline runtuh'};
   markEnd(S.routeB2==='A1'?'A1':S.routeB2==='B1'?'B1':S.routeB2==='B2'?'B2lock':null); // rute A2 tercatat lewat node paradox/r3f
   S.loop++;SFX.glitch();setAmbience(null);stopAmb();
-  S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.challenges=freshChallenges();S.inventory={};S.watchRepaired=false;S.roseRepaired=false;S.gemAligned=false;S.photoRepaired=false; // afinitas dan isi tas direset per siklus
+  S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.challenges=freshChallenges();S.inventory={};S.watchTargets=null;S.watchRepaired=false;S.roseRepaired=false;S.gemAligned=false;S.photoRepaired=false; // afinitas dan isi tas direset per siklus
   SAVE.game=null; // autosave siklus yg runtuh tak boleh di-Continue (akan mengembalikan kepribadian lama)
   persistSave();}
 // remah roti: setiap kegagalan memberi tahu pemain mengapa loop pecah
@@ -128,7 +128,9 @@ const CHALLENGE_CONF={
   '1944':{mode:'dodge',x:760,title:'PENYEBERANGAN LAMPU SOROT',left:'Alihkan sorot dari medis terluka',right:'Putus daya dan menyeberang langsung',targets:[.24,.68,.43]},
   '1968':{mode:'tune',x:500,title:'PENYETELAN SINYAL',left:'Ikuti frekuensi panggilan Arthur',right:'Isolasi pembawa data formula',targets:[.3,.72,.48]},
   '1999':{mode:'balance',x:690,title:'STABILISASI KRIO',left:'Dahulukan tanda vital Arthur',right:'Dahulukan kemurnian serum',targets:[.66,.34,.58]}};
-const WATCH_X=420,WATCH_TARGETS=[.16,.54,.82]; // arloji ditemukan saat traversal Babak 1, sebelum lampu sorot
+const WATCH_X=420,WATCH_START=[.68,.08,.39]; // arloji ditemukan saat traversal Babak 1, sebelum lampu sorot
+function randomWatchTargets(){return WATCH_START.map(start=>{let v=start;for(let n=0;n<12&&Math.min(Math.abs(v-start),1-Math.abs(v-start))<.14;n++)v=Math.round((.04+Math.random()*.92)*48)/48;return v;});}
+function watchTargets(){if(!Array.isArray(S.watchTargets)||S.watchTargets.length!==3)S.watchTargets=randomWatchTargets();return S.watchTargets;}
 const ROSE_X=285,ROSE_TARGET={x:355,y:148,w:250,h:214}; // botol pecah ditemukan sebelum penyetelan sinyal Babak 2
 const GEM_X=250,GEM_TARGET={rx:.62,ry:-.86}; // dua temuan wajib Babak 3, sebelum stabilisasi krio
 const PHOTO_X=455,PHOTO_TARGET={x:330,y:148,w:300,h:200};
@@ -148,7 +150,7 @@ const PHOTO_PIECES=[
   {poly:[[0,100],[143,100],[157,126],[145,158],[153,200],[0,200]],home:[-220,112]},
   {poly:[[143,100],[205,109],[232,97],[300,100],[300,200],[153,200],[145,158],[157,126]],home:[220,112]}];
 function addStoryItem(id,label){S.inventory=S.inventory||{};if(S.inventory[id])return;S.inventory[id]=1;G.itemToast={id,label,t:0};SFX.chime();saveCycle();}
-function saveCycle(){SAVE.game={era:G.era,S:{empathy:S.empathy,logic:S.logic,routeB1:S.routeB1,routeB2:S.routeB2,loop:S.loop,challenges:Object.assign({},S.challenges),inventory:Object.assign({},S.inventory||{}),watchRepaired:!!S.watchRepaired,roseRepaired:!!S.roseRepaired,gemAligned:!!S.gemAligned,photoRepaired:!!S.photoRepaired}};persistSave();}
+function saveCycle(){SAVE.game={era:G.era,S:{empathy:S.empathy,logic:S.logic,routeB1:S.routeB1,routeB2:S.routeB2,loop:S.loop,challenges:Object.assign({},S.challenges),inventory:Object.assign({},S.inventory||{}),watchTargets:Array.isArray(S.watchTargets)?S.watchTargets.slice(0,3):null,watchRepaired:!!S.watchRepaired,roseRepaired:!!S.roseRepaired,gemAligned:!!S.gemAligned,photoRepaired:!!S.photoRepaired}};persistSave();}
 function startChallenge(){const cfg=CHALLENGE_CONF[G.era];if(!cfg||S.challenges[G.era])return;
   G.state='challenge';G.zoom=G.zt=1;G.challenge={era:G.era,stage:'choose',sel:0,band:0,cursor:.5,t:0,misses:0,assist:false,feedback:'',feedbackT:0,successT:0};
   if(cfg.mode==='dodge')Object.assign(G.challenge,{px:200,det:0,bx:484,bw:112});
@@ -202,7 +204,7 @@ function updateChallenge(dt){const ch=G.challenge,cfg=CHALLENGE_CONF[ch.era];ch.
   if(advHit()||touchLock){ptr.tap=false;if(Math.abs(ch.cursor-target)<=win){ch.band++;SFX.confirm();ch.feedback='TERKUNCI '+ch.band+'/3';ch.feedbackT=.65;if(ch.band>=3)finishChallenge(ch);}else missChallenge(ch);}
 }
 function startWatchRepair(){if(S.watchRepaired)return;G.state='watchrepair';G.zoom=G.zt=1;G.player.vx=0;
-  G.watchRepair={ring:0,angles:[.68,.08,.39],locked:[false,false,false],t:0,misses:0,assist:false,feedback:'',feedbackT:0,stage:'play',successT:0};tutorialDone('interact');SFX.select();}
+  G.watchRepair={ring:0,angles:WATCH_START.slice(),locked:[false,false,false],t:0,misses:0,assist:false,feedback:'',feedbackT:0,stage:'play',successT:0};watchTargets();tutorialDone('interact');SFX.select();}
 function updateWatchRepair(dt){const wr=G.watchRepair;if(!wr)return;wr.t+=dt;if(wr.feedbackT>0)wr.feedbackT-=dt;
   if(wr.stage==='success'){wr.successT+=dt;if(wr.successT>1.15){G.state='walk';G.player.x=WATCH_X+58;G.watchRepair=null;G.fadeIn=.24;}return;}
   let d=0;if(keys['ArrowLeft']||keys['a']||keys['A'])d--;if(keys['ArrowRight']||keys['d']||keys['D'])d++;
@@ -211,7 +213,7 @@ function updateWatchRepair(dt){const wr=G.watchRepair;if(!wr)return;wr.t+=dt;if(
     if(r<132&&r>24){wr.angles[wr.ring]=(Math.atan2(dy,dx)/TAU+.25+1)%1;ptr.tap=false;}
     else if(ptr.y>374){tapLock=true;ptr.tap=false;}}
   lock=lock||tapLock;if(!lock)return;
-  const a=wr.angles[wr.ring],target=WATCH_TARGETS[wr.ring],dist=Math.min(Math.abs(a-target),1-Math.abs(a-target)),win=wr.assist?.11:.06;
+  const a=wr.angles[wr.ring],target=watchTargets()[wr.ring],dist=Math.min(Math.abs(a-target),1-Math.abs(a-target)),win=wr.assist?.11:.06;
   if(dist<=win){wr.locked[wr.ring]=true;wr.ring++;wr.feedback='RODA '+wr.ring+'/3 SELARAS';wr.feedbackT=.7;SFX.confirm();
     if(wr.ring>=3){wr.stage='success';wr.successT=0;S.watchRepaired=true;addStoryItem('watch','JAM ARLOJI YANG TELAH DIPERBAIKI');}}
   else{wr.misses++;wr.feedback='GIGI RODA BELUM SELARAS';wr.feedbackT=.85;if(wr.misses>=3)wr.assist=true;G.shakeT=OPTS.reduceMotion?0:.18;G.shakeA=4;SFX.flash();}}
@@ -262,6 +264,7 @@ function updatePhotoPuzzle(dt){const pp=G.photoPuzzle;if(!pp)return;pp.t+=dt;if(
 }
 function startWalk(era){
   G.era=era;G.state='walk';G.zoom=G.zt=1;const cfg=ERA_CONF[era];
+  if(era==='1944')watchTargets(); // target baru dibuat saat Babak 1 dimulai, lalu dipertahankan oleh autosave siklus
   G.echoSeg=0;G.echoT=0;G.echoRec=[]; // P2: mulai rekam jejak untuk gema loop berikutnya
   G.walk={era,len:cfg.len,arX:cfg.arX,ar:era==='1968'?(S.routeB1==='A'?'buron':'dewasa'):cfg.ar,node:cfg.node,hot:null,watchHot:false,roseHot:false,gemHot:false,photoHot:false,diaryHot:false,diaryRead:era!=='1968',
     cap:era==='1968'?(S.routeB1==='A'?'BABAK 2 — BUNKER BAWAH TANAH, 1968':'BABAK 2 — LABORATORIUM MILITER, 1968'):cfg.cap};
@@ -286,7 +289,7 @@ function updateBonus(dt){const b=G.bonus,WORLD=1220;let dir=0;if(keys['ArrowLeft
   if(b.done&&Math.abs(b.x-1145)<70&&act){ptr.tap=false;G.state='bonusend';G.bonusEnd={t:0,page:0};SAVE.bonusSeen=true;persistSave();SFX.chime();return;}
   if(ptr.tap)ptr.tap=false;
 }
-function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;S.challenges=freshChallenges();S.inventory={};S.watchRepaired=false;S.roseRepaired=false;S.gemAligned=false;S.photoRepaired=false;
+function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;S.challenges=freshChallenges();S.inventory={};S.watchTargets=null;S.watchRepaired=false;S.roseRepaired=false;S.gemAligned=false;S.photoRepaired=false;
   D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.diary=null;G.challenge=null;G.watchRepair=null;G.rosePuzzle=null;G.gemAlign=null;G.photoPuzzle=null;G.itemToast=null;G.gameIntro=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;G.finalLabIntro=null;G.puzzleAward=null;G.bonus=null;G.bonusEnd=null;parts.length=0;}
 function startPrologue(){G.gameIntro=null;G.state='prologue';G.prologueT=0;G.fadeIn=.55;startNode('prologue');setAmbience('2088');SFX.heart();}
 function beginNewCycle(){resetAll();SAVE.game=null;persistSave();G.state='gameintro';G.gameIntro={page:0,t:0,pageT:0};G.fadeIn=.7;setAmbience('2088');}

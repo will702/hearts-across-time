@@ -155,7 +155,7 @@ const advHit=()=>keyOnce(' ')||keyOnce('Enter')||keyOnce('Spacebar');
 
 /* ---------- State global ---------- */
 const freshChallenges=()=>({'1944':null,'1968':null,'1999':null});
-const S={empathy:0,logic:0,routeB1:'',routeB2:'',loop:0,challenges:freshChallenges(),inventory:{},watchRepaired:false,roseRepaired:false,gemAligned:false,photoRepaired:false};
+const S={empathy:0,logic:0,routeB1:'',routeB2:'',loop:0,challenges:freshChallenges(),inventory:{},watchTargets:null,watchRepaired:false,roseRepaired:false,gemAligned:false,photoRepaired:false};
 const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:true,vx:0,stride:0,turnT:0,acc:0},
   walk:null,dialog:null,diary:null,cam:0,camTarget:0,caption:'',captionT:0,
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
@@ -177,7 +177,7 @@ try{Object.assign(SAVE,JSON.parse(localStorage.getItem('hat_save')||'{}'));}catc
 SAVE.seen=SAVE.seen||{};SAVE.chosen=SAVE.chosen||{};SAVE.endings=SAVE.endings||{};SAVE.inspected=SAVE.inspected||{};SAVE.tutorial=SAVE.tutorial||{};
 function persistSave(){try{localStorage.setItem('hat_save',JSON.stringify(SAVE));}catch(e){}}
 function tutorialDone(id){if(SAVE.tutorial[id])return;SAVE.tutorial[id]=1;G.tutorialFade=1;persistSave();}
-function normalizeRun(){S.challenges=Object.assign(freshChallenges(),S.challenges||{});S.inventory=Object.assign({},S.inventory||{});S.watchRepaired=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.watchRepaired);S.roseRepaired=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.roseRepaired);S.gemAligned=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.gemAligned);S.photoRepaired=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.photoRepaired);
+function normalizeRun(){S.challenges=Object.assign(freshChallenges(),S.challenges||{});S.inventory=Object.assign({},S.inventory||{});S.watchTargets=Array.isArray(S.watchTargets)&&S.watchTargets.length===3?S.watchTargets.slice(0,3):null;S.watchRepaired=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.watchRepaired);S.roseRepaired=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.roseRepaired);S.gemAligned=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.gemAligned);S.photoRepaired=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.photoRepaired);
   if(S.inventory.watch&&!S.watchRepaired){if(SAVE.game&&SAVE.game.era==='1944')delete S.inventory.watch;else S.watchRepaired=true;} // save 1944 lama wajib bertemu mini-game; save era lanjut tetap aman
   if(S.inventory.flower&&!S.roseRepaired){if(SAVE.game&&SAVE.game.era==='1968')delete S.inventory.flower;else S.roseRepaired=true;} // save Babak 2 lama diarahkan ke puzzle botol; save babak lanjut tetap aman
   if(S.inventory.water_gem&&!S.gemAligned){if(SAVE.game&&SAVE.game.era==='1999')delete S.inventory.water_gem;else S.gemAligned=true;}
