@@ -132,7 +132,7 @@ const WATCH_X=420,WATCH_START=[.68,.08,.39]; // arloji ditemukan saat traversal 
 function randomWatchTargets(){return WATCH_START.map(start=>{let v=start;for(let n=0;n<12&&Math.min(Math.abs(v-start),1-Math.abs(v-start))<.14;n++)v=Math.round((.04+Math.random()*.92)*48)/48;return v;});}
 function watchTargets(){if(!Array.isArray(S.watchTargets)||S.watchTargets.length!==3)S.watchTargets=randomWatchTargets();return S.watchTargets;}
 const ROSE_X=285,ROSE_TARGET={x:355,y:148,w:250,h:214}; // botol pecah ditemukan sebelum penyetelan sinyal Babak 2
-const GEM_X=250,GEM_TARGET={rx:.62,ry:-.86}; // dua temuan wajib Babak 3, sebelum stabilisasi krio
+const GEM_X=250,GEM_START={rx:-.35,ry:.25},GEM_TARGET={rx:.62,ry:-.86}; // dua temuan wajib Babak 3, sebelum stabilisasi krio
 const PHOTO_X=455,PHOTO_TARGET={x:330,y:148,w:300,h:200};
 const ROSE_PIECES=[
   // Delapan pecahan kaca: semua sisi retak berupa garis lurus dan berbagi titik yang sama.
@@ -144,6 +144,10 @@ const ROSE_PIECES=[
   {poly:[[162,214],[72,214],[58,132],[126,108],[112,169]],home:[-240,40]},
   {poly:[[72,214],[0,214],[0,145],[58,132]],home:[-250,-30]},
   {poly:[[0,145],[0,54],[55,73],[108,48],[126,108],[58,132]],home:[-220,-5]}];
+function randomRoseHomes(){const order=ROSE_PIECES.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)),v=order[i];order[i]=order[j];order[j]=v;}const homes=[],used=[];
+  order.forEach((idx,n)=>{const poly=ROSE_PIECES[idx].poly,xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),pw=maxX-minX,ph=maxY-minY,side=n<4?0:1,zx=side?[630,870]:[90,330];let box=null;
+    for(let tries=0;tries<48;tries++){const cx=zx[0]+pw/2+Math.random()*Math.max(1,zx[1]-zx[0]-pw),cy=125+ph/2+Math.random()*Math.max(1,370-125-ph),cand={l:cx-pw/2-7,r:cx+pw/2+7,t:cy-ph/2-7,b:cy+ph/2+7,cx,cy};if(!used.some(q=>cand.l<q.r&&cand.r>q.l&&cand.t<q.b&&cand.b>q.t)){box=cand;break;}box=cand;}
+    used.push(box);homes[idx]=[box.cx-ROSE_TARGET.x-(minX+maxX)/2,box.cy-ROSE_TARGET.y-(minY+maxY)/2];});return homes;}
 const PHOTO_PIECES=[
   {poly:[[0,0],[150,0],[145,46],[157,72],[143,100],[0,100]],home:[-220,26]},
   {poly:[[150,0],[300,0],[300,100],[232,97],[205,109],[143,100],[157,72],[145,46]],home:[220,30]},
@@ -160,7 +164,7 @@ function finishChallenge(ch){if(S.challenges[ch.era])return;const approach=ch.se
   for(let i=0;i<18;i++)parts.push({x:W/2+(Math.random()-.5)*180,y:H/2+50,vx:(Math.random()-.5)*120,vy:-35-Math.random()*80,grav:55,l:0,ml:1.2+Math.random(),r:2+Math.random()*2,col:approach==='empathy'?'rgba(240,160,170,.9)':'rgba(120,220,255,.9)',shrink:1});
   SFX.chime();saveCycle();tutorialDone('challenge');}
 function missChallenge(ch){ch.misses++;ch.feedbackT=.9;
-  ch.feedback=ch.era==='1944'?'TERDETEKSI — KEMBALI KE PENDEKIR AWAL':ch.era==='1999'?'KRIO TIDAK STABIL — ULANGI DARI TENGAH':'SINYAL LEPAS — COBA LAGI';
+  ch.feedback=ch.era==='1944'?'TERDETEKSI — KEMBALI KE TITIK AWAL':ch.era==='1999'?'KRIO TIDAK STABIL — ULANGI DARI TENGAH':'SINYAL LEPAS — COBA LAGI';
   if(ch.misses>=3)ch.assist=true;
   if(ch.era==='1944'){ch.px=200;ch.det=0;}
   if(ch.era==='1999'){ch.vit=.55;ch.ser=.55;ch.ok=true;}
@@ -174,15 +178,14 @@ function updateChallenge(dt){const ch=G.challenge,cfg=CHALLENGE_CONF[ch.era];ch.
     if(advHit()){ch.stage='play';ch.t=0;SFX.confirm();}return;}
   // hold zona bawah layar (sentuh) untuk dodge/balance — sama dengan zona jalan
   const touchDir=(IS_TOUCH&&ptr.down&&ptr.y>H-120)?(ptr.x<W/2?-1:1):0;
-  if(cfg.mode==='dodge'){ // P1: lari antar karung, sorot menyapu — deteksi naik saat tertangkap di ruang terbuka
+  if(cfg.mode==='dodge'){ // P1: lari antar karung; sekali tersapu sorot di ruang terbuka langsung kembali ke awal
     const spd=ch.assist?128:178,bx=190+((Math.sin(ch.t*(ch.assist?.6:.92))+1)/2)*580,bw=ch.assist?150:112;
     let dir=0;if(keys['ArrowLeft']||keys['a']||keys['A'])dir--;if(keys['ArrowRight']||keys['d']||keys['D'])dir++;dir+=touchDir;
     ch.bx=bx;ch.bw=bw;
     ch.px=clamp(ch.px+dir*spd*dt,190,764);
     const inCover=[300,480,660].some(cx=>Math.abs(ch.px-cx)<36),inBeam=Math.abs(ch.px-bx)<bw/2;
     ch.cover=inCover;
-    if(inBeam&&!inCover)ch.det=Math.min(.42,ch.det+dt*(ch.assist?.8:1.15));else ch.det=Math.max(0,ch.det-dt*1.8);
-    if(ch.det>=.42){missChallenge(ch);return;}
+    if(inBeam&&!inCover){ch.det=.42;missChallenge(ch);return;}else ch.det=0;
     if(ch.px>=760)finishChallenge(ch);
     return;}
   if(cfg.mode==='balance'){ // P1: dua meter saling tarik-menarik — tahan kiri/kanan, keduanya meluruh perlahan
@@ -219,10 +222,10 @@ function updateWatchRepair(dt){const wr=G.watchRepair;if(!wr)return;wr.t+=dt;if(
   else{wr.misses++;wr.feedback='GIGI RODA BELUM SELARAS';wr.feedbackT=.85;if(wr.misses>=3)wr.assist=true;G.shakeT=OPTS.reduceMotion?0:.18;G.shakeA=4;SFX.flash();}}
 function rosePointIn(poly,x,y){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>y)!==(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]))inside=!inside;}return inside;}
 function startRosePuzzle(){if(S.roseRepaired)return;G.state='rosepuzzle';G.zoom=G.zt=1;G.player.vx=0;
-  G.rosePuzzle={pieces:ROSE_PIECES.map((d,i)=>({ox:d.home[0],oy:d.home[1],placed:false,i})),drag:-1,dx:0,dy:0,sel:0,wasDown:ptr.down,t:0,stage:'play',successT:0,feedback:'SUSUN KEMBALI BOTOL MAWAR',feedbackT:0};tutorialDone('interact');SFX.select();}
+  const homes=randomRoseHomes();G.rosePuzzle={pieces:ROSE_PIECES.map((d,i)=>({ox:homes[i][0],oy:homes[i][1],homeX:homes[i][0],homeY:homes[i][1],placed:false,i})),drag:-1,dx:0,dy:0,sel:0,wasDown:ptr.down,t:0,stage:'play',successT:0,feedback:'SUSUN KEMBALI BOTOL MAWAR',feedbackT:0};tutorialDone('interact');SFX.select();}
 function roseTryPlace(rp,i){const p=rp.pieces[i];if(!p||p.placed)return;const near=Math.hypot(p.ox,p.oy)<22;if(near){p.ox=0;p.oy=0;p.placed=true;rp.feedback='KEPINGAN '+(rp.pieces.filter(q=>q.placed).length)+' / '+rp.pieces.length+' TERPASANG';rp.feedbackT=.8;SFX.confirm();
     if(rp.pieces.every(q=>q.placed)){rp.stage='success';rp.successT=0;S.roseRepaired=true;addStoryItem('flower','BOTOL MAWAR ABADI');}}
-  else{const h=ROSE_PIECES[i].home;p.ox=h[0];p.oy=h[1];rp.feedback='TEPINYA BELUM MENYATU';rp.feedbackT=.8;G.shakeT=OPTS.reduceMotion?0:.14;G.shakeA=3;SFX.flash();}}
+  else{p.ox=p.homeX;p.oy=p.homeY;rp.feedback='TEPINYA BELUM MENYATU';rp.feedbackT=.8;G.shakeT=OPTS.reduceMotion?0:.14;G.shakeA=3;SFX.flash();}}
 function updateRosePuzzle(dt){const rp=G.rosePuzzle;if(!rp)return;rp.t+=dt;if(rp.feedbackT>0)rp.feedbackT-=dt;
   if(rp.stage==='success'){rp.successT+=dt;if(rp.successT>1.2){G.state='walk';G.player.x=ROSE_X+58;G.rosePuzzle=null;G.fadeIn=.24;}return;}
   for(let n=0;n<ROSE_PIECES.length;n++)if(keyOnce(String(n+1))&&!rp.pieces[n].placed){rp.sel=n;SFX.select();}
@@ -236,9 +239,11 @@ function updateRosePuzzle(dt){const rp=G.rosePuzzle;if(!rp)return;rp.t+=dt;if(rp
 function gemAngleDist(a,b){return Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));}
 function finishGemAlign(ga){if(ga.stage==='success')return;ga.stage='success';ga.successT=0;ga.feedback='BAYANGAN DAN PERMATA TELAH SELARAS';S.gemAligned=true;addStoryItem('water_gem','PERMATA AIR');}
 function gemTryAlign(ga){const dx=gemAngleDist(ga.rx,GEM_TARGET.rx),dy=gemAngleDist(ga.ry,GEM_TARGET.ry),win=ga.assist?.3:.18;if(dx<win&&dy<win)finishGemAlign(ga);else{ga.misses++;ga.feedback='PANTULAN BELUM MENYATU DENGAN BAYANGAN';ga.feedbackT=.9;if(ga.misses>=3)ga.assist=true;G.shakeT=OPTS.reduceMotion?0:.13;G.shakeA=3;SFX.flash();}}
-function startGemAlign(){if(S.gemAligned)return;G.state='gemalign';G.zoom=G.zt=1;G.player.vx=0;G.gemAlign={rx:-.35,ry:.25,drag:false,lastX:0,lastY:0,wasDown:ptr.down,t:0,misses:0,assist:false,feedback:'PUTAR PERMATA HINGGA COCOK DENGAN BAYANGANNYA',feedbackT:0,stage:'play',successT:0};tutorialDone('interact');SFX.select();}
+function resetGemPosition(ga){ga.rx=GEM_START.rx;ga.ry=GEM_START.ry;ga.drag=false;ga.feedback='POSISI PERMATA DIULANG';ga.feedbackT=.85;SFX.select();}
+function startGemAlign(){if(S.gemAligned)return;G.state='gemalign';G.zoom=G.zt=1;G.player.vx=0;G.gemAlign={rx:GEM_START.rx,ry:GEM_START.ry,drag:false,lastX:0,lastY:0,wasDown:ptr.down,t:0,misses:0,assist:false,feedback:'PUTAR PERMATA HINGGA COCOK DENGAN BAYANGANNYA',feedbackT:0,stage:'play',successT:0};tutorialDone('interact');SFX.select();}
 function updateGemAlign(dt){const ga=G.gemAlign;if(!ga)return;ga.t+=dt;if(ga.feedbackT>0)ga.feedbackT-=dt;
   if(ga.stage==='success'){ga.successT+=dt;if(ga.successT>1.2){G.state='walk';G.player.x=GEM_X+58;G.gemAlign=null;G.fadeIn=.24;}return;}
+  if(keyOnce('r')||keyOnce('R')||(ptr.tap&&ptr.x>692&&ptr.x<828&&ptr.y>112&&ptr.y<146)){ptr.tap=false;resetGemPosition(ga);return;}
   let dx=0,dy=0;if(keys['ArrowLeft']||keys['a']||keys['A'])dx--;if(keys['ArrowRight']||keys['d']||keys['D'])dx++;if(keys['ArrowUp']||keys['w']||keys['W'])dy--;if(keys['ArrowDown']||keys['s']||keys['S'])dy++;
   if(dx||dy){ga.ry+=dx*dt*(ga.assist?1.25:1.65);ga.rx+=dy*dt*(ga.assist?1.25:1.65);}
   if(ptr.tap&&ptr.x>270&&ptr.x<690&&ptr.y>135&&ptr.y<380){ga.drag=true;ga.lastX=ptr.x;ga.lastY=ptr.y;ptr.tap=false;SFX.select();}
