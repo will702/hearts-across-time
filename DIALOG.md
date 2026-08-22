@@ -164,6 +164,13 @@
 
 ## BABAK 3 — 1999 (Arthur Tua, Usia 72)
 
+### Intro Laboratorium Akhir
+
+**ELENA:**
+- Akhirnya... tahun 1999. Di ruangan inilah seluruh hidup Arthur bermuara pada satu formula terakhir.
+- Semoga penantiannya tidak sia-sia—semoga ia telah menyelesaikan penawar yang kelak menyelamatkan dunia.
+- Arthur... bertahanlah sedikit lagi. Jika harapan itu masih hidup, aku akan membawanya sampai ke masa depan.
+
 ### Node: n_b3 (Pertemuan Arthur Tua - Berbagai Ending)
 
 ---
@@ -373,3 +380,15 @@ LOOP 1: 1999 (Pilihan 4 Final - Ending Jenis)
 **Total Dialog Lines:** 50+ unik percakapan  
 **Total Ending Routes:** 6 (5 Loop Gagal + 1 True Ending)  
 **Affinity Tracking:** Binary (Empati vs Logika untuk setiap babak)
+
+---
+
+## EPILOG BONUS — PUZZLE WAKTU LENGKAP
+
+Setelah keenam ending berbeda ditemukan, pemain dapat membuka **GAMEPLAY TERAKHIR** dari menu utama.
+Elena menyalakan enam simpul waktu di kota 2088 yang telah pulih, lalu menemui Arthur.
+
+1. **TAHUN 2088 — HARI PERTAMA**
+   - "Untuk pertama kalinya, masa depan tidak meminta Elena kembali ke masa lalu."
+2. **LINGKARAN TELAH PUTUS**
+   - "Kota ini hidup karena setiap akhir yang berani kau hadapi. Elena dan Arthur akhirnya memiliki hari esok."

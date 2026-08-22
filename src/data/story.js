@@ -32,6 +32,12 @@ N('lab_intro',[
   say('elena','Kali ini, aku tidak akan membiarkan siapa pun merebut harapan itu darinya!','angry'),
   {t:'walk',era:'1968'},
 ]);
+N('final_lab_intro',[
+  say('elena','Akhirnya... tahun 1999. Di ruangan inilah seluruh hidup Arthur bermuara pada satu formula terakhir.','sad'),
+  say('elena','Semoga penantiannya tidak sia-sia—semoga ia telah menyelesaikan penawar yang kelak menyelamatkan dunia.','sad'),
+  say('elena','Arthur... bertahanlah sedikit lagi. Jika harapan itu masih hidup, aku akan membawanya sampai ke masa depan.','sad'),
+  {t:'walk',era:'1999'},
+]);
 N('n_b1',()=>{
   const ops=[];
   if(S.loop>0){ // déjà-vu bertingkat mengikuti jumlah loop (C4)

@@ -5,7 +5,6 @@ const D={node:null,ops:[],i:0,line:null,prog:0,popT:1,choices:null,sel:0,choiceT
 const LOG=[]; // backlog dialog (30 terakhir) — buka dengan TAB/B
 function startNode(id){const n=NODES[id];D.ops=(typeof n==='function')?n():n;D.i=0;D.node=id;SAVE.seen[id]=1;D.line=null;D.choices=null;
   D._poseBorn={}; // tiap node: pose fade dihitung ulang
-  if(id==='paradox')markEnd('paradox');else if(id==='r3f')markEnd('rebut');else if(id==='true_end')markEnd('true'); // ending via node
   step();}
 function step(){
   while(D.i<D.ops.length){
@@ -27,7 +26,7 @@ function step(){
     if(op.t==='walk'){startWalk(op.era);return;}
     if(op.t==='fx'){if(op.kind==='boom'){SFX.boom();G.shakeT=OPTS.reduceMotion?0:.9;G.shakeA=9;G.whiteFlash=OPTS.reduceMotion?.25:1;}if(op.kind==='chime')SFX.chime();continue;}
     if(op.t==='vortex'){startVortex(op.to,false);return;}
-    if(op.t==='ending'){if(op.kind==='loop')startGlitch();else startEndCard();return;}
+    if(op.t==='ending'){startPuzzleAward(op.kind);return;}
   }
 }
 function dialogAdvance(){
@@ -100,6 +99,10 @@ function startBunkerIntro(){
 function startLabIntro(){
   G.era='1968';G.state='labintro';G.labIntro={t:0,reveal:0};parts.length=0;
   startNode('lab_intro');setAmbience('1968');G.fadeIn=.42;
+}
+function startFinalLabIntro(){
+  G.era='1999';G.state='finallabintro';G.finalLabIntro={t:0,reveal:0};parts.length=0;
+  startNode('final_lab_intro');setAmbience('1999');G.fadeIn=.42;
 }
 function startGlitch(){G.state='glitch';G.zoom=G.zt=1;
   ECHO.prev=ECHO.cur;ECHO.cur={}; // P2: arsipkan jejak siklus yang runtuh sebagai hantu loop berikutnya
@@ -186,19 +189,49 @@ function startWalk(era){
   saveCycle(); // autosave, termasuk hasil mini-game per siklus
 }
 function startEndCard(){G.state='endcard';G.zoom=G.zt=1;G.endCard={t:0};SFX.chime();setAmbience('1999');setSong('end');duckMusic(1,1.2);SAVE.game=null;persistSave();}
+function endingPuzzleKey(kind){if(kind!=='loop')return'true';if(D.node==='r3f')return'rebut';if(D.node==='paradox')return'paradox';return S.routeB2==='A1'?'A1':S.routeB2==='B1'?'B1':S.routeB2==='B2'?'B2lock':null;}
+function startPuzzleAward(kind){const key=endingPuzzleKey(kind),fresh=key&&!SAVE.endings[key];markEnd(key);G.state='puzzleaward';G.zoom=G.zt=1;G.puzzleAward={key,fresh,t:0,next:kind,total:puzzleCount()};SAVE.game=null;persistSave();SFX.chime();duckMusic(.72,.7);}
+function finishPuzzleAward(){const pa=G.puzzleAward;if(!pa)return;const next=pa.next;G.puzzleAward=null;if(next==='loop')startGlitch();else startEndCard();}
+function startBonus(){if(!puzzleComplete())return;resetAll();G.state='bonus';G.era='2088';G.zoom=G.zt=1;G.fadeIn=.65;G.bonus={x:72,vx:0,cam:0,lit:{},near:-1,done:false,t:0};G.player.facingRight=true;G.player.phase=0;G.player.moving=false;G.player.stride=0;setAmbience('2088');setSong('end');}
+function updateBonus(dt){const b=G.bonus,WORLD=1220;let dir=0;if(keys['ArrowLeft']||keys['a']||keys['A'])dir--;if(keys['ArrowRight']||keys['d']||keys['D'])dir++;
+  if(IS_TOUCH&&ptr.down&&ptr.y>H-130){if(ptr.x<140)dir=-1;else if(ptr.x>W-140)dir=1;}
+  const sprint=keys['Shift'],top=sprint?245:155;b.vx+=clamp(dir*top-b.vx,-850*dt,850*dt);if(!dir)b.vx-=clamp(b.vx,-1250*dt,1250*dt);
+  if(dir&&dir>0!==G.player.facingRight)G.player.facingRight=dir>0;b.x=clamp(b.x+b.vx*dt,55,WORLD-55);G.player.phase+=Math.abs(b.vx)*dt*.105;G.player.moving=Math.abs(b.vx)>8;G.player.stride=clamp(Math.abs(b.vx)/245,0,1);
+  b.cam=lerp(b.cam,clamp(b.x-300,0,WORLD-W),1-Math.pow(.002,dt));b.t+=dt;
+  const nodes=[150,330,510,690,870,1040],near=nodes.findIndex((x,i)=>!b.lit[i]&&Math.abs(b.x-x)<55);b.near=near;
+  const act=keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||advHit()||touchActHit();
+  if(near>=0&&act){ptr.tap=false;b.lit[near]=1;SFX.chime();G.whiteFlash=OPTS.reduceMotion?.12:.35;}
+  const n=Object.keys(b.lit).length;b.done=n>=nodes.length;
+  if(b.done&&Math.abs(b.x-1145)<70&&act){ptr.tap=false;G.state='bonusend';G.bonusEnd={t:0,page:0};SAVE.bonusSeen=true;persistSave();SFX.chime();return;}
+  if(ptr.tap)ptr.tap=false;
+}
 function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;S.challenges=freshChallenges();
-  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.diary=null;G.challenge=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;parts.length=0;}
-function beginNewCycle(){resetAll();SAVE.game=null;persistSave();G.state='prologue';G.fadeIn=1;startNode('prologue');setAmbience('2088');SFX.heart();}
+  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.diary=null;G.challenge=null;G.gameIntro=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;G.finalLabIntro=null;G.puzzleAward=null;G.bonus=null;G.bonusEnd=null;parts.length=0;}
+function startPrologue(){G.gameIntro=null;G.state='prologue';G.prologueT=0;G.fadeIn=.55;startNode('prologue');setAmbience('2088');SFX.heart();}
+function beginNewCycle(){resetAll();SAVE.game=null;persistSave();G.state='gameintro';G.gameIntro={page:0,t:0,pageT:0};G.fadeIn=.7;setAmbience('2088');}
+function gameIntroMove(d){const gi=G.gameIntro,n=3,np=clamp(gi.page+d,0,n-1);if(np===gi.page){if(d>0&&gi.page===n-1)startPrologue();return;}gi.page=np;gi.pageT=0;}
+function updateGameIntro(dt){const gi=G.gameIntro;gi.t+=dt;gi.pageT+=dt;
+  if(keyOnce('ArrowLeft')||keyOnce('ArrowUp')||keyOnce('a')||keyOnce('A')){gameIntroMove(-1);SFX.select();}
+  else if(keyOnce('ArrowRight')||keyOnce('ArrowDown')||keyOnce('d')||keyOnce('D')){gameIntroMove(1);SFX.select();}
+  else if(keyOnce('Escape')){SFX.confirm();startPrologue();}
+  else if(advHit()){SFX.confirm();gameIntroMove(1);}
+  if(!G.gameIntro)return;
+  if(ptr.tap){const x=ptr.x,y=ptr.y;ptr.tap=false;
+    if(x>700&&x<820&&y>91&&y<125){SFX.confirm();startPrologue();return;}
+    if(y>416&&y<459&&x>180&&x<390){SFX.select();gameIntroMove(-1);return;}
+    if(y>416&&y<459&&x>570&&x<790){SFX.confirm();gameIntroMove(1);return;}
+  }}
 function titleMenu(){return[{label:'LANJUTKAN',disabled:!SAVE.game,act:()=>{Object.assign(S,SAVE.game.S||{});normalizeRun();G.fadeIn=1;startWalk(SAVE.game.era||'1944');}},
   {label:'SIKLUS BARU',act:()=>{if(SAVE.game){G.titleConfirm=true;G.confirmSel=0;}else beginNewCycle();}},
-  {label:'PUTAR ULANG INTRO',act:()=>{G.titleConfirm=false;playIntroVideo();}}];}
+  {label:'PUTAR ULANG INTRO',act:()=>{G.titleConfirm=false;playIntroVideo();}},
+  {label:puzzleComplete()?'GAMEPLAY TERAKHIR':'GAMEPLAY TERAKHIR  🔒 '+puzzleCount()+'/'+END_TOTAL.length,disabled:!puzzleComplete(),act:startBonus}];}
 function updateTitle(){const items=titleMenu();
   if(G.titleConfirm){if(keyOnce('ArrowLeft')||keyOnce('a')||keyOnce('A'))G.confirmSel=0;if(keyOnce('ArrowRight')||keyOnce('d')||keyOnce('D'))G.confirmSel=1;
     if(ptr.tap&&ptr.y>330&&ptr.y<390){G.confirmSel=ptr.x<W/2?0:1;ptr.tap=false;if(G.confirmSel===0)beginNewCycle();else G.titleConfirm=false;}
     if(advHit()){if((G.confirmSel||0)===0)beginNewCycle();else G.titleConfirm=false;}return;}
   if(keyOnce('ArrowUp')||keyOnce('w')||keyOnce('W')){do{G.titleSel=(G.titleSel+items.length-1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
   if(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')){do{G.titleSel=(G.titleSel+1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
-  if(ptr.tap&&ptr.x>350&&ptr.x<610&&ptr.y>300&&ptr.y<426){const i=Math.floor((ptr.y-300)/42);ptr.tap=false;if(items[i]&&!items[i].disabled){G.titleSel=i;SFX.confirm();items[i].act();}return;}
+  if(ptr.tap&&ptr.x>330&&ptr.x<630&&ptr.y>286&&ptr.y<438){const i=Math.floor((ptr.y-286)/38);ptr.tap=false;if(items[i]&&!items[i].disabled){G.titleSel=i;SFX.confirm();items[i].act();}return;}
   if(advHit()){const it=items[G.titleSel];if(it&&!it.disabled){SFX.confirm();it.act();}}}
 
 /* ---------- update per-state ---------- */
@@ -249,9 +282,9 @@ function update(dt){
   const mx=ptr.x,my=ptr.y;
   // hotspot UI pojok (mute/pause) via klik atau sentuhan — dicek DI SINI karena ptr.tap dibersihkan sebelum render()
   if(ptr.tap&&Math.hypot(ptr.x-(W-34),ptr.y-26)<20){toggleMute();ptr.tap=false;}
-  else if(ptr.tap&&!G.paused&&(G.state==='walk'||G.state==='challenge'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')&&Math.hypot(ptr.x-(W-72),ptr.y-26)<20){ptr.tap=false;setPaused(true);G.pSel=0;SFX.select();}
+  else if(ptr.tap&&!G.paused&&(G.state==='walk'||G.state==='challenge'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro'||G.state==='finallabintro'||G.state==='bonus')&&Math.hypot(ptr.x-(W-72),ptr.y-26)<20){ptr.tap=false;setPaused(true);G.pSel=0;SFX.select();}
   if(G.paused){updatePause();}
-  else if(keyOnce('Escape')&&!G.logOpen&&(G.state==='walk'||G.state==='challenge'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')){setPaused(true);G.pSel=0;SFX.select();}
+  else if(keyOnce('Escape')&&!G.logOpen&&(G.state==='walk'||G.state==='challenge'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro'||G.state==='finallabintro'||G.state==='bonus')){setPaused(true);G.pSel=0;SFX.select();}
   else switch(G.state){
     case 'load':
       if(AS.ready){G.state='title';G.titleReady=!!SAVE.introDone||!!OPTS.reduceMotion;G.titleT=G.titleReady?8.4:0;G.titleSel=SAVE.game?0:1;}
@@ -262,6 +295,8 @@ function update(dt){
         else if(advHit()||ptr.tap){ptr.tap=false;G.titleT=8.4;G.titleReady=true;SAVE.introDone=true;persistSave();SFX.select();}break;}
       updateTitle();
       break;
+    case 'gameintro':
+      updateGameIntro(dt);break;
     case 'prologue':
       G.prologueT+=dt;
       if((T%2.4)<dt)SFX.heart();
@@ -280,6 +315,11 @@ function update(dt){
       const li=G.labIntro;li.t+=dt;
       if(li.t<4.6){if(advHit()||ptr.tap){ptr.tap=false;li.t=4.6;SFX.select();}}
       else{li.reveal=Math.min(1,li.reveal+dt*2.2);updateDialog(dt,mx,my);}
+      break;}
+    case 'finallabintro':{
+      const fi=G.finalLabIntro;fi.t+=dt;
+      if(fi.t<5.2){if(advHit()||ptr.tap){ptr.tap=false;fi.t=5.2;SFX.select();}}
+      else{fi.reveal=Math.min(1,fi.reveal+dt*2.2);updateDialog(dt,mx,my);}
       break;}
     case 'walk':{
       setAmbOnce(ERA_CONF[G.era].amb);
@@ -367,12 +407,18 @@ function update(dt){
         if(to==='1944')startWarIntro();
         else if(to==='1968'){
           if(S.routeB1==='B')startLabIntro();else startBunkerIntro();
-        }else startWalk('1999');}
+        }else startFinalLabIntro();}
       break;}
     case 'glitch':
       G.glitch.t+=dt;
       if(G.glitch.t>1.7){G.glitch=null;startVortex('1944',true);}
       break;
+    case 'puzzleaward':
+      G.puzzleAward.t+=dt;if(G.puzzleAward.t>.9&&(advHit()||ptr.tap)){ptr.tap=false;SFX.confirm();finishPuzzleAward();}break;
+    case 'bonus':
+      updateBonus(dt);break;
+    case 'bonusend':
+      G.bonusEnd.t+=dt;if(G.bonusEnd.t>1&&(advHit()||ptr.tap)){ptr.tap=false;SFX.confirm();if(G.bonusEnd.page<1){G.bonusEnd.page++;G.bonusEnd.t=0;}else{G.state='title';G.titleReady=true;G.titleT=8.4;G.titleSel=3;G.bonusEnd=null;setAmbience('title');}}break;
     case 'endcard':
       G.endCard.t+=dt;
       // sparkle hati merah muda & emas merayakan true ending

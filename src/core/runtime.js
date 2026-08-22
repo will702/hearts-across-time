@@ -161,7 +161,7 @@ const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:t
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
   era:'2088',shakeT:0,shakeA:0,endCard:null,fadeIn:0,prologueDone:false,
   zoom:1,zt:1,zwx:W/2, // G1 kamera emosional: zoom aktual / target / fokus dunia-X pembicara
-  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,titleSel:1,titleConfirm:false,challenge:null,tutorialFade:0,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null};
+  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,titleSel:1,titleConfirm:false,challenge:null,tutorialFade:0,gameIntro:null,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null,finalLabIntro:null,puzzleAward:null,bonus:null,bonusEnd:null};
 let T=0; // waktu global detik
 
 /* ---------- Opsi & penyimpanan (localStorage) ---------- */
@@ -171,6 +171,8 @@ function saveOpts(){try{localStorage.setItem('hat_opts',JSON.stringify(OPTS));}c
 const SAVE={seen:{},chosen:{},game:null,endings:{},inspected:{},introDone:false,tutorial:{}}; // progres permanen + autosave siklus
 const END_TOTAL=['A1','B1','B2lock','rebut','paradox','true']; // 5 rute gagal + true ending
 function markEnd(k){if(!k)return;if(!SAVE.endings)SAVE.endings={};if(!SAVE.endings[k]){SAVE.endings[k]=1;persistSave();}}
+function puzzleCount(){return END_TOTAL.filter(k=>SAVE.endings&&SAVE.endings[k]).length;}
+function puzzleComplete(){return puzzleCount()>=END_TOTAL.length;}
 try{Object.assign(SAVE,JSON.parse(localStorage.getItem('hat_save')||'{}'));}catch(e){}
 SAVE.seen=SAVE.seen||{};SAVE.chosen=SAVE.chosen||{};SAVE.endings=SAVE.endings||{};SAVE.inspected=SAVE.inspected||{};SAVE.tutorial=SAVE.tutorial||{};
 function persistSave(){try{localStorage.setItem('hat_save',JSON.stringify(SAVE));}catch(e){}}
