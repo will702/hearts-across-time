@@ -185,7 +185,7 @@ function startChallenge() {
   const cfg = CHALLENGE_CONF[G.era]; if (!cfg || S.challenges[G.era]) return;
   G.state = 'challenge'; G.zoom = G.zt = 1; G.challenge = { era: G.era, stage: 'choose', sel: 0, band: 0, cursor: .5, t: 0, misses: 0, assist: false, feedback: '', feedbackT: 0, successT: 0 };
   if (cfg.mode === 'dodge') Object.assign(G.challenge, { px: 200, det: 0, bx: 484, bw: 112 });
-  if (cfg.mode === 'balance') Object.assign(G.challenge, { vit: .55, ser: .55, stable: 0, ok: true });
+  if (cfg.mode === 'balance') Object.assign(G.challenge, { vit: 0, vitDir: 1, ser: 0, serDir: 1, targetVit: .62, targetSer: .68, vitLocked: false, serLocked: false, step: 0 });
   G.player.vx = 0; tutorialDone('interact'); SFX.select();
 }
 function finishChallenge(ch) {
@@ -195,10 +195,10 @@ function finishChallenge(ch) {
 }
 function missChallenge(ch) {
   ch.misses++; ch.feedbackT = .9;
-  ch.feedback = ch.era === '1944' ? 'TERDETEKSI — KEMBALI KE TITIK AWAL' : ch.era === '1999' ? 'KRIO TIDAK STABIL — ULANGI DARI TENGAH' : 'SINYAL LEPAS — COBA LAGI';
+  ch.feedback = ch.era === '1944' ? 'TERDETEKSI — KEMBALI KE TITIK AWAL' : ch.era === '1999' ? 'GARIS BELUM PAS — KUNCI SAAT MENYENTUH AMBANG' : 'SINYAL LEPAS — COBA LAGI';
   if (ch.misses >= 3) ch.assist = true;
   if (ch.era === '1944') { ch.px = 200; ch.det = 0; }
-  if (ch.era === '1999') { ch.vit = .55; ch.ser = .55; ch.ok = true; }
+  if (ch.era === '1999') { ch.vitLocked = false; ch.serLocked = false; ch.step = 0; }
   G.whiteFlash = OPTS.reduceMotion ? .18 : .55; G.shakeT = OPTS.reduceMotion ? 0 : .22; G.shakeA = 5; SFX.flash();
 }
 function updateChallenge(dt) {
@@ -223,17 +223,32 @@ function updateChallenge(dt) {
     if (ch.px >= 760) finishChallenge(ch);
     return;
   }
-  if (cfg.mode === 'balance') { // P1: dua meter saling tarik-menarik — tahan kiri/kanan, keduanya meluruh perlahan
-    const k = ch.assist ? .04 : .075, rate = .52;
-    let dir = 0; if (keys['ArrowLeft'] || keys['a'] || keys['A']) dir--; if (keys['ArrowRight'] || keys['d'] || keys['D']) dir++;
-    if (!dir) dir = touchDir;
-    if (dir < 0) { ch.vit += dt * rate; ch.ser -= dt * rate * .35; }
-    else if (dir > 0) { ch.ser += dt * rate; ch.vit -= dt * rate * .35; }
-    ch.vit = clamp(ch.vit - dt * k, 0, 1); ch.ser = clamp(ch.ser - dt * k, 0, 1);
-    if (ch.vit <= 0 || ch.ser <= 0) { missChallenge(ch); return; }
-    ch.ok = ch.vit > .22 && ch.ser > .22;
-    if (ch.ok) ch.stable += dt;
-    if (ch.stable >= 5) finishChallenge(ch);
+  if (cfg.mode === 'balance') { // 1999: tanda vital (merah) & serum (biru) bergerak cepat — kunci tepat di garis ambang target
+    const spdMultiplier = ch.assist ? 0.7 : 1.0;
+    if (!ch.vitLocked) {
+      ch.vit += (ch.vitDir || 1) * dt * 1.6 * spdMultiplier;
+      if (ch.vit >= 1) { ch.vit = 1; ch.vitDir = -1; }
+      else if (ch.vit <= 0) { ch.vit = 0; ch.vitDir = 1; }
+    }
+    if (!ch.serLocked) {
+      ch.ser += (ch.serDir || 1) * dt * 2.1 * spdMultiplier;
+      if (ch.ser >= 1) { ch.ser = 1; ch.serDir = -1; }
+      else if (ch.ser <= 0) { ch.ser = 0; ch.serDir = 1; }
+    }
+    const win = ch.assist ? 0.16 : 0.10;
+    if (advHit() || ptr.tap) {
+      ptr.tap = false;
+      if (ch.step === 0) {
+        if (Math.abs(ch.vit - (ch.targetVit || .62)) <= win) {
+          ch.vitLocked = true; ch.step = 1; SFX.confirm();
+          ch.feedback = 'VITAL MERAH TERKUNCI (1/2)'; ch.feedbackT = .7;
+        } else missChallenge(ch);
+      } else {
+        if (Math.abs(ch.ser - (ch.targetSer || .68)) <= win) {
+          ch.serLocked = true; SFX.confirm(); finishChallenge(ch);
+        } else missChallenge(ch);
+      }
+    }
     return;
   }
   // tune (1968) — penanda otomatis bergerak bolak-balik (ping-pong) kiri-kanan

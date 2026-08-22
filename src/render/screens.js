@@ -494,21 +494,29 @@ function drawChallenge(c) {
     if (dv > 0) { const vg = c.createRadialGradient(W / 2, H / 2, H * .22, W / 2, H / 2, H * .62); vg.addColorStop(0, 'rgba(170,30,30,0)'); vg.addColorStop(1, `rgba(190,30,30,${.42 * dv})`); c.fillStyle = vg; c.fillRect(0, 0, W, H); }
     c.fillStyle = '#2B211A'; c.font = 'bold 15px ' + F_UI; c.fillText('LUNCUR ANTARA KARUNG — SEKALI TERSOROT, KEMBALI KE AWAL', W / 2, 214);
     c.fillStyle = '#6A5B4B'; c.font = '13px ' + F_UI; c.fillText(IS_TOUCH ? 'tahan ◀ / ▶ di bawah layar untuk berlari' : '← → lari antara karung', W / 2, 352);
-  } else if (cfg.mode === 'balance') { // P1: dua meter krio saling tarik
-    const meter = (v, col, lbl, y) => {
-      c.fillStyle = 'rgba(245,240,232,.13)'; rr(c, W / 2 - 186, y, 400, 20, 9); c.fill();
-      c.fillStyle = col; rr(c, W / 2 - 186, y, 400 * clamp(v, 0, 1), 20, 9); c.fill();
-      c.strokeStyle = '#2B211A'; c.lineWidth = 1.5; rr(c, W / 2 - 186, y, 400, 20, 9); c.stroke();
-      c.strokeStyle = 'rgba(148,52,46,.85)'; c.lineWidth = 2; c.beginPath(); c.moveTo(W / 2 - 186 + 400 * .22, y - 3); c.lineTo(W / 2 - 186 + 400 * .22, y + 23); c.stroke(); // ambang aman
-      c.font = 'bold 11.5px ' + F_UI; c.fillStyle = '#F3EADA'; c.textAlign = 'right'; c.fillText(lbl, W / 2 - 194, y + 15); c.textAlign = 'center';
+  } else if (cfg.mode === 'balance') { // 1999: dua meter krio (VITAL & SERUM) bergerak cepat — kunci di garis target
+    const targetV = ch.targetVit || .62, targetS = ch.targetSer || .68, win = ch.assist ? .16 : .10;
+    const meter = (v, col, lbl, y, target, locked, active) => {
+      c.fillStyle = 'rgba(245,240,232,.13)'; rr(c, W / 2 - 186, y, 400, 22, 9); c.fill();
+      c.fillStyle = col; rr(c, W / 2 - 186, y, 400 * clamp(v, 0, 1), 22, 9); c.fill();
+      const tx = W / 2 - 186 + 400 * target, tw = 400 * win;
+      c.fillStyle = locked ? 'rgba(86,122,97,.45)' : (active ? 'rgba(247,217,132,.35)' : 'rgba(245,240,232,.1)');
+      rr(c, tx - tw, y, tw * 2, 22, 6); c.fill();
+      c.strokeStyle = '#2B211A'; c.lineWidth = 1.5; rr(c, W / 2 - 186, y, 400, 22, 9); c.stroke();
+      c.strokeStyle = locked ? '#FFF0A0' : (active ? '#94342E' : 'rgba(148,52,46,.6)'); c.lineWidth = locked ? 3 : 2.5;
+      c.beginPath(); c.moveTo(tx, y - 3); c.lineTo(tx, y + 25); c.stroke();
+      c.font = (active ? 'bold ' : '') + '12px ' + F_UI; c.fillStyle = locked ? '#F7D984' : (active ? '#FFFDF2' : 'rgba(243,234,218,.6)'); c.textAlign = 'right'; c.fillText((locked ? '✓ ' : '') + lbl, W / 2 - 194, y + 15); c.textAlign = 'center';
     };
-    meter(ch.vit, 'rgba(168,85,80,.95)', 'VITAL', 250);
-    meter(ch.ser, 'rgba(90,150,180,.95)', 'SERUM', 280);
-    c.fillStyle = 'rgba(245,240,232,.13)'; rr(c, W / 2 - 160, 314, 320, 12, 6); c.fill();
-    c.fillStyle = '#567A61'; rr(c, W / 2 - 160, 314, 320 * clamp((ch.stable || 0) / 5, 0, 1), 12, 6); c.fill(); // progres stabilisasi 5 dtk
-    c.fillStyle = '#2B211A'; c.font = 'bold 15px ' + F_UI; c.fillText('SEIMBANGKAN KEDUA GARIS DI ATAS AMBANG MERAH', W / 2, 214);
-    c.fillStyle = '#6A5B4B'; c.font = '13px ' + F_UI; c.fillText(IS_TOUCH ? 'tahan sisi kiri / kanan bawah layar' : 'tahan ← = VITAL naik • tahan → = SERUM naik • stabil 5 detik', W / 2, 346);
-    if (!ch.ok && (ch.vit < .32 || ch.ser < .32)) { c.fillStyle = `rgba(168,62,56,${.55 + .45 * Math.sin(T * 11)})`; c.font = 'bold 14px ' + F_UI; c.fillText('KRITIS', W / 2, 372); }
+    meter(ch.vit, 'rgba(168,85,80,.95)', 'VITAL', 246, targetV, ch.vitLocked, ch.step === 0);
+    meter(ch.ser, 'rgba(90,150,180,.95)', 'SERUM', 282, targetS, ch.serLocked, ch.step === 1);
+    for (let i = 0; i < 2; i++) {
+      const on = (i === 0 && ch.vitLocked) || (i === 1 && ch.serLocked);
+      c.fillStyle = on ? '#5F9270' : '#B7AA95'; c.beginPath(); c.arc(W / 2 - 17 + i * 34, 322, 9, 0, TAU); c.fill();
+    }
+    c.fillStyle = '#2B211A'; c.font = 'bold 15px ' + F_UI;
+    c.fillText(ch.step === 0 ? 'KUNCI VITAL MERAH PAS DI GARIS AMBANG' : 'KUNCI SERUM BIRU PAS DI GARIS AMBANG', W / 2, 214);
+    c.fillStyle = '#6A5B4B'; c.font = '13px ' + F_UI;
+    c.fillText(IS_TOUCH ? 'Ketuk layar saat garis warna pas di ambang target' : 'Tekan ENTER / SPACE saat garis warna pas di ambang target', W / 2, 350);
   } else { // tune (1968): bar setelan asli
     const target = cfg.targets[Math.min(ch.band, 2)], win = ch.assist ? .13 : .075, tx = 190 + target * 580, rawX = 190 + ch.cursor * 580, cx = OPTS.reduceMotion ? 190 + Math.round(ch.cursor * 10) / 10 * 580 : rawX;
     c.fillStyle = '#D8CDB9'; rr(c, 190, 244, 580, 28, 7); c.fill(); c.fillStyle = ch.assist ? 'rgba(82,129,98,.45)' : 'rgba(194,90,90,.4)'; rr(c, tx - win * 580, 244, win * 1160, 28, 6); c.fill(); c.strokeStyle = '#2B211A'; c.lineWidth = 2; c.beginPath(); c.moveTo(cx, 232); c.lineTo(cx, 284); c.stroke(); c.fillStyle = '#94342E'; c.beginPath(); c.moveTo(cx - 7, 231); c.lineTo(cx + 7, 231); c.lineTo(cx, 241); c.closePath(); c.fill();
