@@ -5,7 +5,6 @@ const D={node:null,ops:[],i:0,line:null,prog:0,popT:1,choices:null,sel:0,choiceT
 const LOG=[]; // backlog dialog (30 terakhir) — buka dengan TAB/B
 function startNode(id){const n=NODES[id];D.ops=(typeof n==='function')?n():n;D.i=0;D.node=id;SAVE.seen[id]=1;D.line=null;D.choices=null;
   D._poseBorn={}; // tiap node: pose fade dihitung ulang
-  if(id==='paradox')markEnd('paradox');else if(id==='r3f')markEnd('rebut');else if(id==='true_end')markEnd('true'); // ending via node
   step();}
 function step(){
   while(D.i<D.ops.length){
@@ -25,9 +24,10 @@ function step(){
     if(op.t==='choice'){D.choices=op.opts;D.sel=0;D.line=null;D.choiceT=0;D.duckT=false;duckMusic(.5,.4);SFX.select();return;}
     if(op.t==='goto'){startNode(op.id);return;}
     if(op.t==='walk'){startWalk(op.era);return;}
+    if(op.t==='item'){addStoryItem(op.id,op.label);continue;}
     if(op.t==='fx'){if(op.kind==='boom'){SFX.boom();G.shakeT=OPTS.reduceMotion?0:.9;G.shakeA=9;G.whiteFlash=OPTS.reduceMotion?.25:1;}if(op.kind==='chime')SFX.chime();continue;}
     if(op.t==='vortex'){startVortex(op.to,false);return;}
-    if(op.t==='ending'){if(op.kind==='loop')startGlitch();else startEndCard();return;}
+    if(op.t==='ending'){startPuzzleAward(op.kind);return;}
   }
 }
 function dialogAdvance(){
@@ -66,6 +66,7 @@ function updateDialog(dt,mx,my){
     if(keyOnce('ArrowDown')||keyOnce('s')){D.sel=(D.sel+1)%D.choices.length;SFX.select();}
     if(keyOnce('1')){D.sel=0;dialogAdvance();return;}
     if(keyOnce('2')&&D.choices&&D.choices.length>1){D.sel=1;dialogAdvance();return;}
+    if(keyOnce('3')&&D.choices&&D.choices.length>2){D.sel=2;dialogAdvance();return;}
     if(!D.choices)return;
     // hover
     let hov=-1;const bw=560,bh=D.choices.length*58+22,bx=(W-bw)/2,by=H-bh-24;
@@ -101,13 +102,17 @@ function startLabIntro(){
   G.era='1968';G.state='labintro';G.labIntro={t:0,reveal:0};parts.length=0;
   startNode('lab_intro');setAmbience('1968');G.fadeIn=.42;
 }
+function startFinalLabIntro(){
+  G.era='1999';G.state='finallabintro';G.finalLabIntro={t:0,reveal:0};parts.length=0;
+  startNode('final_lab_intro');setAmbience('1999');G.fadeIn=.42;
+}
 function startGlitch(){G.state='glitch';G.zoom=G.zt=1;
   ECHO.prev=ECHO.cur;ECHO.cur={}; // P2: arsipkan jejak siklus yang runtuh sebagai hantu loop berikutnya
   const CS={A1:'BERKAS KASUS A1 — misi ditinggalkan: penelitian tak pernah selesai',A2:'BERKAS KASUS A2 — obsesi & paradoks mengunci masa depan',B1:'BERKAS KASUS B1 — formula bocor, disalahgunakan jadi senjata',B2:'BERKAS KASUS B2 — kapsul terkunci oleh kebencian'};
   G.glitch={t:0,hint:loopHint(),kasus:CS[S.routeB2]||'BERKAS KASUS — timeline runtuh'};
   markEnd(S.routeB2==='A1'?'A1':S.routeB2==='B1'?'B1':S.routeB2==='B2'?'B2lock':null); // rute A2 tercatat lewat node paradox/r3f
   S.loop++;SFX.glitch();setAmbience(null);stopAmb();
-  S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.challenges=freshChallenges(); // seluruh afinitas, termasuk gameplay, direset per siklus
+  S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.challenges=freshChallenges();S.inventory={};S.watchTargets=null;S.watchRepaired=false;S.roseRepaired=false;S.gemAligned=false;S.photoRepaired=false; // afinitas dan isi tas direset per siklus
   SAVE.game=null; // autosave siklus yg runtuh tak boleh di-Continue (akan mengembalikan kepribadian lama)
   persistSave();}
 // remah roti: setiap kegagalan memberi tahu pemain mengapa loop pecah
@@ -123,7 +128,33 @@ const CHALLENGE_CONF={
   '1944':{mode:'dodge',x:760,title:'PENYEBERANGAN LAMPU SOROT',left:'Alihkan sorot dari medis terluka',right:'Putus daya dan menyeberang langsung',targets:[.24,.68,.43]},
   '1968':{mode:'tune',x:500,title:'PENYETELAN SINYAL',left:'Ikuti frekuensi panggilan Arthur',right:'Isolasi pembawa data formula',targets:[.3,.72,.48]},
   '1999':{mode:'balance',x:690,title:'STABILISASI KRIO',left:'Dahulukan tanda vital Arthur',right:'Dahulukan kemurnian serum',targets:[.66,.34,.58]}};
-function saveCycle(){SAVE.game={era:G.era,S:{empathy:S.empathy,logic:S.logic,routeB1:S.routeB1,routeB2:S.routeB2,loop:S.loop,challenges:Object.assign({},S.challenges)}};persistSave();}
+const WATCH_X=420,WATCH_START=[.68,.08,.39]; // arloji ditemukan saat traversal Babak 1, sebelum lampu sorot
+function randomWatchTargets(){return WATCH_START.map(start=>{let v=start;for(let n=0;n<12&&Math.min(Math.abs(v-start),1-Math.abs(v-start))<.14;n++)v=Math.round((.04+Math.random()*.92)*48)/48;return v;});}
+function watchTargets(){if(!Array.isArray(S.watchTargets)||S.watchTargets.length!==3)S.watchTargets=randomWatchTargets();return S.watchTargets;}
+const ROSE_X=285,ROSE_TARGET={x:355,y:148,w:250,h:214}; // botol pecah ditemukan sebelum penyetelan sinyal Babak 2
+const GEM_X=250,GEM_START={rx:-.35,ry:.25},GEM_TARGET={rx:.62,ry:-.86}; // dua temuan wajib Babak 3, sebelum stabilisasi krio
+const PHOTO_X=455,PHOTO_TARGET={x:330,y:148,w:300,h:200};
+const ROSE_PIECES=[
+  // Delapan pecahan kaca: semua sisi retak berupa garis lurus dan berbagi titik yang sama.
+  {poly:[[0,0],[82,0],[108,48],[55,73],[0,54]],home:[-245,15]},
+  {poly:[[82,0],[168,0],[183,72],[126,108],[108,48]],home:[-225,115]},
+  {poly:[[168,0],[250,0],[250,66],[183,72]],home:[210,5]},
+  {poly:[[250,66],[250,150],[178,144],[112,169],[126,108],[183,72]],home:[230,-20]},
+  {poly:[[250,150],[250,214],[162,214],[112,169],[178,144]],home:[210,20]},
+  {poly:[[162,214],[72,214],[58,132],[126,108],[112,169]],home:[-240,40]},
+  {poly:[[72,214],[0,214],[0,145],[58,132]],home:[-250,-30]},
+  {poly:[[0,145],[0,54],[55,73],[108,48],[126,108],[58,132]],home:[-220,-5]}];
+function randomRoseHomes(){const order=ROSE_PIECES.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)),v=order[i];order[i]=order[j];order[j]=v;}const homes=[],used=[];
+  order.forEach((idx,n)=>{const poly=ROSE_PIECES[idx].poly,xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),pw=maxX-minX,ph=maxY-minY,side=n<4?0:1,zx=side?[630,870]:[90,330];let box=null;
+    for(let tries=0;tries<48;tries++){const cx=zx[0]+pw/2+Math.random()*Math.max(1,zx[1]-zx[0]-pw),cy=125+ph/2+Math.random()*Math.max(1,370-125-ph),cand={l:cx-pw/2-7,r:cx+pw/2+7,t:cy-ph/2-7,b:cy+ph/2+7,cx,cy};if(!used.some(q=>cand.l<q.r&&cand.r>q.l&&cand.t<q.b&&cand.b>q.t)){box=cand;break;}box=cand;}
+    used.push(box);homes[idx]=[box.cx-ROSE_TARGET.x-(minX+maxX)/2,box.cy-ROSE_TARGET.y-(minY+maxY)/2];});return homes;}
+const PHOTO_PIECES=[
+  {poly:[[0,0],[150,0],[145,46],[157,72],[143,100],[0,100]],home:[-220,26]},
+  {poly:[[150,0],[300,0],[300,100],[232,97],[205,109],[143,100],[157,72],[145,46]],home:[220,30]},
+  {poly:[[0,100],[143,100],[157,126],[145,158],[153,200],[0,200]],home:[-220,112]},
+  {poly:[[143,100],[205,109],[232,97],[300,100],[300,200],[153,200],[145,158],[157,126]],home:[220,112]}];
+function addStoryItem(id,label){S.inventory=S.inventory||{};if(S.inventory[id])return;S.inventory[id]=1;G.itemToast={id,label,t:0};SFX.chime();saveCycle();}
+function saveCycle(){SAVE.game={era:G.era,S:{empathy:S.empathy,logic:S.logic,routeB1:S.routeB1,routeB2:S.routeB2,loop:S.loop,challenges:Object.assign({},S.challenges),inventory:Object.assign({},S.inventory||{}),watchTargets:Array.isArray(S.watchTargets)?S.watchTargets.slice(0,3):null,watchRepaired:!!S.watchRepaired,roseRepaired:!!S.roseRepaired,gemAligned:!!S.gemAligned,photoRepaired:!!S.photoRepaired}};persistSave();}
 function startChallenge(){const cfg=CHALLENGE_CONF[G.era];if(!cfg||S.challenges[G.era])return;
   G.state='challenge';G.zoom=G.zt=1;G.challenge={era:G.era,stage:'choose',sel:0,band:0,cursor:.5,t:0,misses:0,assist:false,feedback:'',feedbackT:0,successT:0};
   if(cfg.mode==='dodge')Object.assign(G.challenge,{px:200,det:0,bx:484,bw:112});
@@ -133,7 +164,7 @@ function finishChallenge(ch){if(S.challenges[ch.era])return;const approach=ch.se
   for(let i=0;i<18;i++)parts.push({x:W/2+(Math.random()-.5)*180,y:H/2+50,vx:(Math.random()-.5)*120,vy:-35-Math.random()*80,grav:55,l:0,ml:1.2+Math.random(),r:2+Math.random()*2,col:approach==='empathy'?'rgba(240,160,170,.9)':'rgba(120,220,255,.9)',shrink:1});
   SFX.chime();saveCycle();tutorialDone('challenge');}
 function missChallenge(ch){ch.misses++;ch.feedbackT=.9;
-  ch.feedback=ch.era==='1944'?'TERDETEKSI — KEMBALI KE PENDEKIR AWAL':ch.era==='1999'?'KRIO TIDAK STABIL — ULANGI DARI TENGAH':'SINYAL LEPAS — COBA LAGI';
+  ch.feedback=ch.era==='1944'?'TERDETEKSI — KEMBALI KE TITIK AWAL':ch.era==='1999'?'KRIO TIDAK STABIL — ULANGI DARI TENGAH':'SINYAL LEPAS — COBA LAGI';
   if(ch.misses>=3)ch.assist=true;
   if(ch.era==='1944'){ch.px=200;ch.det=0;}
   if(ch.era==='1999'){ch.vit=.55;ch.ser=.55;ch.ok=true;}
@@ -147,15 +178,14 @@ function updateChallenge(dt){const ch=G.challenge,cfg=CHALLENGE_CONF[ch.era];ch.
     if(advHit()){ch.stage='play';ch.t=0;SFX.confirm();}return;}
   // hold zona bawah layar (sentuh) untuk dodge/balance — sama dengan zona jalan
   const touchDir=(IS_TOUCH&&ptr.down&&ptr.y>H-120)?(ptr.x<W/2?-1:1):0;
-  if(cfg.mode==='dodge'){ // P1: lari antar karung, sorot menyapu — deteksi naik saat tertangkap di ruang terbuka
+  if(cfg.mode==='dodge'){ // P1: lari antar karung; sekali tersapu sorot di ruang terbuka langsung kembali ke awal
     const spd=ch.assist?128:178,bx=190+((Math.sin(ch.t*(ch.assist?.6:.92))+1)/2)*580,bw=ch.assist?150:112;
     let dir=0;if(keys['ArrowLeft']||keys['a']||keys['A'])dir--;if(keys['ArrowRight']||keys['d']||keys['D'])dir++;dir+=touchDir;
     ch.bx=bx;ch.bw=bw;
     ch.px=clamp(ch.px+dir*spd*dt,190,764);
     const inCover=[300,480,660].some(cx=>Math.abs(ch.px-cx)<36),inBeam=Math.abs(ch.px-bx)<bw/2;
     ch.cover=inCover;
-    if(inBeam&&!inCover)ch.det=Math.min(.42,ch.det+dt*(ch.assist?.8:1.15));else ch.det=Math.max(0,ch.det-dt*1.8);
-    if(ch.det>=.42){missChallenge(ch);return;}
+    if(inBeam&&!inCover){ch.det=.42;missChallenge(ch);return;}else ch.det=0;
     if(ch.px>=760)finishChallenge(ch);
     return;}
   if(cfg.mode==='balance'){ // P1: dua meter saling tarik-menarik — tahan kiri/kanan, keduanya meluruh perlahan
@@ -176,29 +206,121 @@ function updateChallenge(dt){const ch=G.challenge,cfg=CHALLENGE_CONF[ch.era];ch.
   const touchLock=ptr.tap&&ptr.y>350;if(ptr.tap&&ptr.y<350){ch.cursor=clamp((ptr.x-190)/580,0,1);ptr.tap=false;}
   if(advHit()||touchLock){ptr.tap=false;if(Math.abs(ch.cursor-target)<=win){ch.band++;SFX.confirm();ch.feedback='TERKUNCI '+ch.band+'/3';ch.feedbackT=.65;if(ch.band>=3)finishChallenge(ch);}else missChallenge(ch);}
 }
+function startWatchRepair(){if(S.watchRepaired)return;G.state='watchrepair';G.zoom=G.zt=1;G.player.vx=0;
+  G.watchRepair={ring:0,angles:WATCH_START.slice(),locked:[false,false,false],t:0,misses:0,assist:false,feedback:'',feedbackT:0,stage:'play',successT:0};watchTargets();tutorialDone('interact');SFX.select();}
+function updateWatchRepair(dt){const wr=G.watchRepair;if(!wr)return;wr.t+=dt;if(wr.feedbackT>0)wr.feedbackT-=dt;
+  if(wr.stage==='success'){wr.successT+=dt;if(wr.successT>1.15){G.state='walk';G.player.x=WATCH_X+58;G.watchRepair=null;G.fadeIn=.24;}return;}
+  let d=0;if(keys['ArrowLeft']||keys['a']||keys['A'])d--;if(keys['ArrowRight']||keys['d']||keys['D'])d++;
+  if(d)wr.angles[wr.ring]=(wr.angles[wr.ring]+d*dt*(wr.assist?.28:.42)+1)%1;
+  let lock=advHit(),tapLock=false;if(ptr.tap){const dx=ptr.x-W/2,dy=ptr.y-276,r=Math.hypot(dx,dy);
+    if(r<132&&r>24){wr.angles[wr.ring]=(Math.atan2(dy,dx)/TAU+.25+1)%1;ptr.tap=false;}
+    else if(ptr.y>374){tapLock=true;ptr.tap=false;}}
+  lock=lock||tapLock;if(!lock)return;
+  const a=wr.angles[wr.ring],target=watchTargets()[wr.ring],dist=Math.min(Math.abs(a-target),1-Math.abs(a-target)),win=wr.assist?.11:.06;
+  if(dist<=win){wr.locked[wr.ring]=true;wr.ring++;wr.feedback='RODA '+wr.ring+'/3 SELARAS';wr.feedbackT=.7;SFX.confirm();
+    if(wr.ring>=3){wr.stage='success';wr.successT=0;S.watchRepaired=true;addStoryItem('watch','JAM ARLOJI YANG TELAH DIPERBAIKI');}}
+  else{wr.misses++;wr.feedback='GIGI RODA BELUM SELARAS';wr.feedbackT=.85;if(wr.misses>=3)wr.assist=true;G.shakeT=OPTS.reduceMotion?0:.18;G.shakeA=4;SFX.flash();}}
+function rosePointIn(poly,x,y){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>y)!==(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]))inside=!inside;}return inside;}
+function startRosePuzzle(){if(S.roseRepaired)return;G.state='rosepuzzle';G.zoom=G.zt=1;G.player.vx=0;
+  const homes=randomRoseHomes();G.rosePuzzle={pieces:ROSE_PIECES.map((d,i)=>({ox:homes[i][0],oy:homes[i][1],homeX:homes[i][0],homeY:homes[i][1],placed:false,i})),drag:-1,dx:0,dy:0,sel:0,wasDown:ptr.down,t:0,stage:'play',successT:0,feedback:'SUSUN KEMBALI BOTOL MAWAR',feedbackT:0};tutorialDone('interact');SFX.select();}
+function roseTryPlace(rp,i){const p=rp.pieces[i];if(!p||p.placed)return;const near=Math.hypot(p.ox,p.oy)<22;if(near){p.ox=0;p.oy=0;p.placed=true;rp.feedback='KEPINGAN '+(rp.pieces.filter(q=>q.placed).length)+' / '+rp.pieces.length+' TERPASANG';rp.feedbackT=.8;SFX.confirm();
+    if(rp.pieces.every(q=>q.placed)){rp.stage='success';rp.successT=0;S.roseRepaired=true;addStoryItem('flower','BOTOL MAWAR ABADI');}}
+  else{p.ox=p.homeX;p.oy=p.homeY;rp.feedback='TEPINYA BELUM MENYATU';rp.feedbackT=.8;G.shakeT=OPTS.reduceMotion?0:.14;G.shakeA=3;SFX.flash();}}
+function updateRosePuzzle(dt){const rp=G.rosePuzzle;if(!rp)return;rp.t+=dt;if(rp.feedbackT>0)rp.feedbackT-=dt;
+  if(rp.stage==='success'){rp.successT+=dt;if(rp.successT>1.2){G.state='walk';G.player.x=ROSE_X+58;G.rosePuzzle=null;G.fadeIn=.24;}return;}
+  for(let n=0;n<ROSE_PIECES.length;n++)if(keyOnce(String(n+1))&&!rp.pieces[n].placed){rp.sel=n;SFX.select();}
+  let dx=0,dy=0;if(keys['ArrowLeft']||keys['a']||keys['A'])dx--;if(keys['ArrowRight']||keys['d']||keys['D'])dx++;if(keys['ArrowUp']||keys['w']||keys['W'])dy--;if(keys['ArrowDown']||keys['s']||keys['S'])dy++;
+  const sp=rp.pieces[rp.sel];if(sp&&!sp.placed&&(dx||dy)){sp.ox+=dx*dt*165;sp.oy+=dy*dt*165;}
+  if((keyOnce(' ')||keyOnce('Spacebar')||keyOnce('Enter'))&&sp&&!sp.placed)roseTryPlace(rp,rp.sel);
+  if(ptr.tap&&rp.drag<0){for(let i=rp.pieces.length-1;i>=0;i--){const p=rp.pieces[i];if(p.placed)continue;const lx=ptr.x-ROSE_TARGET.x-p.ox,ly=ptr.y-ROSE_TARGET.y-p.oy;if(rosePointIn(ROSE_PIECES[i].poly,lx,ly)){rp.drag=i;rp.sel=i;rp.dx=ptr.x-p.ox;rp.dy=ptr.y-p.oy;SFX.select();break;}}ptr.tap=false;}
+  if(ptr.down&&rp.drag>=0){const p=rp.pieces[rp.drag];p.ox=ptr.x-rp.dx;p.oy=ptr.y-rp.dy;}
+  if(rp.wasDown&&!ptr.down&&rp.drag>=0){const i=rp.drag;rp.drag=-1;roseTryPlace(rp,i);}rp.wasDown=ptr.down;
+}
+function gemAngleDist(a,b){return Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));}
+function finishGemAlign(ga){if(ga.stage==='success')return;ga.stage='success';ga.successT=0;ga.feedback='BAYANGAN DAN PERMATA TELAH SELARAS';S.gemAligned=true;addStoryItem('water_gem','PERMATA AIR');}
+function gemTryAlign(ga){const dx=gemAngleDist(ga.rx,GEM_TARGET.rx),dy=gemAngleDist(ga.ry,GEM_TARGET.ry),win=ga.assist?.3:.18;if(dx<win&&dy<win)finishGemAlign(ga);else{ga.misses++;ga.feedback='PANTULAN BELUM MENYATU DENGAN BAYANGAN';ga.feedbackT=.9;if(ga.misses>=3)ga.assist=true;G.shakeT=OPTS.reduceMotion?0:.13;G.shakeA=3;SFX.flash();}}
+function resetGemPosition(ga){ga.rx=GEM_START.rx;ga.ry=GEM_START.ry;ga.drag=false;ga.feedback='POSISI PERMATA DIULANG';ga.feedbackT=.85;SFX.select();}
+function startGemAlign(){if(S.gemAligned)return;G.state='gemalign';G.zoom=G.zt=1;G.player.vx=0;G.gemAlign={rx:GEM_START.rx,ry:GEM_START.ry,drag:false,lastX:0,lastY:0,wasDown:ptr.down,t:0,misses:0,assist:false,feedback:'PUTAR PERMATA HINGGA COCOK DENGAN BAYANGANNYA',feedbackT:0,stage:'play',successT:0};tutorialDone('interact');SFX.select();}
+function updateGemAlign(dt){const ga=G.gemAlign;if(!ga)return;ga.t+=dt;if(ga.feedbackT>0)ga.feedbackT-=dt;
+  if(ga.stage==='success'){ga.successT+=dt;if(ga.successT>1.2){G.state='walk';G.player.x=GEM_X+58;G.gemAlign=null;G.fadeIn=.24;}return;}
+  if(keyOnce('r')||keyOnce('R')||(ptr.tap&&ptr.x>692&&ptr.x<828&&ptr.y>112&&ptr.y<146)){ptr.tap=false;resetGemPosition(ga);return;}
+  let dx=0,dy=0;if(keys['ArrowLeft']||keys['a']||keys['A'])dx--;if(keys['ArrowRight']||keys['d']||keys['D'])dx++;if(keys['ArrowUp']||keys['w']||keys['W'])dy--;if(keys['ArrowDown']||keys['s']||keys['S'])dy++;
+  if(dx||dy){ga.ry+=dx*dt*(ga.assist?1.25:1.65);ga.rx+=dy*dt*(ga.assist?1.25:1.65);}
+  if(ptr.tap&&ptr.x>270&&ptr.x<690&&ptr.y>135&&ptr.y<380){ga.drag=true;ga.lastX=ptr.x;ga.lastY=ptr.y;ptr.tap=false;SFX.select();}
+  if(ptr.down&&ga.drag){ga.ry+=(ptr.x-ga.lastX)*.012;ga.rx+=(ptr.y-ga.lastY)*.012;ga.lastX=ptr.x;ga.lastY=ptr.y;}
+  if(ga.wasDown&&!ptr.down&&ga.drag){ga.drag=false;gemTryAlign(ga);}
+  ga.wasDown=ptr.down;
+  if(advHit()){gemTryAlign(ga);return;}
+  if(ptr.tap&&ptr.y>400){ptr.tap=false;gemTryAlign(ga);}
+}
+function photoPointIn(poly,x,y){return rosePointIn(poly,x,y);}
+function startPhotoPuzzle(){if(S.photoRepaired)return;G.state='photopuzzle';G.zoom=G.zt=1;G.player.vx=0;G.photoPuzzle={pieces:PHOTO_PIECES.map((d,i)=>({ox:d.home[0],oy:d.home[1],placed:false,i})),drag:-1,dx:0,dy:0,sel:0,wasDown:ptr.down,t:0,stage:'assemble',glue:[false,false,false],glueSel:0,successT:0,feedback:'RAPIKAN EMPAT ROBEKAN FOTO',feedbackT:0};tutorialDone('interact');SFX.select();}
+function photoTryPlace(pp,i){const p=pp.pieces[i];if(!p||p.placed)return;if(Math.hypot(p.ox,p.oy)<42){p.ox=0;p.oy=0;p.placed=true;pp.feedback='ROBEKAN '+pp.pieces.filter(q=>q.placed).length+' / 4 TERPASANG';pp.feedbackT=.75;SFX.confirm();if(pp.pieces.every(q=>q.placed)){pp.stage='glue';pp.feedback='FOTO TERSUSUN — REKATKAN TIGA GARIS ROBEKAN';pp.feedbackT=1.4;pp.drag=-1;}}
+  else{const h=PHOTO_PIECES[i].home;p.ox=h[0];p.oy=h[1];pp.feedback='TEPI FOTO BELUM COCOK';pp.feedbackT=.8;G.shakeT=OPTS.reduceMotion?0:.13;G.shakeA=3;SFX.flash();}}
+function photoGlueLine(pp,hit){if(hit<0||hit>2||pp.glue[hit])return;pp.glue[hit]=true;pp.glueSel=hit;pp.feedback='GARIS '+pp.glue.filter(Boolean).length+' / 3 TEREKAT';pp.feedbackT=.75;SFX.confirm();if(pp.glue.every(Boolean)){pp.stage='success';pp.successT=0;S.photoRepaired=true;addStoryItem('arthur_photo','FOTO ELENA & ARTHUR');}}
+function photoGluePoint(pp,x,y){const seams=[[[480,148],[480,348]],[[330,248],[630,248]],[[450,205],[510,291]]];let hit=-1,best=999;seams.forEach((s,i)=>{if(pp.glue[i])return;const ax=s[0][0],ay=s[0][1],bx=s[1][0],by=s[1][1],vx=bx-ax,vy=by-ay,t=clamp(((x-ax)*vx+(y-ay)*vy)/(vx*vx+vy*vy),0,1),d=Math.hypot(x-(ax+vx*t),y-(ay+vy*t));if(d<best){best=d;hit=i;}});if(hit>=0&&best<24)photoGlueLine(pp,hit);}
+function updatePhotoPuzzle(dt){const pp=G.photoPuzzle;if(!pp)return;pp.t+=dt;if(pp.feedbackT>0)pp.feedbackT-=dt;
+  if(pp.stage==='success'){pp.successT+=dt;if(pp.successT>1.25){G.state='walk';G.player.x=PHOTO_X+58;G.photoPuzzle=null;G.fadeIn=.24;}return;}
+  if(pp.stage==='glue'){if(keyOnce('ArrowLeft')||keyOnce('ArrowUp'))pp.glueSel=(pp.glueSel+2)%3;if(keyOnce('ArrowRight')||keyOnce('ArrowDown'))pp.glueSel=(pp.glueSel+1)%3;if(advHit())photoGlueLine(pp,pp.glueSel);if(ptr.down)photoGluePoint(pp,ptr.x,ptr.y);pp.wasDown=ptr.down;return;}
+  for(let n=0;n<4;n++)if(keyOnce(String(n+1))&&!pp.pieces[n].placed){pp.sel=n;SFX.select();}
+  let dx=0,dy=0;if(keys['ArrowLeft']||keys['a']||keys['A'])dx--;if(keys['ArrowRight']||keys['d']||keys['D'])dx++;if(keys['ArrowUp']||keys['w']||keys['W'])dy--;if(keys['ArrowDown']||keys['s']||keys['S'])dy++;const sp=pp.pieces[pp.sel];if(sp&&!sp.placed&&(dx||dy)){sp.ox+=dx*dt*170;sp.oy+=dy*dt*170;}if(advHit()&&sp&&!sp.placed)photoTryPlace(pp,pp.sel);
+  if(ptr.tap&&pp.drag<0){for(let i=pp.pieces.length-1;i>=0;i--){const p=pp.pieces[i];if(p.placed)continue;const lx=ptr.x-PHOTO_TARGET.x-p.ox,ly=ptr.y-PHOTO_TARGET.y-p.oy;if(photoPointIn(PHOTO_PIECES[i].poly,lx,ly)){pp.drag=i;pp.sel=i;pp.dx=ptr.x-p.ox;pp.dy=ptr.y-p.oy;SFX.select();break;}}ptr.tap=false;}
+  if(ptr.down&&pp.drag>=0){const p=pp.pieces[pp.drag];p.ox=ptr.x-pp.dx;p.oy=ptr.y-pp.dy;}if(pp.wasDown&&!ptr.down&&pp.drag>=0){const i=pp.drag;pp.drag=-1;photoTryPlace(pp,i);}pp.wasDown=ptr.down;
+}
 function startWalk(era){
   G.era=era;G.state='walk';G.zoom=G.zt=1;const cfg=ERA_CONF[era];
+  if(era==='1944')watchTargets(); // target baru dibuat saat Babak 1 dimulai, lalu dipertahankan oleh autosave siklus
   G.echoSeg=0;G.echoT=0;G.echoRec=[]; // P2: mulai rekam jejak untuk gema loop berikutnya
-  G.walk={era,len:cfg.len,arX:cfg.arX,ar:era==='1968'?(S.routeB1==='A'?'buron':'dewasa'):cfg.ar,node:cfg.node,hot:null,diaryHot:false,diaryRead:era!=='1968',
+  G.walk={era,len:cfg.len,arX:cfg.arX,ar:era==='1968'?(S.routeB1==='A'?'buron':'dewasa'):cfg.ar,node:cfg.node,hot:null,watchHot:false,roseHot:false,gemHot:false,photoHot:false,diaryHot:false,diaryRead:era!=='1968',
     cap:era==='1968'?(S.routeB1==='A'?'BABAK 2 — BUNKER BAWAH TANAH, 1968':'BABAK 2 — LABORATORIUM MILITER, 1968'):cfg.cap};
   G.player.x=90;G.player.facingRight=true;G.player.vx=0;G.player.stride=0;G.player.turnT=0;G.player.acc=0;G.diary=null;G.caption=G.walk.cap;G.captionT=3.2;parts.length=0;
   setAmbience(cfg.amb);
   saveCycle(); // autosave, termasuk hasil mini-game per siklus
 }
 function startEndCard(){G.state='endcard';G.zoom=G.zt=1;G.endCard={t:0};SFX.chime();setAmbience('1999');setSong('end');duckMusic(1,1.2);SAVE.game=null;persistSave();}
-function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;S.challenges=freshChallenges();
-  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.diary=null;G.challenge=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;parts.length=0;}
-function beginNewCycle(){resetAll();SAVE.game=null;persistSave();G.state='prologue';G.fadeIn=1;startNode('prologue');setAmbience('2088');SFX.heart();}
+function endingPuzzleKey(kind){if(kind!=='loop')return'true';if(D.node==='r3f')return'rebut';if(D.node==='paradox')return'paradox';return S.routeB2==='A1'?'A1':S.routeB2==='B1'?'B1':S.routeB2==='B2'?'B2lock':null;}
+function startPuzzleAward(kind){const key=endingPuzzleKey(kind),fresh=key&&!SAVE.endings[key];markEnd(key);G.state='puzzleaward';G.zoom=G.zt=1;G.puzzleAward={key,fresh,t:0,next:kind,total:puzzleCount()};SAVE.game=null;persistSave();SFX.chime();duckMusic(.72,.7);}
+function finishPuzzleAward(){const pa=G.puzzleAward;if(!pa)return;const next=pa.next;G.puzzleAward=null;if(next==='loop')startGlitch();else startEndCard();}
+function startBonus(){if(!puzzleComplete())return;resetAll();G.state='bonus';G.era='2088';G.zoom=G.zt=1;G.fadeIn=.65;G.bonus={x:72,vx:0,cam:0,lit:{},near:-1,done:false,t:0};G.player.facingRight=true;G.player.phase=0;G.player.moving=false;G.player.stride=0;setAmbience('2088');setSong('end');}
+function updateBonus(dt){const b=G.bonus,WORLD=1220;let dir=0;if(keys['ArrowLeft']||keys['a']||keys['A'])dir--;if(keys['ArrowRight']||keys['d']||keys['D'])dir++;
+  if(IS_TOUCH&&ptr.down&&ptr.y>H-130){if(ptr.x<140)dir=-1;else if(ptr.x>W-140)dir=1;}
+  const sprint=keys['Shift'],top=sprint?245:155;b.vx+=clamp(dir*top-b.vx,-850*dt,850*dt);if(!dir)b.vx-=clamp(b.vx,-1250*dt,1250*dt);
+  if(dir&&dir>0!==G.player.facingRight)G.player.facingRight=dir>0;b.x=clamp(b.x+b.vx*dt,55,WORLD-55);G.player.phase+=Math.abs(b.vx)*dt*.105;G.player.moving=Math.abs(b.vx)>8;G.player.stride=clamp(Math.abs(b.vx)/245,0,1);
+  b.cam=lerp(b.cam,clamp(b.x-300,0,WORLD-W),1-Math.pow(.002,dt));b.t+=dt;
+  const nodes=[150,330,510,690,870,1040],near=nodes.findIndex((x,i)=>!b.lit[i]&&Math.abs(b.x-x)<55);b.near=near;
+  const act=keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||advHit()||touchActHit();
+  if(near>=0&&act){ptr.tap=false;b.lit[near]=1;SFX.chime();G.whiteFlash=OPTS.reduceMotion?.12:.35;}
+  const n=Object.keys(b.lit).length;b.done=n>=nodes.length;
+  if(b.done&&Math.abs(b.x-1145)<70&&act){ptr.tap=false;G.state='bonusend';G.bonusEnd={t:0,page:0};SAVE.bonusSeen=true;persistSave();SFX.chime();return;}
+  if(ptr.tap)ptr.tap=false;
+}
+function resetAll(){S.empathy=0;S.logic=0;S.routeB1='';S.routeB2='';S.loop=0;S.challenges=freshChallenges();S.inventory={};S.watchTargets=null;S.watchRepaired=false;S.roseRepaired=false;S.gemAligned=false;S.photoRepaired=false;
+  D.elExpr='neutral';D.arExpr='neutral';D.duckT=false;D.choiceT=0;D.popT=1;G.speak=null;G.diary=null;G.challenge=null;G.watchRepair=null;G.rosePuzzle=null;G.gemAlign=null;G.photoPuzzle=null;G.itemToast=null;G.gameIntro=null;G.prologueT=0;G.warIntro=null;G.bunkerIntro=null;G.labIntro=null;G.finalLabIntro=null;G.puzzleAward=null;G.bonus=null;G.bonusEnd=null;parts.length=0;}
+function startPrologue(){G.gameIntro=null;G.state='prologue';G.prologueT=0;G.fadeIn=.55;startNode('prologue');setAmbience('2088');SFX.heart();}
+function beginNewCycle(){resetAll();SAVE.game=null;persistSave();G.state='gameintro';G.gameIntro={page:0,t:0,pageT:0};G.fadeIn=.7;setAmbience('2088');}
+function gameIntroMove(d){const gi=G.gameIntro,n=3,np=clamp(gi.page+d,0,n-1);if(np===gi.page){if(d>0&&gi.page===n-1)startPrologue();return;}gi.page=np;gi.pageT=0;}
+function updateGameIntro(dt){const gi=G.gameIntro;gi.t+=dt;gi.pageT+=dt;
+  if(keyOnce('ArrowLeft')||keyOnce('ArrowUp')||keyOnce('a')||keyOnce('A')){gameIntroMove(-1);SFX.select();}
+  else if(keyOnce('ArrowRight')||keyOnce('ArrowDown')||keyOnce('d')||keyOnce('D')){gameIntroMove(1);SFX.select();}
+  else if(keyOnce('Escape')){SFX.confirm();startPrologue();}
+  else if(advHit()){SFX.confirm();gameIntroMove(1);}
+  if(!G.gameIntro)return;
+  if(ptr.tap){const x=ptr.x,y=ptr.y;ptr.tap=false;
+    if(x>700&&x<820&&y>91&&y<125){SFX.confirm();startPrologue();return;}
+    if(y>416&&y<459&&x>180&&x<390){SFX.select();gameIntroMove(-1);return;}
+    if(y>416&&y<459&&x>570&&x<790){SFX.confirm();gameIntroMove(1);return;}
+  }}
 function titleMenu(){return[{label:'LANJUTKAN',disabled:!SAVE.game,act:()=>{Object.assign(S,SAVE.game.S||{});normalizeRun();G.fadeIn=1;startWalk(SAVE.game.era||'1944');}},
   {label:'SIKLUS BARU',act:()=>{if(SAVE.game){G.titleConfirm=true;G.confirmSel=0;}else beginNewCycle();}},
-  {label:'PUTAR ULANG INTRO',act:()=>{G.titleConfirm=false;playIntroVideo();}}];}
+  {label:'PUTAR ULANG INTRO',act:()=>{G.titleConfirm=false;playIntroVideo();}},
+  {label:puzzleComplete()?'GAMEPLAY TERAKHIR':'GAMEPLAY TERAKHIR  🔒 '+puzzleCount()+'/'+END_TOTAL.length,disabled:!puzzleComplete(),act:startBonus}];}
 function updateTitle(){const items=titleMenu();
   if(G.titleConfirm){if(keyOnce('ArrowLeft')||keyOnce('a')||keyOnce('A'))G.confirmSel=0;if(keyOnce('ArrowRight')||keyOnce('d')||keyOnce('D'))G.confirmSel=1;
     if(ptr.tap&&ptr.y>330&&ptr.y<390){G.confirmSel=ptr.x<W/2?0:1;ptr.tap=false;if(G.confirmSel===0)beginNewCycle();else G.titleConfirm=false;}
     if(advHit()){if((G.confirmSel||0)===0)beginNewCycle();else G.titleConfirm=false;}return;}
   if(keyOnce('ArrowUp')||keyOnce('w')||keyOnce('W')){do{G.titleSel=(G.titleSel+items.length-1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
   if(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')){do{G.titleSel=(G.titleSel+1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
-  if(ptr.tap&&ptr.x>350&&ptr.x<610&&ptr.y>300&&ptr.y<426){const i=Math.floor((ptr.y-300)/42);ptr.tap=false;if(items[i]&&!items[i].disabled){G.titleSel=i;SFX.confirm();items[i].act();}return;}
+  if(ptr.tap&&ptr.x>620&&ptr.x<930&&ptr.y>202&&ptr.y<400){const i=Math.floor((ptr.y-202)/50);ptr.tap=false;if(items[i]&&!items[i].disabled){G.titleSel=i;SFX.confirm();items[i].act();}return;}
   if(advHit()){const it=items[G.titleSel];if(it&&!it.disabled){SFX.confirm();it.act();}}}
 
 /* ---------- update per-state ---------- */
@@ -239,6 +361,7 @@ function updatePause(){
 function update(dt){
   T+=dt;G.t+=dt;
   if(G.tutorialFade>0)G.tutorialFade=Math.max(0,G.tutorialFade-dt*1.4);
+  if(G.itemToast){G.itemToast.t+=dt;if(G.itemToast.t>3.2)G.itemToast=null;}
   if(G.pulse){G.pulse.t+=dt;if(G.pulse.t>1.5)G.pulse=null;}
   if(G.whiteFlash>0)G.whiteFlash-=dt*2.2;
   if(G.skyFlash>0)G.skyFlash-=dt*1.4;
@@ -249,9 +372,9 @@ function update(dt){
   const mx=ptr.x,my=ptr.y;
   // hotspot UI pojok (mute/pause) via klik atau sentuhan — dicek DI SINI karena ptr.tap dibersihkan sebelum render()
   if(ptr.tap&&Math.hypot(ptr.x-(W-34),ptr.y-26)<20){toggleMute();ptr.tap=false;}
-  else if(ptr.tap&&!G.paused&&(G.state==='walk'||G.state==='challenge'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')&&Math.hypot(ptr.x-(W-72),ptr.y-26)<20){ptr.tap=false;setPaused(true);G.pSel=0;SFX.select();}
+  else if(ptr.tap&&!G.paused&&(G.state==='walk'||G.state==='challenge'||G.state==='watchrepair'||G.state==='rosepuzzle'||G.state==='gemalign'||G.state==='photopuzzle'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro'||G.state==='finallabintro'||G.state==='bonus')&&Math.hypot(ptr.x-(W-72),ptr.y-26)<20){ptr.tap=false;setPaused(true);G.pSel=0;SFX.select();}
   if(G.paused){updatePause();}
-  else if(keyOnce('Escape')&&!G.logOpen&&(G.state==='walk'||G.state==='challenge'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro')){setPaused(true);G.pSel=0;SFX.select();}
+  else if(keyOnce('Escape')&&!G.logOpen&&(G.state==='walk'||G.state==='challenge'||G.state==='watchrepair'||G.state==='rosepuzzle'||G.state==='gemalign'||G.state==='photopuzzle'||G.state==='dialog'||G.state==='prologue'||G.state==='warintro'||G.state==='bunkerintro'||G.state==='labintro'||G.state==='finallabintro'||G.state==='bonus')){setPaused(true);G.pSel=0;SFX.select();}
   else switch(G.state){
     case 'load':
       if(AS.ready){G.state='title';G.titleReady=!!SAVE.introDone||!!OPTS.reduceMotion;G.titleT=G.titleReady?8.4:0;G.titleSel=SAVE.game?0:1;}
@@ -262,6 +385,8 @@ function update(dt){
         else if(advHit()||ptr.tap){ptr.tap=false;G.titleT=8.4;G.titleReady=true;SAVE.introDone=true;persistSave();SFX.select();}break;}
       updateTitle();
       break;
+    case 'gameintro':
+      updateGameIntro(dt);break;
     case 'prologue':
       G.prologueT+=dt;
       if((T%2.4)<dt)SFX.heart();
@@ -280,6 +405,11 @@ function update(dt){
       const li=G.labIntro;li.t+=dt;
       if(li.t<4.6){if(advHit()||ptr.tap){ptr.tap=false;li.t=4.6;SFX.select();}}
       else{li.reveal=Math.min(1,li.reveal+dt*2.2);updateDialog(dt,mx,my);}
+      break;}
+    case 'finallabintro':{
+      const fi=G.finalLabIntro;fi.t+=dt;
+      if(fi.t<5.2){if(advHit()||ptr.tap){ptr.tap=false;fi.t=5.2;SFX.select();}}
+      else{fi.reveal=Math.min(1,fi.reveal+dt*2.2);updateDialog(dt,mx,my);}
       break;}
     case 'walk':{
       setAmbOnce(ERA_CONF[G.era].amb);
@@ -316,6 +446,25 @@ function update(dt){
       p.x=clamp(p.x+p.vx*dt,64,G.walk.len-40);
       G.echoT+=dt;G.segT=(G.segT||0)+dt;
       if(G.echoT>=.12){G.echoT-=.12;if(G.echoRec.length<600)G.echoRec.push(p.x);} // P2: sampel jejak ±8/detik (maks 72 dtk)
+      // arloji berada di dunia 1944, bukan pada monolog pembuka; wajib diperbaiki sebelum lanjut
+      const needWatch=G.era==='1944'&&!S.watchRepaired;
+      if(needWatch&&p.x>WATCH_X-34){p.x=WATCH_X-34;if(p.vx>0)p.vx=0;}
+      G.walk.watchHot=needWatch&&Math.abs(p.x-(WATCH_X-34))<66;
+      if(G.walk.watchHot&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||advHit()||(ptr.tap&&Math.abs(ptr.x-(WATCH_X-G.cam))<75)||touchActHit())){ptr.tap=false;startWatchRepair();break;}
+      // Botol mawar adalah temuan dunia Babak 2: perjalanan tertahan sampai kepingannya kembali utuh.
+      const needRose=G.era==='1968'&&!S.roseRepaired;
+      if(needRose&&p.x>ROSE_X-34){p.x=ROSE_X-34;if(p.vx>0)p.vx=0;}
+      G.walk.roseHot=needRose&&Math.abs(p.x-(ROSE_X-34))<66;
+      if(G.walk.roseHot&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||advHit()||(ptr.tap&&Math.abs(ptr.x-(ROSE_X-G.cam))<82)||touchActHit())){ptr.tap=false;startRosePuzzle();break;}
+      // Babak 3: permata air ditemukan lebih dahulu, lalu foto terakhir Elena dan Arthur.
+      const needGem=G.era==='1999'&&!S.gemAligned;
+      if(needGem&&p.x>GEM_X-34){p.x=GEM_X-34;if(p.vx>0)p.vx=0;}
+      G.walk.gemHot=needGem&&Math.abs(p.x-(GEM_X-34))<66;
+      if(G.walk.gemHot&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||advHit()||(ptr.tap&&Math.abs(ptr.x-(GEM_X-G.cam))<82)||touchActHit())){ptr.tap=false;startGemAlign();break;}
+      const needPhoto=G.era==='1999'&&S.gemAligned&&!S.photoRepaired;
+      if(needPhoto&&p.x>PHOTO_X-34){p.x=PHOTO_X-34;if(p.vx>0)p.vx=0;}
+      G.walk.photoHot=needPhoto&&Math.abs(p.x-(PHOTO_X-34))<66;
+      if(G.walk.photoHot&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||advHit()||(ptr.tap&&Math.abs(ptr.x-(PHOTO_X-G.cam))<90)||touchActHit())){ptr.tap=false;startPhotoPuzzle();break;}
       const cc=CHALLENGE_CONF[G.era];
       if(cc&&!S.challenges[G.era]){if(p.x>cc.x-42){p.x=cc.x-42;if(p.vx>0)p.vx=0;}G.walk.challengeHot=Math.abs(p.x-(cc.x-42))<66;
         if(G.walk.challengeHot&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||advHit()||(ptr.tap&&Math.abs(ptr.x-(cc.x-G.cam))<80)||touchActHit())){ptr.tap=false;startChallenge();break;}}
@@ -336,7 +485,7 @@ function update(dt){
       if(G.era==='1944'){AU.boomTimer-=dt;if(AU.boomTimer<=0){AU.boomTimer=6+Math.random()*7;G.skyFlash=1;noise(1.4,70,.14);}}
       // buku harian Arthur: wajib diperiksa di setiap siklus, tidak memakai SAVE.inspected permanen
       G.walk.diaryHot=G.era==='1968'&&!G.walk.diaryRead&&Math.abs(p.x-DIARY_X)<76;
-      if(G.walk.diaryHot&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||(ptr.tap&&Math.hypot(ptr.x-(DIARY_X-G.cam),ptr.y-(GROUND-30))<55)||touchActHit())){ptr.tap=false;
+      if(G.walk.diaryHot&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||keyOnce(' ')||keyOnce('Spacebar')||(ptr.tap&&Math.hypot(ptr.x-(DIARY_X-G.cam),ptr.y-(GROUND-30))<55)||touchActHit())){ptr.tap=false;
         SFX.select();G.diary=arthurDiary();G.diary.i=0;G.diary.prog=0;G.diary.popT=0;break;}
       // titik selidik: deteksi kedekatan + picu (↓ / S / ketuk penanda)
       const FEh=G.era==='1968'?'1968'+S.routeB1:G.era;
@@ -355,6 +504,14 @@ function update(dt){
       break;}
     case 'challenge':
       updateChallenge(dt);break;
+    case 'watchrepair':
+      updateWatchRepair(dt);break;
+    case 'rosepuzzle':
+      updateRosePuzzle(dt);break;
+    case 'gemalign':
+      updateGemAlign(dt);break;
+    case 'photopuzzle':
+      updatePhotoPuzzle(dt);break;
     case 'dialog':
       if(G.cam!==G.camTarget)G.cam=lerp(G.cam,G.camTarget,1-Math.pow(.002,dt));
       spawnParts(G.era==='1968'?'1968':G.era);
@@ -367,12 +524,18 @@ function update(dt){
         if(to==='1944')startWarIntro();
         else if(to==='1968'){
           if(S.routeB1==='B')startLabIntro();else startBunkerIntro();
-        }else startWalk('1999');}
+        }else startFinalLabIntro();}
       break;}
     case 'glitch':
       G.glitch.t+=dt;
       if(G.glitch.t>1.7){G.glitch=null;startVortex('1944',true);}
       break;
+    case 'puzzleaward':
+      G.puzzleAward.t+=dt;if(G.puzzleAward.t>.9&&(advHit()||ptr.tap)){ptr.tap=false;SFX.confirm();finishPuzzleAward();}break;
+    case 'bonus':
+      updateBonus(dt);break;
+    case 'bonusend':
+      G.bonusEnd.t+=dt;if(G.bonusEnd.t>1&&(advHit()||ptr.tap)){ptr.tap=false;SFX.confirm();if(G.bonusEnd.page<1){G.bonusEnd.page++;G.bonusEnd.t=0;}else{G.state='title';G.titleReady=true;G.titleT=8.4;G.titleSel=3;G.bonusEnd=null;setAmbience('title');}}break;
     case 'endcard':
       G.endCard.t+=dt;
       // sparkle hati merah muda & emas merayakan true ending

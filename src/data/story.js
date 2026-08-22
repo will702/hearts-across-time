@@ -32,6 +32,12 @@ N('lab_intro',[
   say('elena','Kali ini, aku tidak akan membiarkan siapa pun merebut harapan itu darinya!','angry'),
   {t:'walk',era:'1968'},
 ]);
+N('final_lab_intro',[
+  say('elena','Akhirnya... tahun 1999. Di ruangan inilah seluruh hidup Arthur bermuara pada satu formula terakhir.','sad'),
+  say('elena','Semoga penantiannya tidak sia-sia—semoga ia telah menyelesaikan penawar yang kelak menyelamatkan dunia.','sad'),
+  say('elena','Arthur... bertahanlah sedikit lagi. Jika harapan itu masih hidup, aku akan membawanya sampai ke masa depan.','sad'),
+  {t:'walk',era:'1999'},
+]);
 N('n_b1',()=>{
   const ops=[];
   if(S.loop>0){ // déjà-vu bertingkat mengikuti jumlah loop (C4)
@@ -178,12 +184,24 @@ N('n_b3_final',()=>{
       ops=[say('tua','Elena... kekasihku yang datang dari masa depan...','warm'),
         say('tua','Selama 55 tahun menjaga formula di bilik kriogenik ini, cintaku padamu tak pernah pudar satu detik pun.','warm'),
         say('tua','Formula penawar murni \'Arthur Project\' telah rampung 100%.','happy'),
-        {t:'choice',opts:[
-          {...tagR('PILIHAN EGOIS'),label:'Ajak Arthur Tua ikut ke 2088 — tidak ada yang akan ditinggalkan.',goto:'paradox'},
-          {...tagR('PILIHAN IKHLAS'),label:'Terima serum & lepaskan Arthur bereinkarnasi.',goto:'true_end'}]}];
+        {t:'goto',id:'final_reagent'}];
     }
   }
   return ops;});
+N('final_reagent',[say('tua','Elena... apakah kau membawa sesuatu yang penting dari perjalananmu? Ramuan akhir ini membutuhkan benda yang menyimpan waktu—sesuatu yang mampu mengembalikan semuanya.','neutral'),
+  say('tua','Pilihlah dengan hati-hati. Manakah yang harus menjadi inti penawar terakhir?','sad'),
+  {t:'choice',opts:[
+    {label:'Jam arloji rusak—waktu di dalamnya harus diputar kembali.',goto:'reagent_watch'},
+    {label:'Bunga kuncup abadi—kehidupan yang tidak pernah layu.',goto:'reagent_flower'},
+    {label:'Permata air—setetes kejernihan yang tidak pernah habis.',goto:'reagent_gem'}]}]);
+N('reagent_flower',[say('tua','Bunga ini menolak layu, tetapi ia hanya menahan satu saat. Kita tidak membutuhkan waktu yang berhenti—kita membutuhkan waktu yang kembali bergerak.','sad'),{t:'goto',id:'final_reagent'}]);
+N('reagent_gem',[say('tua','Air di dalam permata ini murni, tetapi tidak menyimpan jejak perjalanan kita. Penawar ini membutuhkan sebuah detik yang pernah patah.','sad'),{t:'goto',id:'final_reagent'}]);
+N('reagent_watch',[say('tua','Jam arloji ini... ya. Jarumnya berhenti pada detik ketika sejarah retak. Jika kita memutarnya kembali, serum dapat mengingat dunia sebelum Virus Crimson.','shock'),
+  say('elena','Maka putarlah kembali waktunya, Arthur. Bukan untuk menghapus perjuangan kita—tetapi untuk memberi dunia kesempatan hidup sekali lagi.','warm'),
+  say('tua','Ramuan akhir telah lengkap. Sekarang masih ada satu pilihan terakhir yang hanya bisa kau tentukan sendiri.','warm'),
+  {t:'choice',opts:[
+    {...tagR('PILIHAN EGOIS'),label:'Ajak Arthur Tua ikut ke 2088 — tidak ada yang akan ditinggalkan.',goto:'paradox'},
+    {...tagR('PILIHAN IKHLAS'),label:'Terima serum & lepaskan Arthur bereinkarnasi.',goto:'true_end'}]}]);
 N('r3f',[say('tua','Kalau aku tidak bisa memilikimu, tak seorang pun di masa depan yang boleh hidup!','mad'),
   say('narrator','[ TIMELINE COLLAPSE: Formula hancur oleh dendam. ]'),{t:'ending',kind:'loop'}]);
 N('paradox',[
@@ -195,6 +213,9 @@ N('paradox',[
   {t:'ending',kind:'loop'}]);
 N('true_end',[
   say('elena','Arthur... terima kasih untuk seluruh hidup yang kau korbankan demi masa depanku.','sad'),
+  say('elena','Sebelum aku pergi, terimalah ini—foto terakhir kita. Aku menemukan setiap robekannya dan menyatukannya kembali, seperti waktu mempertemukan kita sekali lagi.','warm'),
+  say('narrator','Elena menyerahkan foto Elena dan Arthur yang telah direkatkan. Arthur memeluk kenangan itu erat di dadanya.'),
+  say('tua','Kalau begitu, biarkan wajah kita di foto ini menjadi detik terakhir yang kubawa... bukan perang, bukan formula—hanya kita.','warm'),
   say('tua','(Tersenyum tenang) Jangan menangis, Elena. Jiwa ini akan terlelap damai...','warm'),
   say('tua','Dan suatu hari nanti, di tahun 2088... kita akan bertemu lagi sebagai dua orang biasa yang saling jatuh cinta.','happy'),
   say('elena','Selamat tinggal, Arthur... Sampai bertemu di masa depan.','warm'),

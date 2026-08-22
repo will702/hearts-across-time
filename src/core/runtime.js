@@ -155,13 +155,13 @@ const advHit=()=>keyOnce(' ')||keyOnce('Enter')||keyOnce('Spacebar');
 
 /* ---------- State global ---------- */
 const freshChallenges=()=>({'1944':null,'1968':null,'1999':null});
-const S={empathy:0,logic:0,routeB1:'',routeB2:'',loop:0,challenges:freshChallenges()};
+const S={empathy:0,logic:0,routeB1:'',routeB2:'',loop:0,challenges:freshChallenges(),inventory:{},watchTargets:null,watchRepaired:false,roseRepaired:false,gemAligned:false,photoRepaired:false};
 const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:true,vx:0,stride:0,turnT:0,acc:0},
   walk:null,dialog:null,diary:null,cam:0,camTarget:0,caption:'',captionT:0,
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
   era:'2088',shakeT:0,shakeA:0,endCard:null,fadeIn:0,prologueDone:false,
   zoom:1,zt:1,zwx:W/2, // G1 kamera emosional: zoom aktual / target / fokus dunia-X pembicara
-  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,titleSel:1,titleConfirm:false,challenge:null,tutorialFade:0,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null};
+  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,titleSel:1,titleConfirm:false,challenge:null,watchRepair:null,rosePuzzle:null,gemAlign:null,photoPuzzle:null,tutorialFade:0,itemToast:null,gameIntro:null,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null,finalLabIntro:null,puzzleAward:null,bonus:null,bonusEnd:null};
 let T=0; // waktu global detik
 
 /* ---------- Opsi & penyimpanan (localStorage) ---------- */
@@ -171,11 +171,18 @@ function saveOpts(){try{localStorage.setItem('hat_opts',JSON.stringify(OPTS));}c
 const SAVE={seen:{},chosen:{},game:null,endings:{},inspected:{},introDone:false,tutorial:{}}; // progres permanen + autosave siklus
 const END_TOTAL=['A1','B1','B2lock','rebut','paradox','true']; // 5 rute gagal + true ending
 function markEnd(k){if(!k)return;if(!SAVE.endings)SAVE.endings={};if(!SAVE.endings[k]){SAVE.endings[k]=1;persistSave();}}
+function puzzleCount(){return END_TOTAL.filter(k=>SAVE.endings&&SAVE.endings[k]).length;}
+function puzzleComplete(){return puzzleCount()>=END_TOTAL.length;}
 try{Object.assign(SAVE,JSON.parse(localStorage.getItem('hat_save')||'{}'));}catch(e){}
 SAVE.seen=SAVE.seen||{};SAVE.chosen=SAVE.chosen||{};SAVE.endings=SAVE.endings||{};SAVE.inspected=SAVE.inspected||{};SAVE.tutorial=SAVE.tutorial||{};
 function persistSave(){try{localStorage.setItem('hat_save',JSON.stringify(SAVE));}catch(e){}}
 function tutorialDone(id){if(SAVE.tutorial[id])return;SAVE.tutorial[id]=1;G.tutorialFade=1;persistSave();}
-function normalizeRun(){S.challenges=Object.assign(freshChallenges(),S.challenges||{});}
+function normalizeRun(){S.challenges=Object.assign(freshChallenges(),S.challenges||{});S.inventory=Object.assign({},S.inventory||{});S.watchTargets=Array.isArray(S.watchTargets)&&S.watchTargets.length===3?S.watchTargets.slice(0,3):null;S.watchRepaired=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.watchRepaired);S.roseRepaired=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.roseRepaired);S.gemAligned=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.gemAligned);S.photoRepaired=!!(SAVE.game&&SAVE.game.S&&SAVE.game.S.photoRepaired);
+  if(S.inventory.watch&&!S.watchRepaired){if(SAVE.game&&SAVE.game.era==='1944')delete S.inventory.watch;else S.watchRepaired=true;} // save 1944 lama wajib bertemu mini-game; save era lanjut tetap aman
+  if(S.inventory.flower&&!S.roseRepaired){if(SAVE.game&&SAVE.game.era==='1968')delete S.inventory.flower;else S.roseRepaired=true;} // save Babak 2 lama diarahkan ke puzzle botol; save babak lanjut tetap aman
+  if(S.inventory.water_gem&&!S.gemAligned){if(SAVE.game&&SAVE.game.era==='1999')delete S.inventory.water_gem;else S.gemAligned=true;}
+  if(S.inventory.arthur_photo&&!S.photoRepaired){if(SAVE.game&&SAVE.game.era==='1999')delete S.inventory.arthur_photo;else S.photoRepaired=true;}
+}
 function applyVol(){if(AU.master&&!AU.muted)AU.master.gain.value=vGain(OPTS.vol);
   if(AU.sfxBus)AU.sfxBus.gain.value=vGain(OPTS.volSfx); // slider EFEK
   if(AU.musBus)duckMusic(D&&D.duckT?.55:.85,.06); // slider MUSIK via duckMusic agar transisi halus

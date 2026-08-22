@@ -19,17 +19,22 @@ Untuk deploy itch.io, zip `index.html`, `src/`, `vendor/`, dan `assets/`, lalu u
 | Aksi | Keyboard | Sentuh |
 |---|---|---|
 | Menu sampul | `↑ ↓` + `Enter` | ketuk menu |
+| Gameplay terakhir | `← →` / `A D`, `↓` / `S` / `Enter` untuk menyalakan simpul waktu | tombol ◀ ▶ dan ketuk `AKTIFKAN` |
+| Tutorial pembuka | `← →` ganti halaman, `Enter` lanjut, `Esc` lewati | ketuk tombol |
 | Bergerak | `← →` atau `A D` (lari: `Shift`) | tombol ◀ ▶ (lari: tahan ≫) |
 | Interaksi / mulai tantangan | `↓`, `S`, atau `Enter` | ketuk penanda |
+| Perbaiki arloji di Babak 1 | `← →` putar roda, `Space` / `Enter` kunci | ketuk lingkaran, lalu area bawah |
+| Susun botol mawar di Babak 2 | seret kepingan; atau `1–4`, `← ↑ ↓ →`, lalu `Space` | seret dan lepaskan kepingan pada bayangan botol |
+| Periksa dan baca buku harian Arthur | `Space` (juga `↓` / `S` saat membuka) | ketuk penanda buku |
 | Mini-game | `← →` untuk memilih/menyetel, `Enter` / `Space` untuk mengunci | ketuk pilihan/jalur, lalu area bawah untuk mengunci |
 | Lanjut dialog | `Enter` / `Space` / klik | ketuk layar |
-| Pilih opsi | `↑ ↓` + `Enter`, atau tombol `1` / `2` | ketuk opsi |
+| Pilih opsi | `↑ ↓` + `Enter`, atau tombol `1` / `2` / `3` | ketuk opsi |
 | Periksa titik lore (`✦` berdenyut) | `↓` atau `S` saat berdiri dekat | ketuk penanda |
 | Backlog dialog | `Tab` / `B` (gulir: `↑ ↓`) | — |
 | Jeda (mixer + aksesibilitas) | `Esc` | ikon ⏸ pojok kanan atas |
 | Bisu-suara | `M` | ikon 🔊 pojok kanan atas |
 
-Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungsi jadi jalan pelan, agar pengulangan siklus tidak repot. Layar judul menampilkan penghitung **⏳ ENDING TERUNGKAP n/6** (5 rute gagal + true ending) yang tersimpan lintas sesi.
+Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungsi jadi jalan pelan, agar pengulangan siklus tidak repot. Layar judul menampilkan penghitung **⏳ ENDING TERUNGKAP n/6** (5 rute gagal + true ending) yang tersimpan lintas sesi. Setiap ending berbeda menghadiahkan satu **Pecahan Waktu**; enam pecahan menyusun kota 2088 yang pulih dan membuka tombol **GAMEPLAY TERAKHIR** di menu utama. Mengulang ending yang sama tetap menampilkan koleksi, tetapi tidak menggandakan pecahan.
 
 ## ✅ Implementasi vs GDD
 
@@ -37,9 +42,13 @@ Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungs
 |---|---|
 | Sistem Kepribadian tersembunyi (Empati vs Logika) | ✔ Dialog dan tiga pendekatan gameplay bersama-sama menentukan Arthur Hangat / Sinis |
 | Tantangan era wajib dan ramah gagal | ✔ Lampu sorot 1944, penyetelan sinyal 1968, stabilisasi krio 1999; assist otomatis setelah 3 miss |
+| Temukan dan perbaiki arloji saat berjalan | ✔ Arloji berada langsung di parit 1944; tiga roda waktu harus diselaraskan sebelum benda masuk ke tas |
+| Susun kembali botol mawar saat berjalan | ✔ Botol pecah berada di awal Babak 2; empat kepingan kaca harus disatukan sebelum botol mawar abadi masuk ke tas |
 | Percabangan pohon waktu 2 → 4 → 8 | ✔ Rute 1A/1B × 2A1/2A2/2B1/2B2 → 4 kasus akhir + sub-kondisi |
 | Looping System (`loop_count++`) | ✔ Layar glitch RGB-strip + "⟲ LOOP n", reset ke Babak 1, HUD penghitung loop |
 | True Ending (Empati tinggi → B → B2 → Ikhlas) | ✔ Termasuk rahasia: statistik *hidden affinity* terungkap di kartu ending |
+| Tas barang lintas babak + ramuan akhir | ✔ Arloji rusak, bunga abadi, permata air, dan foto Arthur tersimpan sepanjang siklus; arloji membuka keputusan True Ending |
+| Koleksi enam pecahan ending + babak bonus | ✔ Hadiah unik di setiap ending, puzzle permanen 3×2, menu terkunci sampai lengkap, lalu epilog eksplorasi kota pulih |
 | Skrip Yarn Spinner | ✔ Seluruh dialog dimigrasi verbatim (node `prologue … true_end`) |
 | Asset manifest (4 sprite chibi + 3 parallax + bubble) | ✔ Semua digambar **prosedural via kode** — nol aset eksternal |
 | Balon kata 7-Days style | ✔ Bubble putih + ekor + chip nama (Elena merah rose / Arthur slate) |
@@ -93,6 +102,8 @@ skip senyap. Spesifikasi lengkap generasi via agy/codex + komposisi offline: `pl
   kini **fade-in 250ms** (bukan pop) antar node, dengan filter ekspresi opsional per node
 - **Audio CC0** di `assets/audio/` (lihat kredit di bagian Musik & Audio) — langkah kaki per-permukaan,
   rustle kertas dialog, loop ambience per era (hujan / angin / bara / dengung mesin)
+- **Puzzle dan kota epilog**: `assets/bonus_puzzle_board.jpg` menjadi papan pecahan, sedangkan
+  `assets/bonus_city_complete.jpg` menjadi gambar lengkap sekaligus latar side-scroll gameplay terakhir.
 
 ## 🖼 Memakai Aset PNG Buatan Sendiri (opsional, tanpa pindah engine)
 
@@ -184,6 +195,8 @@ rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, C
 
 **Intro sinematik:** `assets/intro.mp4` diputar sebelum sampul dengan suara setelah pemain menekan **Putar Intro** (kebijakan autoplay browser), dapat dilewati, dan dapat dibuka lagi lewat **Putar Ulang Intro**. Bila video gagal dimuat, sequence parallax Figma 8,4 detik tetap menjadi fallback sebelum cover interaktif. Siklus Baru meminta konfirmasi bila autosave aktif. Peta waktu prosedural menautkan 1944–2088 dan menampilkan ending yang ditemukan sebagai segel tanpa membocorkan yang belum ditemukan. `reduceMotion` hanya menonaktifkan animasi Canvas, bukan video prarender.
 
+Sebelum prolog 2088, **tutorial pembuka tiga halaman** menjelaskan tujuan menyelamatkan masa depan, kontrol gerak/interaksi/dialog, serta sistem pilihan tersembunyi dan pengulangan waktu. Panel memakai gaya kertas–tinta yang sama dengan tantangan dan dapat dinavigasi lewat keyboard, mouse, atau sentuhan.
+
 Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan, dan pilihan dialog muncul hanya ketika relevan lalu disimpan sebagai selesai. Setiap era memiliki mini-game wajib dengan dua pendekatan naratif tanpa label statistik. Penyelesaian memberi tepat satu poin tersembunyi Empati atau Logika; miss tidak memberi poin dan tidak mereset timeline. Setelah tiga miss, tempo melambat dan jendela target melebar. Hasil ketiga tantangan ikut autosave **Lanjutkan** dan direset bersama afinitas ketika loop gagal.
 
 - **Karakter**: bayangan lembut di kaki, siklus kaki elips ayun/tumpu (kaki tumpu menapak, kaki ayun melengkung), fisika rambut & ayunan gaun dengan follow-through tertinggal dari langkah, condong saat berjalan + pitch badan saat akselerasi,
@@ -201,6 +214,7 @@ Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan,
 - **Intro 1944**: empat beat kamera Figma bergerak dari detail puing menuju ledakan utama, lalu menahan Elena setengah badan dan monolog sebelum kontrol berjalan aktif
 - **Intro 1968**: slow-pan empat beat pada `backgroundbawahtanah.jpg`, kemudian Elena sedih muncul di tengah sebelum adegan bunker/lab dimulai
 - **Intro laboratorium 1968 (rute B)**: empat framing kamera pada `labotariummiliter.jpg`, kemudian Elena bersemangat menyampaikan monolog tiga beat sebelum gameplay laboratorium
+- **Intro laboratorium akhir 1999**: storyboard kamera Figma bergerak slow-motion dari detail ruang menuju wide shot `Labotariumakhir.jpg`, lalu Elena sedih seukuran narator awal menyampaikan monolog tiga beat sebelum Babak 3
 - **Layar judul Figma**: ilustrasi kosmik tanpa teks `title_cover_figJma.png`, satu wordmark resmi `llJUDULL.png`, plakat START, serta footer ringkas untuk progres ending, autosave, dan kontrol menu
 
 **v3 — Tampilan Valiant Hearts (komik perang):**
@@ -239,6 +253,12 @@ Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan,
   Babak 2 menambah satu pilihan sikap khusus di bunker dan laboratorium sebelum keputusan rute akhir
 - **Buku harian wajib Babak 2**: Elena tertahan sebelum Arthur sampai pemain memeriksa seluruh halaman;
   isi bercabang menurut rute, sikap Babak 1, dan loop, lalu menjadi pertanyaan sikap baru di Babak 3
+- **Puzzle botol mawar Babak 2**: sebelum penyetelan sinyal, Elena menemukan botol pecah berisi mawar;
+  pemain wajib menyatukan empat kepingan bergambar yang benar-benar membentuk ilustrasi utuh sebelum perjalanan terbuka
+- **Dua puzzle kenangan Babak 3**: Elena lebih dahulu memutar permata air sampai bentuknya menyatu dengan bayangan,
+  lalu menyusun empat robekan foto Elena–Arthur dan mengelem tiga sambungannya sebelum dapat menemui Arthur
+- **Penyerahan foto pada True Ending**: foto yang diperbaiki tidak hanya menjadi ikon tas; Elena memberikannya kepada
+  Arthur sebagai kenangan terakhir mereka sebelum kembali ke 2088
 - **Pacing level**: segmen jalan dibedakan per era (1944: 1800px pendekatan tegang · 1968: 1500 · 1999: 1300 rapat)
 - **Kamera look-ahead** 22% kecepatan (di atas exp-smoothing) + bob halus indikator `▼ ENTER`
 - **Mixer persepsi**: slider volume kini lewat kurva `v^2.2` (dB-feel) untuk MASTER/MUSIK/EFEK+ambience
@@ -256,7 +276,7 @@ LOG / drawLog  — backlog 30 baris terakhir (TAB/B); markEnd + END_TOTAL — pe
 setPaused / pauseItems — jeda: ducking musik & ambience, slider MASTER/MUSIK/EFEK, ukuran teks, reduceMotion
 SONGS / MUS    — sequencer musik leitmotif (pad/bass/musicbox/bell/tick + delay & reverb)
 SFX / setAmbience / setSong / duckMusic — audio prosedural WebAudio (SFX + ambience + musik per era)
-update/render  — state machine: load → title → prologue → walk → dialog → vortex → glitch → endcard
+update/render  — state machine: load → title → tutorial → prologue → intro era → walk → dialog → vortex → glitch → endcard
 ```
 
 ## 🧪 Sudah Diuji Otomatis (Playwright headless)
