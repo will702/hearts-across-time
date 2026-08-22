@@ -206,9 +206,14 @@ function updateChallenge(dt){const ch=G.challenge,cfg=CHALLENGE_CONF[ch.era];ch.
     if(ch.ok)ch.stable+=dt;
     if(ch.stable>=5)finishChallenge(ch);
     return;}
-  // tune (1968) — logika setelan manual asli, utuh
+  // tune (1968) — penanda otomatis bergerak bolak-balik (ping-pong) kiri-kanan
   const win=ch.assist?.13:.075,target=cfg.targets[ch.band];
-  let d=0;if(keys['ArrowLeft']||keys['a']||keys['A'])d--;if(keys['ArrowRight']||keys['d']||keys['D'])d++;ch.cursor=clamp(ch.cursor+d*dt*(ch.assist?.45:.72),0,1);
+  ch.dir=ch.dir||1;
+  ch.cursor+=ch.dir*dt*(ch.assist?.42:.75);
+  if(ch.cursor>=1){ch.cursor=1;ch.dir=-1;}
+  else if(ch.cursor<=0){ch.cursor=0;ch.dir=1;}
+  let d=0;if(keys['ArrowLeft']||keys['a']||keys['A'])d--;if(keys['ArrowRight']||keys['d']||keys['D'])d++;
+  if(d){ch.cursor=clamp(ch.cursor+d*dt*.5,0,1);if(d>0)ch.dir=1;else ch.dir=-1;}
   const touchLock=ptr.tap&&ptr.y>350;if(ptr.tap&&ptr.y<350){ch.cursor=clamp((ptr.x-190)/580,0,1);ptr.tap=false;}
   if(advHit()||touchLock){ptr.tap=false;if(Math.abs(ch.cursor-target)<=win){ch.band++;SFX.confirm();ch.feedback='TERKUNCI '+ch.band+'/3';ch.feedbackT=.65;if(ch.band>=3)finishChallenge(ch);}else missChallenge(ch);}
 }
@@ -498,7 +503,7 @@ function update(dt){
       const FEh=G.era==='1968'?'1968'+S.routeB1:G.era;
       const hs=(HOTSPOTS[FEh]||[]).find(h=>!SAVE.inspected[h.id]&&Math.abs(p.x-h.x)<52);
       G.walk.hot=hs||null;
-      if(hs&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||(ptr.tap&&Math.hypot(ptr.x-(hs.x-G.cam),ptr.y-(GROUND-14))<40)||touchActHit())){ptr.tap=false;
+      if(hs&&(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')||advHit()||(ptr.tap&&Math.hypot(ptr.x-(hs.x-G.cam),ptr.y-(GROUND-14))<40)||touchActHit())){ptr.tap=false;
         SAVE.inspected[hs.id]=1;
         if(loreFoundCount()>=LORE_IDS.length&&!SAVE.loreToastDone){ // P3: kelima jejak lengkap → hadiah naratif sekali seumur save
           SAVE.loreToastDone=1;persistSave();SFX.chime();

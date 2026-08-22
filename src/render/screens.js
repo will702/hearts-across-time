@@ -514,7 +514,7 @@ function drawChallenge(c) {
     c.fillStyle = '#D8CDB9'; rr(c, 190, 244, 580, 28, 7); c.fill(); c.fillStyle = ch.assist ? 'rgba(82,129,98,.45)' : 'rgba(194,90,90,.4)'; rr(c, tx - win * 580, 244, win * 1160, 28, 6); c.fill(); c.strokeStyle = '#2B211A'; c.lineWidth = 2; c.beginPath(); c.moveTo(cx, 232); c.lineTo(cx, 284); c.stroke(); c.fillStyle = '#94342E'; c.beginPath(); c.moveTo(cx - 7, 231); c.lineTo(cx + 7, 231); c.lineTo(cx, 241); c.closePath(); c.fill();
     c.fillStyle = '#2B211A'; c.font = 'bold 16px ' + F_UI; c.fillText('Selaraskan penanda dengan gelombang, lalu kunci', W / 2, 202);
     for (let i = 0; i < 3; i++) { c.fillStyle = i < ch.band ? '#5F9270' : '#B7AA95'; c.beginPath(); c.arc(W / 2 - 34 + i * 34, 318, 9, 0, TAU); c.fill(); }
-    c.fillStyle = '#6A5B4B'; c.font = '14px ' + F_UI; c.fillText(IS_TOUCH ? 'Ketuk jalur untuk menyetel • ketuk bawah untuk kunci' : '← → setel  •  ENTER kunci', W / 2, 365);
+    c.fillStyle = '#6A5B4B'; c.font = '14px ' + F_UI; c.fillText(IS_TOUCH ? 'Ketuk layar saat penanda pas di atas area warna' : 'Tekan ENTER / SPACE saat penanda pas di atas area warna', W / 2, 365);
   }
   if (ch.assist) { c.fillStyle = '#567A61'; c.font = 'bold 14px ' + F_UI; c.fillText('BANTUAN AKTIF — tempo melambat, zona diperlebar', W / 2, 398); }
   if (ch.feedbackT > 0) { c.fillStyle = ch.feedback.startsWith('TERKUNCI') ? '#567A61' : '#A83E38'; c.font = 'bold 16px ' + F_UI; c.fillText(ch.feedback, W / 2, 428); }
@@ -727,7 +727,7 @@ function render() {
         sketchRR(ctx, TOUCH_ACT.x - TOUCH_ACT.w / 2, TOUCH_ACT.y - TOUCH_ACT.h / 2, TOUCH_ACT.w, TOUCH_ACT.h, 9, { shadow: false });
         ctx.save(); ctx.translate(TOUCH_ACT.x, TOUCH_ACT.y); ctx.scale(pu, pu);
         ctx.fillStyle = '#94342E'; ctx.font = 'bold 13px ' + F_UI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(G.walk.challengeHot ? '▼ AKTIFKAN' : G.walk.watchHot ? 'SPACE — ARLOJI' : G.walk.roseHot ? 'SPACE — BOTOL' : G.walk.gemHot ? 'SPACE — PERMATA' : G.walk.photoHot ? 'SPACE — FOTO' : G.walk.diaryHot ? 'SPACE — BUKU' : '▼ PERIKSA', 0, 1);
+        ctx.fillText(G.walk.challengeHot ? '▼ AKTIFKAN' : G.walk.watchHot ? 'SPACE — ARLOJI' : G.walk.roseHot ? 'SPACE — BOTOL' : G.walk.gemHot ? 'SPACE — PERMATA' : G.walk.photoHot ? 'SPACE — FOTO' : G.walk.diaryHot ? 'SPACE — BUKU' : 'SPACE — PERIKSA', 0, 1);
         ctx.restore(); ctx.textBaseline = 'alphabetic';
       }
     }
