@@ -133,10 +133,15 @@ const ROSE_X=285,ROSE_TARGET={x:355,y:148,w:250,h:214}; // botol pecah ditemukan
 const GEM_X=250,GEM_TARGET={rx:.62,ry:-.86}; // dua temuan wajib Babak 3, sebelum stabilisasi krio
 const PHOTO_X=455,PHOTO_TARGET={x:330,y:148,w:300,h:200};
 const ROSE_PIECES=[
-  {poly:[[0,0],[125,0],[121,39],[137,65],[123,107],[0,107]],home:[-250,45]},
-  {poly:[[125,0],[250,0],[250,107],[196,103],[174,118],[123,107],[137,65],[121,39]],home:[250,45]},
-  {poly:[[0,107],[123,107],[137,132],[121,171],[131,214],[0,214]],home:[-250,115]},
-  {poly:[[123,107],[174,118],[196,103],[250,107],[250,214],[131,214],[121,171],[137,132]],home:[250,115]}];
+  // Delapan pecahan kaca: semua sisi retak berupa garis lurus dan berbagi titik yang sama.
+  {poly:[[0,0],[82,0],[108,48],[55,73],[0,54]],home:[-245,15]},
+  {poly:[[82,0],[168,0],[183,72],[126,108],[108,48]],home:[-225,115]},
+  {poly:[[168,0],[250,0],[250,66],[183,72]],home:[210,5]},
+  {poly:[[250,66],[250,150],[178,144],[112,169],[126,108],[183,72]],home:[230,-20]},
+  {poly:[[250,150],[250,214],[162,214],[112,169],[178,144]],home:[210,20]},
+  {poly:[[162,214],[72,214],[58,132],[126,108],[112,169]],home:[-240,40]},
+  {poly:[[72,214],[0,214],[0,145],[58,132]],home:[-250,-30]},
+  {poly:[[0,145],[0,54],[55,73],[108,48],[126,108],[58,132]],home:[-220,-5]}];
 const PHOTO_PIECES=[
   {poly:[[0,0],[150,0],[145,46],[157,72],[143,100],[0,100]],home:[-220,26]},
   {poly:[[150,0],[300,0],[300,100],[232,97],[205,109],[143,100],[157,72],[145,46]],home:[220,30]},
@@ -213,12 +218,12 @@ function updateWatchRepair(dt){const wr=G.watchRepair;if(!wr)return;wr.t+=dt;if(
 function rosePointIn(poly,x,y){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>y)!==(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]))inside=!inside;}return inside;}
 function startRosePuzzle(){if(S.roseRepaired)return;G.state='rosepuzzle';G.zoom=G.zt=1;G.player.vx=0;
   G.rosePuzzle={pieces:ROSE_PIECES.map((d,i)=>({ox:d.home[0],oy:d.home[1],placed:false,i})),drag:-1,dx:0,dy:0,sel:0,wasDown:ptr.down,t:0,stage:'play',successT:0,feedback:'SUSUN KEMBALI BOTOL MAWAR',feedbackT:0};tutorialDone('interact');SFX.select();}
-function roseTryPlace(rp,i){const p=rp.pieces[i];if(!p||p.placed)return;const near=Math.hypot(p.ox,p.oy)<42;if(near){p.ox=0;p.oy=0;p.placed=true;rp.feedback='KEPINGAN '+(rp.pieces.filter(q=>q.placed).length)+' / '+rp.pieces.length+' TERPASANG';rp.feedbackT=.8;SFX.confirm();
+function roseTryPlace(rp,i){const p=rp.pieces[i];if(!p||p.placed)return;const near=Math.hypot(p.ox,p.oy)<22;if(near){p.ox=0;p.oy=0;p.placed=true;rp.feedback='KEPINGAN '+(rp.pieces.filter(q=>q.placed).length)+' / '+rp.pieces.length+' TERPASANG';rp.feedbackT=.8;SFX.confirm();
     if(rp.pieces.every(q=>q.placed)){rp.stage='success';rp.successT=0;S.roseRepaired=true;addStoryItem('flower','BOTOL MAWAR ABADI');}}
   else{const h=ROSE_PIECES[i].home;p.ox=h[0];p.oy=h[1];rp.feedback='TEPINYA BELUM MENYATU';rp.feedbackT=.8;G.shakeT=OPTS.reduceMotion?0:.14;G.shakeA=3;SFX.flash();}}
 function updateRosePuzzle(dt){const rp=G.rosePuzzle;if(!rp)return;rp.t+=dt;if(rp.feedbackT>0)rp.feedbackT-=dt;
   if(rp.stage==='success'){rp.successT+=dt;if(rp.successT>1.2){G.state='walk';G.player.x=ROSE_X+58;G.rosePuzzle=null;G.fadeIn=.24;}return;}
-  for(let n=0;n<4;n++)if(keyOnce(String(n+1))&&!rp.pieces[n].placed){rp.sel=n;SFX.select();}
+  for(let n=0;n<ROSE_PIECES.length;n++)if(keyOnce(String(n+1))&&!rp.pieces[n].placed){rp.sel=n;SFX.select();}
   let dx=0,dy=0;if(keys['ArrowLeft']||keys['a']||keys['A'])dx--;if(keys['ArrowRight']||keys['d']||keys['D'])dx++;if(keys['ArrowUp']||keys['w']||keys['W'])dy--;if(keys['ArrowDown']||keys['s']||keys['S'])dy++;
   const sp=rp.pieces[rp.sel];if(sp&&!sp.placed&&(dx||dy)){sp.ox+=dx*dt*165;sp.oy+=dy*dt*165;}
   if((keyOnce(' ')||keyOnce('Spacebar')||keyOnce('Enter'))&&sp&&!sp.placed)roseTryPlace(rp,rp.sel);

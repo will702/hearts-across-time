@@ -87,15 +87,15 @@ function drawPrologueScene(c) {
    Menjelaskan tujuan, kontrol, serta konsekuensi time-loop.
    ============================================================ */
 const GAME_INTRO_PAGES = [
-  {k:'01',title:'MISI: PUTUSKAN LINGKARAN',sub:'SATU CINTA • EMPAT ERA • ENAM AKHIR',lead:'Tahun 2088 berada di ambang kehancuran.',rows:[
-    ['⏳','Lintasi 1944, 1968, dan 1999 untuk mengubah nasib Arthur.'],
-    ['✦','Temukan penawar sebelum Virus Crimson memusnahkan masa depan.'],
-    ['↻','Jika waktu runtuh, siklus dimulai lagi—tetapi pengetahuanmu tetap tinggal.'] ]},
-  {k:'02',title:'BERGERAK MELINTASI WAKTU',sub:'JELAJAHI • PERIKSA • BERTAHAN',lead:'Setiap era menyimpan jalan, petunjuk, dan bahaya berbeda.',rows:[
+  {k:'01',title:'MISI: PUTUSKAN LINGKARAN WAKTU',lead:'Tahun 2088 di ambang kepunahan. Setiap pilihanmu dapat mengubah takdir dan alur cerita ke depannya.',rows:[
+    ['⏳','Jelajahi tahun 1944, 1968, dan 1999 untuk menulis ulang nasib Arthur.'],
+    ['✦','Racik formula penawar sebelum Virus Crimson melenyapkan masa depan.'],
+    ['↻','Jika garis waktu runtuh, siklus akan berulang—namun ingatan dan pengetahuanmu tetap abadi.'] ]},
+  {k:'02',title:'BERGERAK MELINTASI WAKTU',lead:'Setiap era menyimpan jalan, petunjuk, dan bahaya berbeda.',rows:[
     ['← →','Bergerak dengan ← → atau A D. Tahan SHIFT untuk berlari.'],
     ['▼','Tekan ↓, S, atau ENTER untuk benda; SPACE juga membuka buku harian.'],
     ['ENTER','Lanjutkan dialog dengan ENTER, SPACE, klik, atau sentuhan.'] ]},
-  {k:'03',title:'PILIHANMU MEMBENTUK ARTHUR',sub:'TIDAK ADA JAWABAN YANG DIBERI LABEL',lead:'Game tidak akan mengatakan pilihan mana yang “benar”.',rows:[
+  {k:'03',title:'PILIHANMU MEMBENTUK ARTHUR',lead:'Game tidak akan mengatakan pilihan mana yang “benar”.',rows:[
     ['1 / 2 / 3','Pilih dengan ↑ ↓ lalu ENTER, atau tekan nomor opsi yang tersedia.'],
     ['♥ ⚙','Ucapan dan cara menyelesaikan tantangan diam-diam mengubah Arthur.'],
     ['★','Baca buku harian, temukan jejak cerita, dan ungkap akhir sejati.'] ]},
@@ -108,13 +108,12 @@ function drawGameIntro(c) {
   c.save();c.translate(W/2,H/2);c.scale(s,s);c.translate(-W/2,-H/2);c.globalAlpha=born;
   sketchRR(c,112,60,736,420,10);
   c.textAlign='center';c.fillStyle='#94342E';c.font='bold 25px '+F_UI;c.fillText(p.title,W/2,108);
-  c.fillStyle='#6A5B4B';c.font='12px '+F_META;c.fillText(p.sub,W/2,133);
-  c.strokeStyle='rgba(148,52,46,.45)';c.lineWidth=1.5;c.beginPath();c.moveTo(175,151);c.quadraticCurveTo(W/2,146,785,151);c.stroke();
-  c.fillStyle='#2B211A';c.font='italic 17px Georgia,serif';c.fillText(p.lead,W/2,181);
-  p.rows.forEach((row,i)=>{const y=208+i*63,on=i===0;
-    c.fillStyle=on?'rgba(148,52,46,.10)':'rgba(90,74,60,.055)';rr(c,165,y,630,51,7);c.fill();
-    c.strokeStyle=on?'rgba(148,52,46,.52)':'rgba(43,33,26,.24)';c.lineWidth=on?1.7:1;rr(c,165,y,630,51,7);c.stroke();
-    c.fillStyle=on?'#94342E':'#55677A';c.font='bold 15px '+F_UI;c.textAlign='center';c.fillText(row[0],205,y+31);
+  c.strokeStyle='rgba(148,52,46,.45)';c.lineWidth=1.5;c.beginPath();c.moveTo(175,137);c.quadraticCurveTo(W/2,132,785,137);c.stroke();
+  c.fillStyle='#2B211A';c.font='italic 16px Georgia,serif';wrap(c,p.lead,650).slice(0,2).forEach((ln,k)=>c.fillText(ln,W/2,163+k*19));
+  p.rows.forEach((row,i)=>{const y=208+i*63;
+    c.fillStyle='rgba(90,74,60,.055)';rr(c,165,y,630,51,7);c.fill();
+    c.strokeStyle='rgba(43,33,26,.24)';c.lineWidth=1;rr(c,165,y,630,51,7);c.stroke();
+    c.fillStyle='#55677A';c.font='bold 15px '+F_UI;c.textAlign='center';c.fillText(row[0],205,y+31);
     c.fillStyle='#2B211A';c.font='15px '+F_UI;c.textAlign='left';wrap(c,row[1],535).slice(0,2).forEach((ln,k)=>c.fillText(ln,240,y+23+k*17));});
   c.textAlign='center';c.fillStyle='#94342E';c.font='bold 12px '+F_META;c.fillText('HALAMAN '+(gi.page+1)+' / '+GAME_INTRO_PAGES.length,W/2,411);
   const btn=(x,w,label,on)=>{c.fillStyle=on?'#94342E':'rgba(90,74,60,.10)';rr(c,x,426,w,38,6);c.fill();c.strokeStyle=on?'#6D211D':'rgba(43,33,26,.38)';c.lineWidth=1.5;rr(c,x,426,w,38,6);c.stroke();c.fillStyle=on?'#FFF8EA':'#4F4236';c.font='bold 14px '+F_UI;c.fillText(label,x+w/2,451);};
@@ -482,12 +481,12 @@ function drawWatchRepair(c){const wr=G.watchRepair;if(!wr)return;c.fillStyle='rg
   if(wr.assist){c.fillStyle='#567A61';c.font='bold 13px '+F_UI;c.fillText('BANTUAN AKTIF — zona penyelarasan diperlebar',W/2,462);}else if(wr.feedbackT>0){c.fillStyle=wr.feedback.startsWith('RODA')?'#567A61':'#A83E38';c.font='bold 14px '+F_UI;c.fillText(wr.feedback,W/2,462);}}
 function rosePiecePath(c,poly,ox,oy){c.beginPath();poly.forEach((p,i)=>{const x=ROSE_TARGET.x+p[0]+ox,y=ROSE_TARGET.y+p[1]+oy;i?c.lineTo(x,y):c.moveTo(x,y);});c.closePath();}
 function drawRoseBottleArt(c,x,y,w,h){const im=AS.imgs.rose_bottle_broken;if(im&&im.width)c.drawImage(im,330,250,1640,1220,x,y,w,h);else{c.save();c.translate(x,y);c.scale(w/250,h/214);c.fillStyle='rgba(218,234,232,.78)';c.strokeStyle='#8AA3A0';c.lineWidth=3;c.beginPath();c.moveTo(37,18);c.lineTo(78,0);c.lineTo(104,35);c.lineTo(201,47);c.lineTo(235,194);c.lineTo(28,204);c.lineTo(8,68);c.closePath();c.fill();c.stroke();c.fillStyle='#A73542';c.beginPath();c.arc(174,132,43,0,TAU);c.fill();c.strokeStyle='#49684F';c.lineWidth=6;c.beginPath();c.moveTo(52,181);c.lineTo(157,142);c.stroke();c.restore();}}
-function drawRosePuzzle(c){const rp=G.rosePuzzle;if(!rp)return;c.fillStyle='rgba(4,6,10,.78)';c.fillRect(0,0,W,H);sketchRR(c,70,35,820,470,10);c.textAlign='center';c.fillStyle='#94342E';c.font='bold 24px '+F_UI;c.fillText('BOTOL MAWAR YANG PECAH',W/2,75);c.fillStyle='#5A4A3C';c.font='13px '+F_META;c.fillText('Elena menemukan mawar hidup di antara pecahan kaca • satukan 4 kepingan',W/2,100);
+function drawRosePuzzle(c){const rp=G.rosePuzzle;if(!rp)return;c.fillStyle='rgba(4,6,10,.78)';c.fillRect(0,0,W,H);sketchRR(c,70,35,820,470,10);c.textAlign='center';c.fillStyle='#94342E';c.font='bold 24px '+F_UI;c.fillText('BOTOL MAWAR YANG PECAH',W/2,75);c.fillStyle='#5A4A3C';c.font='13px '+F_META;c.fillText('Elena menemukan mawar hidup di antara pecahan kaca • satukan '+ROSE_PIECES.length+' kepingan',W/2,100);
   c.save();c.globalAlpha=.1;drawRoseBottleArt(c,ROSE_TARGET.x,ROSE_TARGET.y,ROSE_TARGET.w,ROSE_TARGET.h);c.restore();
   ROSE_PIECES.forEach((d,i)=>{const p=rp.pieces[i];if(!p.placed){c.save();c.setLineDash([5,5]);c.strokeStyle='rgba(90,74,60,.26)';c.lineWidth=1.2;rosePiecePath(c,d.poly,0,0);c.stroke();c.restore();}});
   rp.pieces.forEach((p,i)=>{const d=ROSE_PIECES[i],selected=rp.sel===i&&!p.placed;c.save();if(selected){c.shadowColor='rgba(196,59,66,.65)';c.shadowBlur=15;}rosePiecePath(c,d.poly,p.ox,p.oy);c.clip();drawRoseBottleArt(c,ROSE_TARGET.x+p.ox,ROSE_TARGET.y+p.oy,ROSE_TARGET.w,ROSE_TARGET.h);c.restore();c.save();c.strokeStyle=p.placed?'#567A61':selected?'#94342E':'rgba(43,33,26,.72)';c.lineWidth=selected?3:1.7;rosePiecePath(c,d.poly,p.ox,p.oy);c.stroke();if(!p.placed){const q=d.poly[0];c.fillStyle=selected?'#94342E':'#5A4A3C';c.font='bold 12px '+F_META;c.textAlign='center';c.fillText(String(i+1),ROSE_TARGET.x+q[0]+p.ox+14,ROSE_TARGET.y+q[1]+p.oy+18);}c.restore();});
   if(rp.stage==='success'){c.fillStyle='rgba(243,234,218,.96)';c.fillRect(125,155,710,215);c.save();c.shadowColor='rgba(180,62,75,.35)';c.shadowBlur=18;drawRoseBottleArt(c,W/2-112,172,224,192);c.restore();c.fillStyle='#567A61';c.font='bold 27px '+F_UI;c.fillText('BOTOL MAWAR KEMBALI UTUH',W/2,218);c.fillStyle='#2B211A';c.font='16px '+F_UI;c.fillText('Mawar di dalamnya tidak pernah layu.',W/2,338);return;}
-  c.fillStyle=rp.feedbackT>0?(rp.feedback.startsWith('KEPINGAN')?'#567A61':'#A83E38'):'#2B211A';c.font='bold 15px '+F_UI;c.fillText(rp.feedbackT>0?rp.feedback:'Seret setiap kepingan ke bayangan botol di tengah.',W/2,414);c.fillStyle='#6A5B4B';c.font='13px '+F_UI;c.fillText(IS_TOUCH?'Seret kepingan • lepaskan saat tepinya menyatu':'Seret dengan mouse • atau 1–4 pilih, ← ↑ ↓ → gerak, SPACE pasang',W/2,446);}
+  c.fillStyle=rp.feedbackT>0?(rp.feedback.startsWith('KEPINGAN')?'#567A61':'#A83E38'):'#2B211A';c.font='bold 15px '+F_UI;c.fillText(rp.feedbackT>0?rp.feedback:'Seret setiap kepingan ke bayangan botol di tengah.',W/2,414);c.fillStyle='#6A5B4B';c.font='13px '+F_UI;c.fillText(IS_TOUCH?'Seret kepingan • lepaskan tepat saat tepinya menyatu':'Seret dengan mouse • atau 1–8 pilih, ← ↑ ↓ → gerak, SPACE pasang',W/2,446);}
 function drawGemShape(c,x,y,rx,ry,alpha,shadow){const sx=.38+.62*Math.abs(Math.cos(ry)),sy=.5+.5*Math.abs(Math.cos(rx));c.save();c.translate(x,y);c.rotate(ry*.17);c.scale(sx,sy);c.globalAlpha=alpha;c.shadowColor=shadow?'transparent':'rgba(93,220,255,.65)';c.shadowBlur=shadow?0:22;const im=AS.imgs.water_gem_art;
   if(im&&im.width){if(shadow)c.filter='brightness(0)';c.drawImage(im,650,45,1700,1450,-92,-92,184,184);c.filter='none';}else{const g=shadow?'rgba(25,32,42,.72)':c.createLinearGradient(-80,-80,80,80);if(!shadow){g.addColorStop(0,'#E9FFFF');g.addColorStop(.3,'#76DDEE');g.addColorStop(.62,'#4C78B3');g.addColorStop(1,'#D8FCFF');}c.fillStyle=g;c.beginPath();c.moveTo(0,-92);c.lineTo(74,-34);c.lineTo(60,63);c.lineTo(-18,92);c.lineTo(-78,28);c.lineTo(-65,-48);c.closePath();c.fill();if(!shadow){c.strokeStyle='#D9FBFF';c.lineWidth=3;c.stroke();c.beginPath();c.moveTo(0,-92);c.lineTo(-10,15);c.lineTo(60,63);c.moveTo(-65,-48);c.lineTo(-10,15);c.lineTo(74,-34);c.moveTo(-78,28);c.lineTo(-10,15);c.lineTo(-18,92);c.stroke();}}
   c.restore();}
