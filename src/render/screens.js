@@ -380,11 +380,15 @@ function drawBonus(c){const b=G.bonus;drawBonusCity(c,b);const n=Object.keys(b.l
 function drawBonusEnd(c){const be=G.bonusEnd,im=AS.imgs.bonus_city_complete;drawCoverImage(c,im,1.01,0,0);c.fillStyle='rgba(4,9,14,.34)';c.fillRect(0,0,W,H);
   c.save();c.translate(390,GROUND+12);c.scale(1.45,1.45);groundShadow(c);drawElena(c,T,0,false,'warm');c.restore();c.save();c.translate(570,GROUND+12);c.scale(-1.45,1.45);groundShadow(c);drawArthur(c,'dewasa',T,'warm');c.restore();
   const a=OPTS.reduceMotion?1:easeO(clamp(be.t*2.2,0,1));c.save();c.globalAlpha=a;sketchRR(c,155,72,650,164,9);c.textAlign='center';c.fillStyle='#94342E';c.font='bold 24px '+F_UI;c.fillText(be.page?'LINGKARAN TELAH PUTUS':'TAHUN 2088 — HARI PERTAMA',W/2,116);c.fillStyle='#2B211A';c.font='18px '+F_UI;const text=be.page?'Kota ini hidup karena setiap akhir yang berani kau hadapi. Elena dan Arthur akhirnya memiliki hari esok.':'Untuk pertama kalinya, masa depan tidak meminta Elena kembali ke masa lalu.';wrap(c,text,555).forEach((ln,i)=>c.fillText(ln,W/2,155+i*25));c.fillStyle='#6A5B4B';c.font='13px '+F_UI;c.fillText(be.t>1?'ENTER / SENTUH UNTUK MELANJUTKAN':'…',W/2,217);c.restore();}
-function drawTitleSignal(c,t){
+function titleSignalState(t){
+  const ph=t%6.4,edge=Math.min(ph,Math.abs(ph-3.2),6.4-ph),glitch=clamp(1-edge/.18,0,1);
+  return{mono:ph>=3.2,glitch};
+}
+function drawTitleSignal(c,t,amount){
   if(OPTS.reduceMotion)return;
-  // Dua frame Figma menjadi dua keadaan sinyal: stabil dan sesaat terbelah.
+  // Gangguan hanya muncul tepat ketika state berwarna dan monokrom saling bertukar.
   // Lapisan ini selesai digambar sebelum menu agar tombol dan hit-area tidak ikut bergeser.
-  const ph=t%5.2,pulse=ph<.13?1-ph/.13:ph>.92&&ph<1.04?1-Math.abs(ph-.98)/.06:ph>3.34&&ph<3.48?1-Math.abs(ph-3.41)/.07:0;
+  const pulse=amount||0;
   c.save();c.globalAlpha=.055;c.fillStyle='#B8D8F4';for(let y=5;y<H;y+=7)c.fillRect(0,y,W,1);
   if(pulse>0){
     const bands=[[24,10,-9],[79,7,12],[126,16,-15],[183,8,10],[248,11,-7],[337,6,13],[421,13,-11],[487,7,8]];
@@ -395,33 +399,37 @@ function drawTitleSignal(c,t){
   c.restore();
 }
 function drawCover(c) {
-  const mot = OPTS.reduceMotion ? 0 : 1, t = T, pul = mot ? .5 + .5 * Math.sin(t * 1.6) : .5, im = AS.imgs.title_cover_figma;
+  const mot = OPTS.reduceMotion ? 0 : 1, t = T, pul = mot ? .5 + .5 * Math.sin(t * 1.6) : .5, sig=titleSignalState(t),base=AS.imgs.title_cover_figma;
+  const colorIm=AS.imgs.title_bg_color&&AS.imgs.title_bg_color.width?AS.imgs.title_bg_color:base,monoAsset=AS.imgs.title_bg_mono&&AS.imgs.title_bg_mono.width?AS.imgs.title_bg_mono:null;
   const zoom = 1.015 + mot * .012 * Math.sin(t * .18), panX = mot * Math.sin(t * .13) * 5, panY = mot * Math.cos(t * .16) * 3;
-  if (!drawCoverImage(c, im, zoom, panX, panY)) { bg2088(c, 0, t, 0); drawProps(c, '2088', 0); }
-  else { c.save(); c.globalAlpha = .22; c.globalCompositeOperation = 'overlay'; drawCoverImage(c, im, zoom, panX, panY); c.restore(); }
+  const bgIm=OPTS.reduceMotion?colorIm:(sig.mono?(monoAsset||colorIm):colorIm);
+  c.save();if(!OPTS.reduceMotion&&sig.mono&&!monoAsset)c.filter='grayscale(1) contrast(1.08) brightness(.82)';
+  const hasBg=drawCoverImage(c,bgIm,zoom,panX,panY);c.restore();
+  if(!hasBg){bg2088(c,0,t,0);drawProps(c,'2088',0);}
+  else{c.save();c.globalAlpha=.16;c.globalCompositeOperation='overlay';if(!OPTS.reduceMotion&&sig.mono&&!monoAsset)c.filter='grayscale(1) contrast(1.08)';drawCoverImage(c,bgIm,zoom,panX,panY);c.restore();}
   // Lapisan gelap Figma: judul tetap kontras dan footer menyatu dengan ruang angkasa.
   let g = c.createLinearGradient(0, 0, 0, 210); g.addColorStop(0, 'rgba(2,5,13,.72)'); g.addColorStop(.6, 'rgba(2,5,13,.12)'); g.addColorStop(1, 'rgba(2,5,13,0)'); c.fillStyle = g; c.fillRect(0, 0, W, 210);
   g = c.createLinearGradient(0, 330, 0, H); g.addColorStop(0, 'rgba(2,4,10,0)'); g.addColorStop(.45, 'rgba(2,4,10,.7)'); g.addColorStop(1, 'rgba(1,2,7,.96)'); c.fillStyle = g; c.fillRect(0, 330, W, H - 330);
-  const glow = c.createRadialGradient(W * .5, 142, 10, W * .5, 142, 210); glow.addColorStop(0, `rgba(255,215,110,${.12 + .06 * pul})`); glow.addColorStop(1, 'rgba(255,215,110,0)'); c.fillStyle = glow; c.fillRect(255, 0, 450, 310);
-  // Wordmark resmi dari aset gambar yang tersedia di repo.
+  const glow = c.createRadialGradient(760, 102, 10, 760, 102, 190); glow.addColorStop(0, `rgba(255,215,110,${.1 + .05 * pul})`); glow.addColorStop(1, 'rgba(255,215,110,0)'); c.fillStyle = glow; c.fillRect(560, 0, 400, 250);
+  // Wordmark resmi berada di kanan atas; tombol membentuk satu kolom tepat di bawahnya.
   const mark = AS.imgs.title_wordmark;
-  if (mark && mark.width) { const dw = 510, dh = dw * (mark.height / mark.width); c.save(); c.shadowColor = `rgba(255,223,135,${.35 + .22 * pul})`; c.shadowBlur = 13; c.drawImage(mark, 0, 0, mark.width, mark.height, W / 2 - dw / 2, 55, dw, dh); c.restore(); }
+  if (mark && mark.width) { const dw = 360, dh = dw * (mark.height / mark.width); c.save(); c.shadowColor = `rgba(255,223,135,${.35 + .22 * pul})`; c.shadowBlur = 13; c.drawImage(mark, 0, 0, mark.width, mark.height, 590, 40, dw, dh); c.restore(); }
   // Kode teks prosedural di-comment out karena diganti gambar:
   // else{goldTitle(c,'HE',W/2-86,132,66);goldTitle(c,'RT',W/2+84,132,66);c.save();c.shadowColor=`rgba(255,223,135,${.55+.3*pul})`;c.shadowBlur=16+8*pul;drawHourglass(c,W/2,101,1.72,t);c.restore();goldTitle(c,'ACROSS TIME',W/2,191,43);}
   // c.save();c.textAlign='center';c.font='400 14px '+F_META;c.fillStyle='#FFFDF4';c.strokeStyle='rgba(7,8,18,.78)';c.lineWidth=3;c.shadowColor='rgba(245,255,196,.8)';c.shadowBlur=7;spacedText(c,'BREAK THE LOOP',W/2,225,7);c.restore();
-  drawTitleSignal(c,t);
+  drawTitleSignal(c,t,sig.glitch);
   // Peta waktu prosedural: hasil yang belum ditemukan tetap berupa segel tanpa spoiler.
-  const years=['1944','1968','1999','2088'],xs=[250,403,557,710],my=242;c.save();c.strokeStyle='rgba(242,210,125,.55)';c.lineWidth=2;c.beginPath();c.moveTo(xs[0],my);for(let i=1;i<xs.length;i++){c.quadraticCurveTo((xs[i-1]+xs[i])/2,my+(i%2?14:-14),xs[i],my);}c.stroke();
+  const years=['1944','1968','1999','2088'],xs=[54,168,282,396],my=374;c.save();c.strokeStyle='rgba(242,210,125,.55)';c.lineWidth=2;c.beginPath();c.moveTo(xs[0],my);for(let i=1;i<xs.length;i++){c.quadraticCurveTo((xs[i-1]+xs[i])/2,my+(i%2?11:-11),xs[i],my);}c.stroke();
   years.forEach((y,i)=>{c.fillStyle=i===0||SAVE.game&&+SAVE.game.era>=+y?'#F1D58B':'rgba(245,240,232,.5)';c.beginPath();c.arc(xs[i],my,7,0,TAU);c.fill();c.font='11px '+F_META;c.textAlign='center';c.fillText(y,xs[i],my+23);});
-  const found=END_TOTAL.filter(k=>SAVE.endings&&SAVE.endings[k]).length;c.font='11px '+F_META;END_TOTAL.forEach((k,i)=>{const x=345+i*54,on=!!(SAVE.endings&&SAVE.endings[k]);c.fillStyle=on?'#F1D58B':'rgba(245,240,232,.28)';c.fillText(on?'✦':'◇',x,277);});c.restore();
+  const found=END_TOTAL.filter(k=>SAVE.endings&&SAVE.endings[k]).length;c.font='11px '+F_META;END_TOTAL.forEach((k,i)=>{const x=54+i*42,on=!!(SAVE.endings&&SAVE.endings[k]);c.fillStyle=on?'#F1D58B':'rgba(245,240,232,.28)';c.fillText(on?'✦':'◇',x,417);});c.restore();
   if(loreFoundCount()>=LORE_IDS.length){ // P3: segel kisah lengkap — kelima jejak selidik ditemukan
     c.save();c.textAlign='left';c.font='400 12px '+F_META;c.fillStyle='#F1D58B';c.shadowColor='rgba(241,213,139,.55)';c.shadowBlur=6;
-    c.fillText('✦ KISAH LENKAP '+LORE_IDS.length+'/'+LORE_IDS.length,24,464);c.restore();}
-  const items=titleMenu(),bx=330,by=286,bw=300,bh=34;c.save();c.textAlign='center';c.textBaseline='middle';items.forEach((it,i)=>{const y=by+i*38,on=i===G.titleSel&&!it.disabled,hov=!it.disabled&&ptr.x>bx&&ptr.x<bx+bw&&ptr.y>y&&ptr.y<y+bh;
-    c.fillStyle=on||hov?'rgba(211,168,72,.9)':'rgba(8,10,18,.72)';rr(c,bx,y,bw,bh,4);c.fill();c.strokeStyle=on?'#FFF0A0':'rgba(241,213,139,.48)';c.lineWidth=on?2:1;rr(c,bx,y,bw,bh,4);c.stroke();c.fillStyle=it.disabled?'rgba(245,240,232,.3)':'#FFFDF2';c.font=(on?'bold ':'')+(i===3?'13px ':'16px ')+F_TITLE;c.fillText((on?'▶ ':'')+it.label,W/2,y+bh/2);});c.restore();
+    c.fillText('✦ KISAH LENKAP '+LORE_IDS.length+'/'+LORE_IDS.length,28,482);c.restore();}
+  const items=titleMenu(),bx=620,by=202,bw=310,bh=42;c.save();c.textAlign='center';c.textBaseline='middle';items.forEach((it,i)=>{const y=by+i*50,on=i===G.titleSel&&!it.disabled,hov=!it.disabled&&ptr.x>bx&&ptr.x<bx+bw&&ptr.y>y&&ptr.y<y+bh;
+    c.fillStyle=on||hov?'rgba(211,168,72,.9)':'rgba(8,10,18,.72)';rr(c,bx,y,bw,bh,4);c.fill();c.strokeStyle=on?'#FFF0A0':'rgba(241,213,139,.48)';c.lineWidth=on?2:1;rr(c,bx,y,bw,bh,4);c.stroke();c.fillStyle=it.disabled?'rgba(245,240,232,.3)':'#FFFDF2';c.font=(on?'bold ':'')+(i===3?'13px ':'16px ')+F_TITLE;c.fillText((on?'▶ ':'')+it.label,bx+bw/2,y+bh/2);});c.restore();
   if(G.titleConfirm){c.fillStyle='rgba(2,3,8,.82)';c.fillRect(0,0,W,H);sketchRR(c,250,235,460,170,8);c.textAlign='center';c.fillStyle='#94342E';c.font='bold 20px '+F_UI;c.fillText('TIMPA AUTOSAVE SIKLUS AKTIF?',W/2,278);c.fillStyle='#2B211A';c.font='15px '+F_UI;c.fillText('Progres siklus saat ini akan dimulai ulang dari 1944.',W/2,308);['YA, MULAI BARU','BATAL'].forEach((s,i)=>{const x=320+i*210,on=(G.confirmSel||0)===i;c.fillStyle=on?'#94342E':'#6A5B4B';rr(c,x,338,160,38,5);c.fill();c.fillStyle='#FFF8EA';c.fillText(s,x+80,363);});}
   // Informasi progres dan save dipertahankan sesuai permintaan.
-  const nE = found, iy = 454;
+  const nE = found, iy = 452;
   c.textBaseline = 'middle'; c.textAlign = 'left'; c.font = '400 13px ' + F_META; c.fillStyle = nE >= END_TOTAL.length ? '#F7D984' : 'rgba(247,242,226,.76)';
   c.fillText('⏳  ENDING ' + nE + '/' + END_TOTAL.length + (SAVE.endings && SAVE.endings.true ? '  ★ SEJATI' : ''), 24, iy);
   if (SAVE.game) { c.textAlign = 'right'; c.fillStyle = '#F1D58B'; c.fillText('AUTOSAVE • '+SAVE.game.era, W - 24, iy); }

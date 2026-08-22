@@ -320,7 +320,7 @@ function updateTitle(){const items=titleMenu();
     if(advHit()){if((G.confirmSel||0)===0)beginNewCycle();else G.titleConfirm=false;}return;}
   if(keyOnce('ArrowUp')||keyOnce('w')||keyOnce('W')){do{G.titleSel=(G.titleSel+items.length-1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
   if(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')){do{G.titleSel=(G.titleSel+1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
-  if(ptr.tap&&ptr.x>330&&ptr.x<630&&ptr.y>286&&ptr.y<438){const i=Math.floor((ptr.y-286)/38);ptr.tap=false;if(items[i]&&!items[i].disabled){G.titleSel=i;SFX.confirm();items[i].act();}return;}
+  if(ptr.tap&&ptr.x>620&&ptr.x<930&&ptr.y>202&&ptr.y<400){const i=Math.floor((ptr.y-202)/50);ptr.tap=false;if(items[i]&&!items[i].disabled){G.titleSel=i;SFX.confirm();items[i].act();}return;}
   if(advHit()){const it=items[G.titleSel];if(it&&!it.disabled){SFX.confirm();it.act();}}}
 
 /* ---------- update per-state ---------- */

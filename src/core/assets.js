@@ -70,6 +70,9 @@ const ASSET_MANIFEST = {
   elena_arthur_photo: { src: 'assets/fotoelenaathur.  Background.png' },
   bonus_city_complete: { src: 'assets/bonus_city_complete.jpg' },
   bonus_puzzle_board: { src: 'assets/bonus_puzzle_board.jpg' },
+  // pasangan state halaman judul Figma: berwarna lalu monokrom (opsional; cover lama menjadi fallback)
+  title_bg_color: { src: 'assets/bg1.png' },
+  title_bg_mono: { src: 'assets/bg2.png' },
   title_cover_figma: { src: 'assets/title_cover_figJma.png' },
   title_start_plate: { src: 'assets/title_start_plate.png' },
   title_wordmark: { src: 'assets/llJUDULL.png' },
