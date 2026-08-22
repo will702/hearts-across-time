@@ -132,7 +132,8 @@ const WATCH_X=420,WATCH_START=[.68,.08,.39]; // arloji ditemukan saat traversal 
 function randomWatchTargets(){return WATCH_START.map(start=>{let v=start;for(let n=0;n<12&&Math.min(Math.abs(v-start),1-Math.abs(v-start))<.14;n++)v=Math.round((.04+Math.random()*.92)*48)/48;return v;});}
 function watchTargets(){if(!Array.isArray(S.watchTargets)||S.watchTargets.length!==3)S.watchTargets=randomWatchTargets();return S.watchTargets;}
 const ROSE_X=285,ROSE_TARGET={x:355,y:148,w:250,h:214}; // botol pecah ditemukan sebelum penyetelan sinyal Babak 2
-const GEM_X=250,GEM_START={rx:-.35,ry:.25},GEM_TARGET={rx:.62,ry:-.86}; // dua temuan wajib Babak 3, sebelum stabilisasi krio
+const GEM_X=250,GEM_TARGET={rx:.62,ry:-.86}; // dua temuan wajib Babak 3, sebelum stabilisasi krio
+function randomGemStart(){let p=null;for(let n=0;n<80;n++){const q={rx:-Math.PI+Math.random()*TAU,ry:-Math.PI+Math.random()*TAU},dx=gemAngleDist(q.rx,GEM_TARGET.rx),dy=gemAngleDist(q.ry,GEM_TARGET.ry),sil=Math.abs(Math.abs(Math.cos(q.rx))-Math.abs(Math.cos(GEM_TARGET.rx)))+Math.abs(Math.abs(Math.cos(q.ry))-Math.abs(Math.cos(GEM_TARGET.ry)));if(dx>1.05&&dy>1.05&&sil>.48){p=q;break;}}return p||{rx:GEM_TARGET.rx+1.42,ry:GEM_TARGET.ry-1.58};}
 const PHOTO_X=455,PHOTO_TARGET={x:330,y:148,w:300,h:200};
 const ROSE_PIECES=[
   // Delapan pecahan kaca: semua sisi retak berupa garis lurus dan berbagi titik yang sama.
@@ -238,9 +239,9 @@ function updateRosePuzzle(dt){const rp=G.rosePuzzle;if(!rp)return;rp.t+=dt;if(rp
 }
 function gemAngleDist(a,b){return Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));}
 function finishGemAlign(ga){if(ga.stage==='success')return;ga.stage='success';ga.successT=0;ga.feedback='BAYANGAN DAN PERMATA TELAH SELARAS';S.gemAligned=true;addStoryItem('water_gem','PERMATA AIR');}
-function gemTryAlign(ga){const dx=gemAngleDist(ga.rx,GEM_TARGET.rx),dy=gemAngleDist(ga.ry,GEM_TARGET.ry),win=ga.assist?.3:.18;if(dx<win&&dy<win)finishGemAlign(ga);else{ga.misses++;ga.feedback='PANTULAN BELUM MENYATU DENGAN BAYANGAN';ga.feedbackT=.9;if(ga.misses>=3)ga.assist=true;G.shakeT=OPTS.reduceMotion?0:.13;G.shakeA=3;SFX.flash();}}
-function resetGemPosition(ga){ga.rx=GEM_START.rx;ga.ry=GEM_START.ry;ga.drag=false;ga.feedback='POSISI PERMATA DIULANG';ga.feedbackT=.85;SFX.select();}
-function startGemAlign(){if(S.gemAligned)return;G.state='gemalign';G.zoom=G.zt=1;G.player.vx=0;G.gemAlign={rx:GEM_START.rx,ry:GEM_START.ry,drag:false,lastX:0,lastY:0,wasDown:ptr.down,t:0,misses:0,assist:false,feedback:'PUTAR PERMATA HINGGA COCOK DENGAN BAYANGANNYA',feedbackT:0,stage:'play',successT:0};tutorialDone('interact');SFX.select();}
+function gemTryAlign(ga){const dx=gemAngleDist(ga.rx,GEM_TARGET.rx),dy=gemAngleDist(ga.ry,GEM_TARGET.ry),win=ga.assist?4.5:2.75;if(dx<win&&dy<win)finishGemAlign(ga);else{ga.misses++;ga.feedback='PANTULAN BELUM MENYATU DENGAN BAYANGAN';ga.feedbackT=.9;if(ga.misses>=3)ga.assist=true;G.shakeT=OPTS.reduceMotion?0:.13;G.shakeA=3;SFX.flash();}}
+function resetGemPosition(ga){ga.rx=ga.startRx;ga.ry=ga.startRy;ga.drag=false;ga.feedback='POSISI PERMATA DIULANG';ga.feedbackT=.85;SFX.select();}
+function startGemAlign(){if(S.gemAligned)return;const start=randomGemStart();G.state='gemalign';G.zoom=G.zt=1;G.player.vx=0;G.gemAlign={rx:start.rx,ry:start.ry,startRx:start.rx,startRy:start.ry,drag:false,lastX:0,lastY:0,wasDown:ptr.down,t:0,misses:0,assist:false,feedback:'PUTAR PERMATA HINGGA COCOK DENGAN BAYANGANNYA',feedbackT:0,stage:'play',successT:0};tutorialDone('interact');SFX.select();}
 function updateGemAlign(dt){const ga=G.gemAlign;if(!ga)return;ga.t+=dt;if(ga.feedbackT>0)ga.feedbackT-=dt;
   if(ga.stage==='success'){ga.successT+=dt;if(ga.successT>1.2){G.state='walk';G.player.x=GEM_X+58;G.gemAlign=null;G.fadeIn=.24;}return;}
   if(keyOnce('r')||keyOnce('R')||(ptr.tap&&ptr.x>692&&ptr.x<828&&ptr.y>112&&ptr.y<146)){ptr.tap=false;resetGemPosition(ga);return;}
@@ -320,7 +321,7 @@ function updateTitle(){const items=titleMenu();
     if(advHit()){if((G.confirmSel||0)===0)beginNewCycle();else G.titleConfirm=false;}return;}
   if(keyOnce('ArrowUp')||keyOnce('w')||keyOnce('W')){do{G.titleSel=(G.titleSel+items.length-1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
   if(keyOnce('ArrowDown')||keyOnce('s')||keyOnce('S')){do{G.titleSel=(G.titleSel+1)%items.length;}while(items[G.titleSel].disabled);SFX.select();}
-  if(ptr.tap&&ptr.x>620&&ptr.x<930&&ptr.y>202&&ptr.y<400){const i=Math.floor((ptr.y-202)/50);ptr.tap=false;if(items[i]&&!items[i].disabled){G.titleSel=i;SFX.confirm();items[i].act();}return;}
+  if(ptr.tap){let i=-1;if(ptr.x>132&&ptr.x<382&&ptr.y>320&&ptr.y<432)i=Math.floor((ptr.y-320)/39);else if(ptr.x>754&&ptr.x<942&&ptr.y>440&&ptr.y<480)i=3;if(i>=0){ptr.tap=false;if(items[i]&&!items[i].disabled){G.titleSel=i;SFX.confirm();items[i].act();}return;}}
   if(advHit()){const it=items[G.titleSel];if(it&&!it.disabled){SFX.confirm();it.act();}}}
 
 /* ---------- update per-state ---------- */
