@@ -359,23 +359,378 @@ function startEndCard() { G.state = 'endcard'; G.zoom = G.zt = 1; G.endCard = { 
 function endingPuzzleKey(kind) { if (kind !== 'loop') return 'true'; if (D.node === 'r3f') return 'rebut'; if (D.node === 'paradox') return 'paradox'; return S.routeB2 === 'A1' ? 'A1' : S.routeB2 === 'B1' ? 'B1' : S.routeB2 === 'B2' ? 'B2lock' : null; }
 function startPuzzleAward(kind) { const key = endingPuzzleKey(kind), fresh = key && !SAVE.endings[key]; markEnd(key); G.state = 'puzzleaward'; G.zoom = G.zt = 1; G.puzzleAward = { key, fresh, t: 0, next: kind, total: puzzleCount() }; SAVE.game = null; persistSave(); SFX.chime(); duckMusic(.72, .7); }
 function finishPuzzleAward() { const pa = G.puzzleAward; if (!pa) return; const next = pa.next; G.puzzleAward = null; if (next === 'loop') startGlitch(); else startEndCard(); }
-function startBonus() { if (!puzzleComplete()) return; resetAll(); G.state = 'bonus'; G.era = '2088'; G.zoom = G.zt = 1; G.fadeIn = .65; G.bonus = { x: 72, vx: 0, cam: 0, lit: {}, near: -1, done: false, t: 0 }; G.player.facingRight = true; G.player.phase = 0; G.player.moving = false; G.player.stride = 0; setAmbience('2088'); setSong('end'); }
+/* ============================================================
+   BONUS EPILOG MINIGAMES (Simpul 1: Perbedaan, 2: Mawar, 3: Meja Makan, 4: Kucing, 5: Gelas Cinta)
+   ============================================================ */
+const BONUS_POPUP_CLOSE = { x: 840, y: 68, w: 68, h: 40 };
+function bonusPopupCloseHit() { const b = BONUS_POPUP_CLOSE; return ptr.tap && ptr.x >= b.x - 6 && ptr.x <= b.x + b.w + 6 && ptr.y >= b.y - 6 && ptr.y <= b.y + b.h + 6; }
+const BONUS_REWARDS = [
+  { id: 'watch', icon: '◷', label: 'ARLOJI' },
+  { id: 'flower', icon: '✿', label: 'BUNGA MAWAR' },
+  { id: 'date_menu', icon: '▤', label: 'LIST MAKANAN NGEDATE' },
+  { id: 'arthur_cat', icon: '♟', label: 'KUCING PELIHARAAN ARTHUR' },
+  { id: 'love_potion', icon: '♥', label: 'RAMUAN CINTA' }
+];
+function completeBonusNode(index) { const reward = BONUS_REWARDS[index]; if (!reward || G.bonus.lit[index]) return; G.bonus.lit[index] = 1; addStoryItem(reward.id, reward.label); }
+const DIFF_IMAGE_RECT = { x: 40, y: 56, w: 880, h: 400 };
+// Koordinat dinormalisasi terhadap seluruh aset 2752×1536, bukan terhadap tiap panel.
+// Setiap pasangan menunjuk objek yang sama pada panel A dan B.
+const DIFF_SPOTS = [
+  { a: [.251, .290], b: [.730, .290], r: 18 }, // pasangan bintang di langit atas
+  { a: [.058, .462], b: [.534, .462], r: 20 }, // bintang di sisi kiri
+  { a: [.293, .407], b: [.745, .407], r: 20 }, // lubang kunci / bintang biru
+  { a: [.465, .391], b: [.905, .391], r: 22 }, // bintang besar / bulan sabit
+  { a: [.432, .547], b: [.894, .547], r: 20 }, // jarum vertikal di sisi kanan
+  { a: [.465, .544], b: [.945, .544], r: 21 }, // roda gigi / jam paling kanan
+  { a: [.171, .706], b: [.632, .706], r: 19 }, // roda gigi kecil dekat meja
+  { a: [.065, .785], b: [.541, .785], r: 22 }, // jarum jam sudut kiri bawah
+  { a: [.185, .775], b: [.660, .775], r: 21 }, // roda gigi besar di tepi bawah
+  { a: [.472, .703], b: [.952, .742], r: 22 }  // cahaya / bintang sudut kanan bawah
+];
+
+function startBonusDiff() {
+  G.bonusDiff = G.bonus.drafts.diff || {
+    found: new Array(10).fill(false),
+    t: 0, done: false, successT: 0,
+    feedback: 'CARI 10 PERBEDAAN DI ANTARA KEDUA GAMBAR', feedbackT: 0
+  };
+  delete G.bonus.drafts.diff;
+  SFX.select();
+}
+
+function updateBonusDiff(dt) {
+  const bd = G.bonusDiff; if (!bd) return;
+  bd.t += dt; if (bd.feedbackT > 0) bd.feedbackT -= dt;
+  if (bonusPopupCloseHit()) { ptr.tap = false; if (bd.done) completeBonusNode(0); else G.bonus.drafts.diff = bd; G.bonusDiff = null; SFX.select(); return; }
+  if (bd.done) {
+    bd.successT += dt;
+    if ((advHit() || ptr.tap || bd.successT > 1.8) && bd.successT > 0.4) {
+      ptr.tap = false;
+      completeBonusNode(0);
+      delete G.bonus.drafts.diff;
+      G.bonusDiff = null;
+      SFX.chime();
+    }
+    return;
+  }
+  if (keyOnce('Escape')) { G.bonusDiff = null; SFX.select(); return; }
+  if (ptr.tap) {
+    ptr.tap = false;
+    const { x: imgX, y: imgY, w: imgW, h: imgH } = DIFF_IMAGE_RECT;
+    if (ptr.x >= imgX && ptr.x <= imgX + imgW && ptr.y >= imgY && ptr.y <= imgY + imgH) {
+      const rx = (ptr.x - imgX) / imgW, ry = (ptr.y - imgY) / imgH;
+      let hit = -1;
+      DIFF_SPOTS.forEach((spot, i) => {
+        if (bd.found[i]) return;
+        const da = Math.hypot((rx - spot.a[0]) * imgW, (ry - spot.a[1]) * imgH);
+        const db = Math.hypot((rx - spot.b[0]) * imgW, (ry - spot.b[1]) * imgH);
+        if (da < spot.r || db < spot.r) hit = i;
+      });
+      if (hit >= 0) {
+        bd.found[hit] = true;
+        const count = bd.found.filter(Boolean).length;
+        bd.feedback = 'PERBEDAAN DITEMUKAN: ' + count + ' / 10';
+        bd.feedbackT = .8;
+        SFX.confirm();
+        if (count >= 10) {
+          bd.done = true; bd.successT = 0;
+          bd.feedback = 'BERHASIL! 10 PERBEDAAN DITEMUKAN — JAM ARLOJI MASUK KE TAS!';
+          SFX.chime();
+        }
+      }
+    }
+  }
+}
+
+const ROSE_HOMES = [{ x: 160, y: 180 }, { x: 190, y: 320 }, { x: 770, y: 180 }, { x: 740, y: 320 }, { x: 480, y: 380 }];
+const ROSE_TARGET_BOUQUET = { x: 480, y: 250 };
+
+function startBonusRose() {
+  G.bonusRose = G.bonus.drafts.rose || {
+    roses: ROSE_HOMES.map((h, i) => ({ x: h.x, y: h.y, placed: false, id: i })),
+    drag: -1, dx: 0, dy: 0, stage: 'gather', hiddenNumber: '2088', inputStr: '',
+    t: 0, done: false, successT: 0,
+    feedback: 'SERET KELIMA KELOPAK MAWAR KE TENGAH BUKET', feedbackT: 0
+  };
+  delete G.bonus.drafts.rose;
+  SFX.select();
+}
+
+function updateBonusRose(dt) {
+  const br = G.bonusRose; if (!br) return;
+  br.t += dt; if (br.feedbackT > 0) br.feedbackT -= dt;
+  if (bonusPopupCloseHit()) { ptr.tap = false; if (br.done) completeBonusNode(1); else G.bonus.drafts.rose = br; G.bonusRose = null; SFX.select(); return; }
+  if (br.done) {
+    br.successT += dt;
+    if ((advHit() || ptr.tap || br.successT > 1.8) && br.successT > 0.4) {
+      ptr.tap = false;
+      completeBonusNode(1);
+      delete G.bonus.drafts.rose;
+      G.bonusRose = null;
+      SFX.chime();
+    }
+    return;
+  }
+  if (keyOnce('Escape')) { G.bonusRose = null; SFX.select(); return; }
+
+  if (br.stage === 'gather') {
+    if (ptr.tap && br.drag < 0) {
+      br.roses.forEach((r, i) => {
+        if (!r.placed && Math.hypot(ptr.x - r.x, ptr.y - r.y) < 40) {
+          br.drag = i; br.dx = ptr.x - r.x; br.dy = ptr.y - r.y; SFX.select();
+        }
+      });
+      ptr.tap = false;
+    }
+    if (ptr.down && br.drag >= 0) {
+      const r = br.roses[br.drag]; r.x = ptr.x - br.dx; r.y = ptr.y - br.dy;
+    }
+    if (br.wasDown && !ptr.down && br.drag >= 0) {
+      const r = br.roses[br.drag]; br.drag = -1;
+      if (Math.hypot(r.x - ROSE_TARGET_BOUQUET.x, r.y - ROSE_TARGET_BOUQUET.y) < 95) {
+        r.x = ROSE_TARGET_BOUQUET.x + (Math.random() - .5) * 30;
+        r.y = ROSE_TARGET_BOUQUET.y + (Math.random() - .5) * 30;
+        r.placed = true; SFX.confirm();
+        const placed = br.roses.filter(q => q.placed).length;
+        br.feedback = 'MAWAR DISATUKAN: ' + placed + ' / 5'; br.feedbackT = .8;
+        if (placed >= 5) {
+          br.stage = 'number';
+          br.feedback = 'KETIK ANGKA TERSEMBUNYI PADA GAMBAR MAWAR2 (TEKAN ENTER)';
+          br.feedbackT = 2.0; SFX.chime();
+        }
+      }
+    }
+    br.wasDown = ptr.down;
+  } else if (br.stage === 'number') {
+    for (let i = 0; i <= 9; i++) {
+      if (keyOnce(String(i))) {
+        if (br.inputStr.length < 6) { br.inputStr += String(i); SFX.select(); }
+      }
+    }
+    if (keyOnce('Backspace')) {
+      br.inputStr = br.inputStr.slice(0, -1); SFX.select();
+    }
+
+    const checkSubmit = () => {
+      if (br.inputStr.trim() === br.hiddenNumber) {
+        br.done = true; br.successT = 0;
+        br.feedback = 'ANGKA TERSEMBUNYI ' + br.hiddenNumber + ' BENAR! BUKET MAWAR MASUK KE TAS!';
+        SFX.chime();
+      } else {
+        br.feedback = br.inputStr.length > 0 ? 'ANGKA ' + br.inputStr + ' SALAH — PERHATIKAN MAWAR2' : 'KETIK ANGKA TERSEMBUNYI DAHULU';
+        br.feedbackT = 1.1; SFX.flash();
+      }
+    };
+
+    if (keyOnce('Enter')) { checkSubmit(); return; }
+
+    if (ptr.tap) {
+      ptr.tap = false;
+      const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '⌫', '✓'];
+      keypad.forEach((k, idx) => {
+        const bx = W / 2 - 195 + (idx % 6) * 65;
+        const by = idx < 6 ? 388 : 430;
+        if (ptr.x > bx && ptr.x < bx + 55 && ptr.y > by && ptr.y < by + 36) {
+          if (k === '⌫') {
+            br.inputStr = br.inputStr.slice(0, -1); SFX.select();
+          } else if (k === '✓') {
+            checkSubmit();
+          } else {
+            if (br.inputStr.length < 6) { br.inputStr += k; SFX.select(); }
+          }
+        }
+      });
+    }
+  }
+}
+
+const DINNER_PEOPLE = ['Adi', 'Budi', 'Citra', 'Dina'];
+const DINNER_FOODS = [
+  { id: 'steak', label: 'Steak', asset: 'food_steak' },
+  { id: 'spaghetti', label: 'Spaghetti', asset: 'food_spaghetti' },
+  { id: 'udang', label: 'Udang Keju', asset: 'food_udang' },
+  { id: 'nasi', label: 'Nasi Goreng', asset: 'food_nasi' }
+];
+const DINNER_SEAT_X = [378, 529, 680, 836], DINNER_HEAD_Y = 125, DINNER_FOOD_Y = 340;
+const DINNER_NAME_TRAY = [{ x: 28, y: 302 }, { x: 145, y: 302 }, { x: 28, y: 339 }, { x: 145, y: 339 }];
+const DINNER_FOOD_TRAY = [{ x: 28, y: 390 }, { x: 145, y: 390 }, { x: 28, y: 452 }, { x: 145, y: 452 }];
+
+function startBonusDinner() {
+  G.bonusDinner = G.bonus.drafts.dinner || {
+    people: new Array(4).fill(null), foods: new Array(4).fill(null),
+    drag: null, wasDown: false, t: 0, done: false, successT: 0,
+    feedback: 'SERET NAMA KE KEPALA DAN MAKANAN KE MEJA'
+  };
+  delete G.bonus.drafts.dinner;
+  SFX.select();
+}
+
+function dinnerComplete(bd) { return bd.people.every(Boolean) && bd.foods.every(Boolean); }
+function dinnerValid(bd) {
+  const adi = bd.people.indexOf('Adi'), budi = bd.people.indexOf('Budi'), citra = bd.people.indexOf('Citra'), dina = bd.people.indexOf('Dina');
+  const steak = bd.foods.indexOf('steak'), spaghetti = bd.foods.indexOf('spaghetti');
+  return bd.foods[0] === 'nasi' && citra === 3 && (dina === 0 || dina === 3) && adi >= 0 && steak >= 0 && adi < steak &&
+    Math.abs(spaghetti - budi) === 1 && bd.foods[adi] !== 'udang' && bd.foods[adi] !== 'nasi';
+}
+function dinnerCheck(bd) {
+  if (!dinnerComplete(bd)) return;
+  if (dinnerValid(bd)) {
+    bd.done = true; bd.successT = 0;
+    bd.feedback = 'SUSUNAN BENAR!'; SFX.chime();
+  } else {
+    bd.feedback = 'BELUM TEPAT — PERIKSA KEMBALI SEMUA PETUNJUK'; SFX.flash();
+  }
+}
+function dinnerTakeAt(bd, x, y) {
+  for (let i = 3; i >= 0; i--) {
+    if (bd.people[i] && Math.abs(x - DINNER_SEAT_X[i]) < 54 && Math.abs(y - DINNER_HEAD_Y) < 25) {
+      const id = bd.people[i]; bd.people[i] = null; return { kind: 'person', id, x, y };
+    }
+    if (bd.foods[i] && Math.abs(x - DINNER_SEAT_X[i]) < 54 && Math.abs(y - DINNER_FOOD_Y) < 36) {
+      const id = bd.foods[i]; bd.foods[i] = null; return { kind: 'food', id, x, y };
+    }
+  }
+  for (let i = 0; i < 4; i++) {
+    const np = DINNER_NAME_TRAY[i];
+    if (!bd.people.includes(DINNER_PEOPLE[i]) && x > np.x && x < np.x + 105 && y > np.y && y < np.y + 29) return { kind: 'person', id: DINNER_PEOPLE[i], x, y };
+    const fp = DINNER_FOOD_TRAY[i];
+    if (!bd.foods.includes(DINNER_FOODS[i].id) && x > fp.x && x < fp.x + 105 && y > fp.y && y < fp.y + 52) return { kind: 'food', id: DINNER_FOODS[i].id, x, y };
+  }
+  return null;
+}
+function dinnerDrop(bd) {
+  const d = bd.drag; if (!d) return;
+  const targetY = d.kind === 'person' ? DINNER_HEAD_Y : DINNER_FOOD_Y;
+  let seat = -1, best = 1e9;
+  DINNER_SEAT_X.forEach((x, i) => { const dist = Math.hypot(d.x - x, d.y - targetY); if (dist < best) { best = dist; seat = i; } });
+  if (seat >= 0 && best < (d.kind === 'person' ? 70 : 78)) {
+    const slots = d.kind === 'person' ? bd.people : bd.foods;
+    slots[seat] = d.id; SFX.confirm();
+  } else SFX.select();
+  bd.drag = null; dinnerCheck(bd);
+}
+function updateBonusDinner(dt) {
+  const bd = G.bonusDinner; if (!bd) return;
+  bd.t += dt;
+  if (bonusPopupCloseHit()) { ptr.tap = false; if (bd.done) completeBonusNode(2); else G.bonus.drafts.dinner = bd; G.bonusDinner = null; SFX.select(); return; }
+  if (bd.done) {
+    bd.successT += dt;
+    if ((advHit() || ptr.tap) && bd.successT > .45) {
+      ptr.tap = false; completeBonusNode(2); delete G.bonus.drafts.dinner; G.bonusDinner = null; SFX.chime();
+    }
+    return;
+  }
+  if (keyOnce('Escape')) { G.bonusDinner = null; SFX.select(); return; }
+  if (ptr.tap && !bd.drag) {
+    bd.drag = dinnerTakeAt(bd, ptr.x, ptr.y); ptr.tap = false;
+    if (bd.drag) SFX.select();
+  }
+  if (ptr.down && bd.drag) { bd.drag.x = ptr.x; bd.drag.y = ptr.y; }
+  if (bd.wasDown && !ptr.down && bd.drag) dinnerDrop(bd);
+  bd.wasDown = ptr.down;
+}
+
+const CATS_IMAGE_RECT = { x: 24, y: 62, w: 690, h: 386 };
+// Pusat kucing dikalibrasi terhadap bidang foto yang tampil; klik langsung menambah hitungan.
+const CAT_SPOTS = [
+  [.190, .215], [.180, .520], [.103, .655], [.294, .625], [.630, .300],
+  [.765, .287], [.843, .323], [.815, .447], [.907, .505], [.699, .661],
+  [.843, .629], [.923, .658], [.461, .730], [.564, .750],
+  [.271, .816], [.340, .816], [.181, .835], [.840, .835]
+];
+function startBonusCats() {
+  const saved = G.bonus.drafts.cats;
+  G.bonusCats = saved && saved.marked.length === CAT_SPOTS.length ? saved : { marked: new Array(CAT_SPOTS.length).fill(false), t: 0, done: false, successT: 0, feedback: 'KLIK SETIAP KUCING UNTUK MENGHITUNG' };
+  delete G.bonus.drafts.cats;
+  SFX.select();
+}
+function updateBonusCats(dt) {
+  const bc = G.bonusCats; if (!bc) return; bc.t += dt;
+  if (bonusPopupCloseHit()) { ptr.tap = false; if (bc.done) completeBonusNode(3); else G.bonus.drafts.cats = bc; G.bonusCats = null; SFX.select(); return; }
+  if (bc.done) {
+    bc.successT += dt;
+    if ((advHit() || ptr.tap) && bc.successT > .45) { ptr.tap = false; completeBonusNode(3); delete G.bonus.drafts.cats; G.bonusCats = null; SFX.chime(); }
+    return;
+  }
+  if (keyOnce('Escape')) { G.bonusCats = null; SFX.select(); return; }
+  if (!ptr.tap) return;
+  const x = ptr.x, y = ptr.y; ptr.tap = false;
+  const r = CATS_IMAGE_RECT;
+  if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+    let hit = -1, best = 1e9;
+    CAT_SPOTS.forEach((spot, i) => { const d = Math.hypot(x - (r.x + spot[0] * r.w), y - (r.y + spot[1] * r.h)); if (!bc.marked[i] && d < 25 && d < best) { hit = i; best = d; } });
+    if (hit >= 0) {
+      bc.marked[hit] = true; const n = bc.marked.filter(Boolean).length; bc.feedback = 'KUCING DITEMUKAN: ' + n + ' / ' + CAT_SPOTS.length; SFX.confirm();
+      if (n === CAT_SPOTS.length) { bc.done = true; bc.successT = 0; bc.feedback = 'SEMUA KUCING BERHASIL DITEMUKAN!'; SFX.chime(); }
+    }
+    return;
+  }
+}
+
+const CHEM_ITEMS = [
+  { id: 'watch', label: 'ARLOJI', asset: 'watch_repair_art' },
+  { id: 'rose', label: 'GELAS MAWAR', asset: 'rose_bottle_broken' },
+  { id: 'gem', label: 'PECAHAN PERMATA', asset: 'water_gem_art' }
+];
+const CHEM_ITEM_RECTS = [{ x: 92, y: 414, w: 220, h: 72 }, { x: 370, y: 414, w: 220, h: 72 }, { x: 648, y: 414, w: 220, h: 72 }];
+function startBonusChem() {
+  G.bonusChem = G.bonus.drafts.chem || { order: [], t: 0, done: false, successT: 0, feedback: 'MASUKKAN BENDA DALAM URUTAN YANG TEPAT' };
+  delete G.bonus.drafts.chem; SFX.select();
+}
+function chemChoose(bc, id) {
+  if (bc.order.includes(id)) return;
+  const expected = CHEM_ITEMS[bc.order.length].id;
+  if (id !== expected) {
+    bc.order = []; bc.feedback = 'URUTAN SALAH — MULAI LAGI DARI ARLOJI'; SFX.flash(); return;
+  }
+  bc.order.push(id); bc.feedback = CHEM_ITEMS[bc.order.length - 1].label + ' BERHASIL DIMASUKKAN'; SFX.confirm();
+  if (bc.order.length === CHEM_ITEMS.length) { bc.done = true; bc.successT = 0; bc.feedback = 'GELAS CINTA BERHASIL DICIPTAKAN!'; SFX.chime(); }
+}
+function updateBonusChem(dt) {
+  const bc = G.bonusChem; if (!bc) return; bc.t += dt;
+  if (bonusPopupCloseHit()) { ptr.tap = false; if (bc.done) completeBonusNode(4); else G.bonus.drafts.chem = bc; G.bonusChem = null; SFX.select(); return; }
+  if (bc.done) {
+    bc.successT += dt;
+    if ((advHit() || ptr.tap) && bc.successT > .45) { ptr.tap = false; completeBonusNode(4); delete G.bonus.drafts.chem; G.bonusChem = null; SFX.chime(); }
+    return;
+  }
+  if (keyOnce('Escape')) { G.bonus.drafts.chem = bc; G.bonusChem = null; SFX.select(); return; }
+  if (!ptr.tap) return;
+  const x = ptr.x, y = ptr.y; ptr.tap = false;
+  CHEM_ITEM_RECTS.forEach((r, i) => { if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) chemChoose(bc, CHEM_ITEMS[i].id); });
+}
+
+function startBonus() { if (!puzzleComplete()) return; resetAll(); G.state = 'bonus'; G.era = '2088'; G.zoom = G.zt = 1; G.fadeIn = .65; G.bonus = { x: 72, vx: 0, cam: 0, lit: {}, drafts: {}, near: -1, done: false, t: 0 }; G.player.facingRight = true; G.player.phase = 0; G.player.moving = false; G.player.stride = 0; setAmbience('2088'); setSong('end'); }
 function updateBonus(dt) {
+  if (G.bonusDiff) { updateBonusDiff(dt); return; }
+  if (G.bonusRose) { updateBonusRose(dt); return; }
+  if (G.bonusDinner) { updateBonusDinner(dt); return; }
+  if (G.bonusCats) { updateBonusCats(dt); return; }
+  if (G.bonusChem) { updateBonusChem(dt); return; }
+
   const b = G.bonus, WORLD = 1220; let dir = 0; if (keys['ArrowLeft'] || keys['a'] || keys['A']) dir--; if (keys['ArrowRight'] || keys['d'] || keys['D']) dir++;
   if (IS_TOUCH && ptr.down && ptr.y > H - 130) { if (ptr.x < 140) dir = -1; else if (ptr.x > W - 140) dir = 1; }
   const sprint = keys['Shift'], top = sprint ? 245 : 155; b.vx += clamp(dir * top - b.vx, -850 * dt, 850 * dt); if (!dir) b.vx -= clamp(b.vx, -1250 * dt, 1250 * dt);
   if (dir && dir > 0 !== G.player.facingRight) G.player.facingRight = dir > 0; b.x = clamp(b.x + b.vx * dt, 55, WORLD - 55); G.player.phase += Math.abs(b.vx) * dt * .105; G.player.moving = Math.abs(b.vx) > 8; G.player.stride = clamp(Math.abs(b.vx) / 245, 0, 1);
   b.cam = lerp(b.cam, clamp(b.x - 300, 0, WORLD - W), 1 - Math.pow(.002, dt)); b.t += dt;
-  const nodes = [150, 330, 510, 690, 870, 1040], near = nodes.findIndex((x, i) => !b.lit[i] && Math.abs(b.x - x) < 55); b.near = near;
+  const nodes = [150, 365, 580, 795, 1010], near = nodes.findIndex((x, i) => !b.lit[i] && Math.abs(b.x - x) < 55); b.near = near;
   const act = keyOnce('ArrowDown') || keyOnce('s') || keyOnce('S') || advHit() || touchActHit();
-  if (near >= 0 && act) { ptr.tap = false; b.lit[near] = 1; SFX.chime(); G.whiteFlash = OPTS.reduceMotion ? .12 : .35; }
+  if (near >= 0 && act) {
+    ptr.tap = false;
+    if (near === 0 && !b.lit[0]) { startBonusDiff(); return; }
+    if (near === 1 && !b.lit[1]) { startBonusRose(); return; }
+    if (near === 2 && !b.lit[2]) { startBonusDinner(); return; }
+    if (near === 3 && !b.lit[3]) { startBonusCats(); return; }
+    if (near === 4 && !b.lit[4]) { startBonusChem(); return; }
+    b.lit[near] = 1; SFX.chime(); G.whiteFlash = OPTS.reduceMotion ? .12 : .35;
+  }
   const n = Object.keys(b.lit).length; b.done = n >= nodes.length;
   if (b.done && Math.abs(b.x - 1145) < 70 && act) { ptr.tap = false; G.state = 'bonusend'; G.bonusEnd = { t: 0, page: 0 }; SAVE.bonusSeen = true; persistSave(); SFX.chime(); return; }
   if (ptr.tap) ptr.tap = false;
 }
 function resetAll() {
   S.empathy = 0; S.logic = 0; S.routeB1 = ''; S.routeB2 = ''; S.loop = 0; S.challenges = freshChallenges(); S.inventory = {}; S.watchTargets = null; S.watchRepaired = false; S.roseRepaired = false; S.gemAligned = false; S.photoRepaired = false;
-  D.elExpr = 'neutral'; D.arExpr = 'neutral'; D.duckT = false; D.choiceT = 0; D.popT = 1; G.speak = null; G.diary = null; G.challenge = null; G.watchRepair = null; G.rosePuzzle = null; G.gemAlign = null; G.photoPuzzle = null; G.itemToast = null; G.gameIntro = null; G.prologueT = 0; G.warIntro = null; G.bunkerIntro = null; G.labIntro = null; G.finalLabIntro = null; G.puzzleAward = null; G.bonus = null; G.bonusEnd = null; parts.length = 0;
+  D.elExpr = 'neutral'; D.arExpr = 'neutral'; D.duckT = false; D.choiceT = 0; D.popT = 1; G.speak = null; G.diary = null; G.challenge = null; G.watchRepair = null; G.rosePuzzle = null; G.gemAlign = null; G.photoPuzzle = null; G.itemToast = null; G.gameIntro = null; G.prologueT = 0; G.warIntro = null; G.bunkerIntro = null; G.labIntro = null; G.finalLabIntro = null; G.puzzleAward = null; G.bonus = null; G.bonusEnd = null; G.bonusDiff = null; G.bonusRose = null; G.bonusDinner = null; G.bonusCats = null; G.bonusChem = null; parts.length = 0;
 }
 function startPrologue() { G.gameIntro = null; G.state = 'prologue'; G.prologueT = 0; G.fadeIn = .55; startNode('prologue'); setAmbience('2088'); SFX.heart(); }
 function beginNewCycle() { resetAll(); SAVE.game = null; persistSave(); G.state = 'gameintro'; G.gameIntro = { page: 0, t: 0, pageT: 0 }; G.fadeIn = .7; setAmbience('2088'); }

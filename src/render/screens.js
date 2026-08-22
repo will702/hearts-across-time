@@ -342,11 +342,11 @@ function spacedText(c, text, x, y, spacing) {
   for (const ch of chars) { const w = c.measureText(ch).width; if (c.lineWidth > 0) c.strokeText(ch, px + w / 2, y); c.fillText(ch, px + w / 2, y); px += w + spacing; }
 }
 const PUZZLE_TITLES = { A1: 'MISI YANG DITINGGALKAN', B1: 'FORMULA YANG BOCOR', B2lock: 'HATI YANG TERKUNCI', rebut: 'WAKTU YANG DIREBUT', paradox: 'PARADOKS TERAKHIR', true: 'AKHIR SEJATI' };
-const STORY_ITEMS = [['watch', '◷', 'ARLOJI'], ['flower', '✿', 'BOTOL MAWAR'], ['water_gem', '◆', 'PERMATA'], ['arthur_photo', '▧', 'FOTO']];
+const STORY_ITEMS = [['watch', '◷', 'ARLOJI'], ['flower', '✿', 'BOTOL MAWAR'], ['water_gem', '◆', 'PERMATA'], ['arthur_photo', '▧', 'FOTO'], ['date_menu', '▤', 'LIST MAKANAN NGEDATE'], ['arthur_cat', '♟', 'KUCING ARTHUR'], ['love_potion', '♥', 'RAMUAN CINTA']];
 function drawInventoryHud(c) {
   const inv = S.inventory || {}, owned = STORY_ITEMS.filter(it => inv[it[0]]); if (!owned.length || G.state === 'title' || G.state === 'load' || G.state === 'gameintro' || G.state === 'puzzleaward' || G.state === 'bonus' || G.state === 'bonusend' || G.state === 'endcard' || G.state === 'glitch') return;
   const x = W - 194, y = 52, w = 176, h = 38; c.save(); c.fillStyle = 'rgba(7,9,12,.7)'; rr(c, x, y, w, h, 6); c.fill(); c.strokeStyle = 'rgba(241,213,139,.55)'; c.lineWidth = 1.2; rr(c, x, y, w, h, 6); c.stroke(); c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = '#F1D58B'; c.font = 'bold 11px ' + F_META; c.fillText('TAS', x + 10, y + 19);
-  STORY_ITEMS.forEach((it, i) => { const on = !!inv[it[0]], cx = x + 48 + i * 30; c.fillStyle = on ? 'rgba(247,217,132,.18)' : 'rgba(245,240,232,.05)'; c.beginPath(); c.arc(cx, y + 19, 11, 0, TAU); c.fill(); c.strokeStyle = on ? '#F7D984' : 'rgba(245,240,232,.18)'; c.stroke(); c.fillStyle = on ? '#FFF0A0' : 'rgba(245,240,232,.16)'; c.font = 'bold 15px Georgia,serif'; c.textAlign = 'center'; c.fillText(on ? it[1] : '·', cx, y + 19); }); c.restore(); c.textBaseline = 'alphabetic';
+  STORY_ITEMS.slice(0, 4).forEach((it, i) => { const on = !!inv[it[0]], cx = x + 48 + i * 30; c.fillStyle = on ? 'rgba(247,217,132,.18)' : 'rgba(245,240,232,.05)'; c.beginPath(); c.arc(cx, y + 19, 11, 0, TAU); c.fill(); c.strokeStyle = on ? '#F7D984' : 'rgba(245,240,232,.18)'; c.stroke(); c.fillStyle = on ? '#FFF0A0' : 'rgba(245,240,232,.16)'; c.font = 'bold 15px Georgia,serif'; c.textAlign = 'center'; c.fillText(on ? it[1] : '·', cx, y + 19); }); c.restore(); c.textBaseline = 'alphabetic';
 }
 function drawItemToast(c) {
   const it = G.itemToast; if (!it) return; const data = STORY_ITEMS.find(x => x[0] === it.id), a = Math.min(1, it.t * 5) * clamp((3.2 - it.t) * 2, 0, 1), rise = OPTS.reduceMotion ? 0 : (1 - easeO(clamp(it.t * 3, 0, 1))) * -12;
@@ -383,18 +383,279 @@ function drawBonusCity(c, b) {
   const im = AS.imgs.bonus_city_complete;
   if (im && im.width) c.drawImage(im, 0, 0, im.width, im.height, -b.cam, -82, 1220, 686); else bg2088(c, b.cam, T, 0);
   const haze = c.createLinearGradient(0, 0, 0, H); haze.addColorStop(0, 'rgba(190,226,245,.08)'); haze.addColorStop(1, 'rgba(7,14,18,.22)'); c.fillStyle = haze; c.fillRect(0, 0, W, H);
-  const nodes = [150, 330, 510, 690, 870, 1040]; nodes.forEach((wx, i) => {
+  const nodes = [150, 365, 580, 795, 1010]; nodes.forEach((wx, i) => {
     const x = wx - b.cam, on = !!b.lit[i], pulse = OPTS.reduceMotion ? 1 : .85 + .15 * Math.sin(T * 3 + i);
     c.save(); c.translate(x, GROUND - 8); c.globalAlpha = on ? .92 : .68; c.strokeStyle = on ? '#F7D984' : '#566D7C'; c.lineWidth = 2; c.beginPath(); c.arc(0, -38, 13 * pulse, 0, TAU); c.stroke(); c.beginPath(); c.moveTo(0, -25); c.lineTo(0, 0); c.stroke(); c.fillStyle = on ? 'rgba(247,217,132,.3)' : 'rgba(70,95,110,.26)'; c.beginPath(); c.arc(0, -38, 8 * pulse, 0, TAU); c.fill(); c.restore();
   });
   c.save(); c.translate(1145 - b.cam, GROUND); groundShadow(c); c.scale(-1.18, 1.18); drawArthur(c, 'dewasa', T, b.done ? 'warm' : 'neutral'); c.restore();
   c.save(); c.translate(b.x - b.cam, GROUND); groundShadow(c); c.scale(G.player.facingRight ? 1.18 : -1.18, 1.18); drawElena(c, T, G.player.phase, G.player.moving, b.done ? 'warm' : 'neutral', { stride: G.player.stride }); c.restore();
 }
+function drawBonusPopupClose(c) {
+  const b = BONUS_POPUP_CLOSE;
+  c.save(); sketchRR(c, b.x, b.y, b.w, b.h, 7, { fill: '#A83E38', ink: '#5B211E' });
+  c.fillStyle = '#FFF8EA'; c.font = 'bold 22px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('×', b.x + b.w / 2, b.y + b.h / 2 - 1); c.restore(); c.textBaseline = 'alphabetic';
+}
+function drawBonusDiffPopup(c, bd) {
+  c.fillStyle = 'rgba(4,6,10,.86)'; c.fillRect(0, 0, W, H);
+  sketchRR(c, 24, 18, 912, 504, 10);
+  c.textAlign = 'center'; c.fillStyle = '#94342E'; c.font = 'bold 22px ' + F_UI;
+  c.fillText('SIMPUL 1 — PERMAINAN MENCARI PERBEDAAN', W / 2, 44);
+
+  const img = AS.imgs.mencariperbedaan;
+  const { x: ix, y: iy, w: iw, h: ih } = DIFF_IMAGE_RECT;
+  if (img && img.width) {
+    c.save(); rr(c, ix, iy, iw, ih, 7); c.clip();
+    c.drawImage(img, ix, iy, iw, ih);
+    c.restore();
+  } else {
+    c.fillStyle = '#2B211A'; rr(c, ix, iy, iw, ih, 7); c.fill();
+    c.fillStyle = '#FFF8EA'; c.font = 'bold 16px ' + F_UI; c.fillText('Memuat gambar perbedaan...', W / 2, iy + ih / 2);
+  }
+
+  // Gambarkan lingkaran penanda untuk perbedaan yang telah ditemukan
+  DIFF_SPOTS.forEach((spot, i) => {
+    if (bd.found[i]) {
+      const xa = ix + spot.a[0] * iw, ya = iy + spot.a[1] * ih;
+      const xb = ix + spot.b[0] * iw, yb = iy + spot.b[1] * ih;
+      [[xa, ya], [xb, yb]].forEach(([cx, cy]) => {
+        c.save(); c.strokeStyle = '#F7D984'; c.lineWidth = 3;
+        c.shadowColor = 'rgba(247,217,132,.8)'; c.shadowBlur = 10;
+        c.beginPath(); c.arc(cx, cy, spot.r, 0, TAU); c.stroke();
+        c.fillStyle = '#F7D984'; c.font = 'bold 13px ' + F_UI; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText('✓', cx, cy);
+        c.restore(); c.textBaseline = 'alphabetic';
+      });
+    }
+  });
+
+  // Tampilkan 10 indikator lingkaran di bagian bawah
+  c.save();
+  for (let i = 0; i < 10; i++) {
+    const cx = W / 2 - 135 + i * 30, cy = 474;
+    c.fillStyle = bd.found[i] ? '#5F9270' : 'rgba(183,170,149,.3)';
+    c.beginPath(); c.arc(cx, cy, 9, 0, TAU); c.fill();
+    c.strokeStyle = bd.found[i] ? '#FFF0A0' : 'rgba(43,33,26,.4)'; c.lineWidth = 1.5; c.stroke();
+  }
+  c.restore();
+
+  c.fillStyle = bd.done ? '#567A61' : '#2B211A'; c.font = 'bold 14px ' + F_UI; c.textAlign = 'center';
+  c.fillText(bd.feedback, W / 2, 498);
+  drawBonusPopupClose(c);
+}
+
+function drawBonusRosePopup(c, br) {
+  c.fillStyle = 'rgba(4,6,10,.86)'; c.fillRect(0, 0, W, H);
+  sketchRR(c, 70, 35, 820, 470, 10);
+  c.textAlign = 'center'; c.fillStyle = '#94342E'; c.font = 'bold 24px ' + F_UI;
+  c.fillText('SIMPUL 2 — BUKET MAWAR & ANGKA TERSEMBUNYI', W / 2, 70);
+  c.fillStyle = '#5A4A3C'; c.font = '13px ' + F_META;
+  c.fillText(br.stage === 'gather' ? 'Kumpulkan 5 mawar berserakan ke tengah buket' : 'Perhatikan mawar2.jpg & ketik angka tersembunyi (tekan ENTER)', W / 2, 93);
+
+  const mawar = (br.stage === 'number' && AS.imgs.mawar2_art && AS.imgs.mawar2_art.width) ? AS.imgs.mawar2_art : AS.imgs.mawar_art;
+  const mx = 340, my = 106, mw = 280, mh = 240;
+  if (mawar && mawar.width) {
+    c.save(); rr(c, mx, my, mw, mh, 8); c.clip();
+    c.drawImage(mawar, mx, my, mw, mh);
+    c.restore();
+    c.strokeStyle = '#F1D58B'; c.lineWidth = 2; rr(c, mx, my, mw, mh, 8); c.stroke();
+  } else {
+    c.fillStyle = '#2B211A'; rr(c, mx, my, mw, mh, 8); c.fill();
+  }
+
+  if (br.stage === 'gather') {
+    br.roses.forEach(r => {
+      if (r.placed) return;
+      c.save(); c.translate(r.x, r.y);
+      c.shadowColor = 'rgba(196,59,66,.6)'; c.shadowBlur = 10;
+      c.fillStyle = '#C43542'; c.beginPath(); c.arc(0, -6, 14, 0, TAU); c.fill();
+      c.fillStyle = '#49684F'; c.beginPath(); c.arc(-3, 6, 8, 0, TAU); c.fill();
+      c.strokeStyle = '#2B211A'; c.lineWidth = 1.5; c.beginPath(); c.arc(0, -6, 14, 0, TAU); c.stroke();
+      c.fillStyle = '#FFF0A0'; c.font = 'bold 12px ' + F_UI; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('✿', 0, -6);
+      c.restore(); c.textBaseline = 'alphabetic';
+    });
+  }
+
+  if (br.stage === 'number') {
+    const boxX = W / 2 - 110, boxY = 352, boxW = 220, boxH = 32;
+    c.fillStyle = 'rgba(255,248,234,.95)'; rr(c, boxX, boxY, boxW, boxH, 6); c.fill();
+    c.strokeStyle = '#94342E'; c.lineWidth = 2; rr(c, boxX, boxY, boxW, boxH, 6); c.stroke();
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    const disp = br.inputStr ? br.inputStr + (Math.floor(T * 3) % 2 === 0 ? '│' : '') : 'Ketik angka…';
+    c.fillStyle = br.inputStr ? '#94342E' : 'rgba(106,91,75,.6)'; c.font = 'bold 17px ' + F_UI;
+    c.fillText(disp, W / 2, boxY + boxH / 2); c.textBaseline = 'alphabetic';
+
+    const keypad = ['1','2','3','4','5','6','7','8','9','0','⌫','✓'];
+    keypad.forEach((k, idx) => {
+      const bx = W / 2 - 195 + (idx % 6) * 65;
+      const by = idx < 6 ? 392 : 430;
+      c.fillStyle = k === '✓' ? '#567A61' : k === '⌫' ? '#A83E38' : 'rgba(148,52,46,.12)';
+      rr(c, bx, by, 55, 32, 5); c.fill();
+      c.strokeStyle = '#94342E'; c.lineWidth = 1.2; rr(c, bx, by, 55, 32, 5); c.stroke();
+      c.fillStyle = (k === '✓' || k === '⌫') ? '#FFF0A0' : '#2B211A';
+      c.font = 'bold 14px ' + F_UI; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(k, bx + 27.5, by + 16); c.textBaseline = 'alphabetic';
+    });
+  }
+
+  c.fillStyle = br.done ? '#567A61' : '#94342E'; c.font = 'bold 14px ' + F_UI; c.textAlign = 'center';
+  c.fillText(br.feedback, W / 2, 480);
+  drawBonusPopupClose(c);
+}
+
+function drawDinnerFood(c, id, x, y, w, h, label) {
+  const data = DINNER_FOODS.find(f => f.id === id), im = data && AS.imgs[data.asset];
+  c.save(); rr(c, x, y, w, h, 6); c.clip();
+  if (im && im.width) c.drawImage(im, x, y, w, h); else { c.fillStyle = '#E8D3AF'; c.fillRect(x, y, w, h); }
+  c.restore(); c.strokeStyle = '#94342E'; c.lineWidth = 1.4; rr(c, x, y, w, h, 6); c.stroke();
+  if (label !== false) { c.fillStyle = 'rgba(25,18,12,.78)'; c.fillRect(x, y + h - 17, w, 17); c.fillStyle = '#FFF8EA'; c.font = 'bold 11px ' + F_UI; c.textAlign = 'center'; c.fillText(data ? data.label : '', x + w / 2, y + h - 4); }
+}
+function drawBonusDinnerPopup(c, bd) {
+  c.fillStyle = 'rgba(4,6,10,.9)'; c.fillRect(0, 0, W, H); sketchRR(c, 10, 10, 940, 520, 9);
+  c.textAlign = 'center'; c.fillStyle = '#94342E'; c.font = 'bold 21px ' + F_UI; c.fillText('SIMPUL 3 — TEKA-TEKI MEJA MAKAN', W / 2, 36);
+
+  c.fillStyle = 'rgba(148,52,46,.07)'; rr(c, 18, 50, 245, 238, 7); c.fill();
+  c.textAlign = 'left'; c.fillStyle = '#2B211A'; c.font = 'bold 12px ' + F_UI; c.fillText('PETUNJUK', 30, 70);
+  const clues = [
+    '• Kursi 1 memesan Nasi Goreng.',
+    '• Adi di sebelah kiri pemesan Steak.',
+    '• Pemesan Spaghetti di sebelah Budi.',
+    '• Citra duduk di Kursi 4.',
+    '• Dina duduk di kursi paling pojok.',
+    '• Adi tidak makan seafood',
+    '  (Udang Keju / Nasi Goreng).'
+  ];
+  c.font = '10.5px ' + F_META; clues.forEach((line, i) => c.fillText(line, 30, 88 + i * 22));
+  c.fillStyle = '#6A5B4B'; c.font = '10px ' + F_META; c.fillText('Seret nama ke kepala, makanan ke meja.', 30, 274);
+
+  const bg = AS.imgs.dinner_bg, bx = 275, by = 56, bw = 665, bh = 380;
+  c.save(); rr(c, bx, by, bw, bh, 7); c.clip();
+  if (bg && bg.width) c.drawImage(bg, bx, by, bw, bh); else { c.fillStyle = '#EFE2CE'; c.fillRect(bx, by, bw, bh); }
+  c.restore(); c.strokeStyle = '#B88A55'; c.lineWidth = 2; rr(c, bx, by, bw, bh, 7); c.stroke();
+  DINNER_SEAT_X.forEach((x, i) => {
+    c.fillStyle = 'rgba(255,248,234,.88)'; rr(c, x - 45, 70, 90, 22, 5); c.fill(); c.strokeStyle = '#8A6844'; c.lineWidth = 1; rr(c, x - 45, 70, 90, 22, 5); c.stroke();
+    c.fillStyle = '#5A4A3C'; c.font = 'bold 11px ' + F_UI; c.textAlign = 'center'; c.fillText('KURSI ' + (i + 1), x, 85);
+    c.setLineDash([5, 4]); c.strokeStyle = bd.people[i] ? '#5F9270' : 'rgba(148,52,46,.65)'; c.lineWidth = 2; rr(c, x - 52, DINNER_HEAD_Y - 18, 104, 28, 6); c.stroke();
+    c.strokeStyle = bd.foods[i] ? '#5F9270' : 'rgba(148,52,46,.65)'; rr(c, x - 53, DINNER_FOOD_Y - 31, 106, 62, 7); c.stroke(); c.setLineDash([]);
+    if (bd.people[i]) { c.fillStyle = '#FFF8EA'; rr(c, x - 48, DINNER_HEAD_Y - 15, 96, 24, 5); c.fill(); c.strokeStyle = '#94342E'; rr(c, x - 48, DINNER_HEAD_Y - 15, 96, 24, 5); c.stroke(); c.fillStyle = '#2B211A'; c.font = 'bold 14px ' + F_UI; c.fillText(bd.people[i], x, DINNER_HEAD_Y + 2); }
+    if (bd.foods[i]) drawDinnerFood(c, bd.foods[i], x - 49, DINNER_FOOD_Y - 27, 98, 54, true);
+  });
+
+  c.fillStyle = '#94342E'; c.font = 'bold 11px ' + F_UI; c.textAlign = 'left'; c.fillText('NAMA', 28, 298);
+  DINNER_PEOPLE.forEach((name, i) => { if (bd.people.includes(name)) return; const p = DINNER_NAME_TRAY[i]; c.fillStyle = '#FFF8EA'; rr(c, p.x, p.y, 105, 29, 5); c.fill(); c.strokeStyle = '#94342E'; rr(c, p.x, p.y, 105, 29, 5); c.stroke(); c.fillStyle = '#2B211A'; c.font = 'bold 13px ' + F_UI; c.textAlign = 'center'; c.fillText(name, p.x + 52.5, p.y + 20); });
+  c.fillStyle = '#94342E'; c.font = 'bold 11px ' + F_UI; c.textAlign = 'left'; c.fillText('MENU', 28, 383);
+  DINNER_FOODS.forEach((food, i) => { if (bd.foods.includes(food.id)) return; const p = DINNER_FOOD_TRAY[i]; drawDinnerFood(c, food.id, p.x, p.y, 105, 52, true); });
+
+  if (bd.drag) {
+    c.save(); c.globalAlpha = .92; c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 12;
+    if (bd.drag.kind === 'person') { c.fillStyle = '#FFF8EA'; rr(c, bd.drag.x - 52, bd.drag.y - 15, 104, 30, 5); c.fill(); c.strokeStyle = '#94342E'; rr(c, bd.drag.x - 52, bd.drag.y - 15, 104, 30, 5); c.stroke(); c.fillStyle = '#2B211A'; c.font = 'bold 14px ' + F_UI; c.textAlign = 'center'; c.fillText(bd.drag.id, bd.drag.x, bd.drag.y + 5); }
+    else drawDinnerFood(c, bd.drag.id, bd.drag.x - 52, bd.drag.y - 28, 104, 56, true);
+    c.restore();
+  }
+
+  c.textAlign = 'center'; c.fillStyle = bd.done ? '#567A61' : '#94342E'; c.font = 'bold 13px ' + F_UI; c.fillText(bd.feedback, 607, 462);
+  if (bd.done) {
+    c.fillStyle = 'rgba(22,15,11,.88)'; rr(c, 300, 472, 615, 46, 7); c.fill();
+    c.fillStyle = '#F7D984'; c.font = 'bold 12px ' + F_UI; c.textAlign = 'left'; c.fillText('ELENA', 317, 490);
+    c.fillStyle = '#FFF8EA'; c.font = '14px ' + F_UI; c.fillText('“List makanan untuk ngedate dengan Arthur selesai.”', 375, 507);
+    c.fillStyle = 'rgba(255,248,234,.7)'; c.font = '10px ' + F_META; c.textAlign = 'right'; c.fillText('ENTER / SENTUH', 900, 490);
+  } else { c.fillStyle = '#6A5B4B'; c.font = '10px ' + F_META; c.textAlign = 'center'; c.fillText('Semua susunan yang memenuhi petunjuk akan diterima • ESC keluar', 607, 486); }
+  drawBonusPopupClose(c);
+}
+
+function drawBonusCatsPopup(c, bc) {
+  c.fillStyle = 'rgba(4,6,10,.9)'; c.fillRect(0, 0, W, H); sketchRR(c, 10, 10, 940, 520, 9);
+  c.textAlign = 'center'; c.fillStyle = '#94342E'; c.font = 'bold 21px ' + F_UI; c.fillText('SIMPUL 4 — HITUNG KUCING TERSEMBUNYI', W / 2, 37);
+  const r = CATS_IMAGE_RECT, im = AS.imgs.cats_puzzle;
+  c.save(); rr(c, r.x, r.y, r.w, r.h, 7); c.clip();
+  if (im && im.width) c.drawImage(im, r.x, r.y, r.w, r.h); else { c.fillStyle = '#2B211A'; c.fillRect(r.x, r.y, r.w, r.h); }
+  c.restore(); c.strokeStyle = '#B88A55'; c.lineWidth = 2; rr(c, r.x, r.y, r.w, r.h, 7); c.stroke();
+  CAT_SPOTS.forEach((spot, i) => {
+    if (!bc.marked[i]) return;
+    const x = r.x + spot[0] * r.w, y = r.y + spot[1] * r.h;
+    c.save(); c.strokeStyle = '#F7D984'; c.fillStyle = 'rgba(95,146,112,.25)'; c.lineWidth = 2.5; c.shadowColor = 'rgba(247,217,132,.75)'; c.shadowBlur = 8;
+    c.beginPath(); c.arc(x, y, 15, 0, TAU); c.fill(); c.stroke(); c.fillStyle = '#FFF0A0'; c.font = 'bold 11px ' + F_UI; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('✓', x, y); c.restore(); c.textBaseline = 'alphabetic';
+  });
+
+  c.fillStyle = 'rgba(148,52,46,.07)'; rr(c, 726, 62, 214, 386, 7); c.fill();
+  c.textAlign = 'center'; c.fillStyle = '#2B211A'; c.font = 'bold 14px ' + F_UI; c.fillText('KLIK KUCINGNYA LANGSUNG', 833, 140);
+  c.fillStyle = '#6A5B4B'; c.font = '11px ' + F_META; wrap(c, 'Setiap kucing yang ditemukan otomatis menambah hitungan.', 180).forEach((line, i) => c.fillText(line, 833, 166 + i * 18));
+  const marked = bc.marked.filter(Boolean).length;
+  c.fillStyle = '#FFF8EA'; c.beginPath(); c.arc(833, 278, 68, 0, TAU); c.fill();
+  c.strokeStyle = marked === CAT_SPOTS.length ? '#567A61' : '#94342E'; c.lineWidth = 3; c.stroke();
+  c.fillStyle = marked === CAT_SPOTS.length ? '#567A61' : '#94342E'; c.font = 'bold 40px ' + F_UI; c.fillText(String(marked), 833, 278);
+  c.fillStyle = '#6A5B4B'; c.font = 'bold 14px ' + F_UI; c.fillText('/ ' + CAT_SPOTS.length, 833, 309);
+  c.fillStyle = 'rgba(148,52,46,.08)'; rr(c, 748, 368, 170, 54, 6); c.fill();
+  c.fillStyle = '#5A4A3C'; c.font = '11px ' + F_META; wrap(c, 'Cari juga kucing kecil yang bersembunyi di semak dan kejauhan.', 150).forEach((line, i) => c.fillText(line, 833, 387 + i * 16));
+  c.fillStyle = bc.done ? '#567A61' : '#94342E'; c.font = 'bold 13px ' + F_UI; c.textAlign = 'center'; c.fillText(bc.feedback, W / 2, 477);
+  c.fillStyle = '#6A5B4B'; c.font = '10px ' + F_META; c.fillText(bc.done ? 'ENTER / SENTUH UNTUK MENYELESAIKAN SIMPUL' : 'Klik kucing hanya satu kali • ESC keluar', W / 2, 500);
+  drawBonusPopupClose(c);
+}
+
+function drawBonusChemPopup(c, bc) {
+  c.fillStyle = 'rgba(4,6,10,.9)'; c.fillRect(0, 0, W, H); sketchRR(c, 10, 10, 940, 520, 9);
+  c.textAlign = 'center'; c.fillStyle = '#94342E'; c.font = 'bold 21px ' + F_UI; c.fillText('SIMPUL 5 — RACIK GELAS CINTA', W / 2, 37);
+  c.fillStyle = '#6A5B4B'; c.font = '12px ' + F_META; c.fillText('Masukkan benda yang diperoleh selama perjalanan dalam urutan yang tepat.', W / 2, 58);
+
+  const gx = 260, gy = 70, gw = 440, gh = 318;
+  c.save(); rr(c, gx, gy, gw, gh, 8); c.clip();
+  const glass = bc.done && AS.imgs.love_glass && AS.imgs.love_glass.width ? AS.imgs.love_glass : AS.imgs.chemistry_glass;
+  if (glass && glass.width) c.drawImage(glass, gx, gy, gw, gh); else { c.fillStyle = '#E8DFD2'; c.fillRect(gx, gy, gw, gh); }
+  if (bc.done && !(AS.imgs.love_glass && AS.imgs.love_glass.width)) {
+    const pulse = OPTS.reduceMotion ? 1 : .9 + .1 * Math.sin(T * 4);
+    c.fillStyle = 'rgba(178,55,81,.2)'; c.fillRect(gx, gy, gw, gh);
+    c.shadowColor = '#F7A9B8'; c.shadowBlur = 24 * pulse; c.fillStyle = '#C33D5C'; c.font = 'bold 72px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('♥', gx + gw / 2, gy + gh / 2 + 20); c.textBaseline = 'alphabetic';
+  }
+  c.restore(); c.strokeStyle = bc.done ? '#C33D5C' : '#B88A55'; c.lineWidth = 2; rr(c, gx, gy, gw, gh, 8); c.stroke();
+
+  c.fillStyle = '#2B211A'; c.font = 'bold 12px ' + F_UI; c.textAlign = 'left'; c.fillText('URUTAN RACIKAN', 35, 100);
+  CHEM_ITEMS.forEach((item, i) => {
+    const y = 120 + i * 64, on = bc.order[i] === item.id;
+    c.fillStyle = on ? 'rgba(95,146,112,.2)' : 'rgba(148,52,46,.08)'; rr(c, 34, y, 190, 48, 6); c.fill();
+    c.strokeStyle = on ? '#5F9270' : 'rgba(148,52,46,.45)'; c.lineWidth = 1.5; rr(c, 34, y, 190, 48, 6); c.stroke();
+    c.fillStyle = on ? '#567A61' : '#94342E'; c.font = 'bold 13px ' + F_UI; c.textAlign = 'center'; c.fillText((i + 1) + '. ' + (on ? item.label : '???'), 129, y + 30);
+  });
+  c.fillStyle = '#6A5B4B'; c.font = '11px ' + F_META; c.textAlign = 'center'; wrap(c, 'Petunjuk: waktu membuka jalan, mawar menyimpan rasa, permata menyatukannya.', 185).forEach((line, i) => c.fillText(line, 129, 330 + i * 17));
+
+  CHEM_ITEMS.forEach((item, i) => {
+    const r = CHEM_ITEM_RECTS[i], im = AS.imgs[item.asset], used = bc.order.includes(item.id);
+    c.save(); rr(c, r.x, r.y, r.w, r.h, 7); c.clip(); c.globalAlpha = used ? .36 : 1;
+    if (im && im.width) c.drawImage(im, r.x, r.y, r.w, r.h); else { c.fillStyle = '#E8D3AF'; c.fillRect(r.x, r.y, r.w, r.h); }
+    c.restore(); c.strokeStyle = used ? '#5F9270' : '#94342E'; c.lineWidth = 2; rr(c, r.x, r.y, r.w, r.h, 7); c.stroke();
+    c.fillStyle = 'rgba(25,18,12,.78)'; c.fillRect(r.x, r.y + r.h - 22, r.w, 22);
+    c.fillStyle = used ? '#BFE0C7' : '#FFF8EA'; c.font = 'bold 13px ' + F_UI; c.textAlign = 'center'; c.fillText((used ? '✓ ' : '') + item.label, r.x + r.w / 2, r.y + r.h - 6);
+  });
+  c.fillStyle = bc.done ? '#567A61' : '#94342E'; c.font = 'bold 13px ' + F_UI; c.textAlign = 'center'; c.fillText(bc.feedback, W / 2, 510);
+  if (bc.done) { c.fillStyle = '#6A5B4B'; c.font = '10px ' + F_META; c.fillText('ENTER / SENTUH UNTUK MENYELESAIKAN SIMPUL', W / 2, 526); }
+  drawBonusPopupClose(c);
+}
+
+function drawBonusBag(c) {
+  const inv = S.inventory || {}, x = 350, y = 17, w = 300, h = 74;
+  c.save(); c.fillStyle = 'rgba(3,8,13,.78)'; rr(c, x, y, w, h, 7); c.fill();
+  c.strokeStyle = 'rgba(247,217,132,.62)'; c.lineWidth = 1.4; rr(c, x, y, w, h, 7); c.stroke();
+  c.fillStyle = '#F7D984'; c.font = 'bold 16px ' + F_UI; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText('TAS', x + 16, y + h / 2);
+  BONUS_REWARDS.forEach((item, i) => {
+    const on = !!inv[item.id], cx = x + 80 + i * 42, cy = y + h / 2;
+    c.fillStyle = on ? 'rgba(247,217,132,.18)' : 'rgba(245,240,232,.05)'; c.beginPath(); c.arc(cx, cy, 15, 0, TAU); c.fill();
+    c.strokeStyle = on ? '#F7D984' : 'rgba(245,240,232,.2)'; c.lineWidth = on ? 2 : 1.4; c.stroke();
+    c.fillStyle = on ? '#FFF0A0' : 'rgba(245,240,232,.18)'; c.font = 'bold 16px Georgia,serif'; c.textAlign = 'center'; c.fillText(on ? item.icon : '·', cx, cy + 1);
+  });
+  c.restore(); c.textBaseline = 'alphabetic';
+}
+
 function drawBonus(c) {
   const b = G.bonus; drawBonusCity(c, b); const n = Object.keys(b.lit).length;
-  c.fillStyle = 'rgba(3,8,13,.72)'; rr(c, 18, 17, 320, 74, 7); c.fill(); c.strokeStyle = 'rgba(247,217,132,.58)'; c.lineWidth = 1.3; rr(c, 18, 17, 320, 74, 7); c.stroke(); c.textAlign = 'left'; c.fillStyle = '#F7D984'; c.font = 'bold 16px ' + F_UI; c.fillText('EPILOG — KOTA YANG KEMBALI HIDUP', 34, 43); c.fillStyle = '#F5F0E8'; c.font = '13px ' + F_UI; c.fillText('Nyalakan simpul waktu  ' + n + ' / 6', 34, 66); c.fillStyle = 'rgba(245,240,232,.62)'; c.font = '11px ' + F_META; c.fillText('← → / A D bergerak  •  ↓ / S / ENTER aktifkan', 34, 83);
+  c.fillStyle = 'rgba(3,8,13,.72)'; rr(c, 18, 17, 320, 74, 7); c.fill(); c.strokeStyle = 'rgba(247,217,132,.58)'; c.lineWidth = 1.3; rr(c, 18, 17, 320, 74, 7); c.stroke(); c.textAlign = 'left'; c.fillStyle = '#F7D984'; c.font = 'bold 16px ' + F_UI; c.fillText('EPILOG — KOTA YANG KEMBALI HIDUP', 34, 43); c.fillStyle = '#F5F0E8'; c.font = '13px ' + F_UI; c.fillText('Nyalakan simpul waktu  ' + n + ' / 5', 34, 66); c.fillStyle = 'rgba(245,240,232,.62)'; c.font = '11px ' + F_META; c.fillText('← → / A D bergerak  •  ↓ / S / ENTER aktifkan', 34, 83);
+  drawBonusBag(c);
   const prompt = b.near >= 0 ? '▼ AKTIFKAN SIMPUL' : b.done && Math.abs(b.x - 1145) < 85 ? '▼ TEMUI ARTHUR' : null; if (prompt) { c.textAlign = 'center'; sketchRR(c, W / 2 - 110, H - 78, 220, 42, 7, { shadow: false }); c.fillStyle = '#94342E'; c.font = 'bold 15px ' + F_UI; c.fillText(prompt, W / 2, H - 52); }
   if (IS_TOUCH) { const pad = (x, icon, on) => { c.globalAlpha = on ? .82 : .52; c.fillStyle = '#071018'; c.beginPath(); c.arc(x, H - 57, 29, 0, TAU); c.fill(); c.strokeStyle = '#F5F0E8'; c.lineWidth = 1.5; c.stroke(); c.fillStyle = '#F5F0E8'; c.font = 'bold 18px sans-serif'; c.textAlign = 'center'; c.fillText(icon, x, H - 51); }; pad(62, '◀', ptr.down && ptr.x < 140); pad(W - 62, '▶', ptr.down && ptr.x > W - 140); c.globalAlpha = 1; }
+
+  if (G.bonusDiff) drawBonusDiffPopup(c, G.bonusDiff);
+  if (G.bonusRose) drawBonusRosePopup(c, G.bonusRose);
+  if (G.bonusDinner) drawBonusDinnerPopup(c, G.bonusDinner);
+  if (G.bonusCats) drawBonusCatsPopup(c, G.bonusCats);
+  if (G.bonusChem) drawBonusChemPopup(c, G.bonusChem);
 }
 function drawBonusEnd(c) {
   const be = G.bonusEnd, im = AS.imgs.bonus_city_complete; drawCoverImage(c, im, 1.01, 0, 0); c.fillStyle = 'rgba(4,9,14,.34)'; c.fillRect(0, 0, W, H);
