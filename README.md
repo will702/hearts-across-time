@@ -94,8 +94,8 @@ skip senyap. Spesifikasi lengkap generasi via agy/codex + komposisi offline: `pl
 - **11 strip properti animasi** 3-frame (`assets/prop_*.png`): bendera lusuh & lentera (1944), tong api &
   poster robek (2088), bohlam bergoyang & radio (1968A), beacon & uap pipa (1968B), CRT osiloskop (1999),
   suar sinyal (1944, menandai titik lore), ventilasi embun beku (1999)
-- **5 lapisan foreground lukis** `assets/bg<era>_fg.png` (okluder dekat kamera parallax ×1.18; absen →
-  tetap `fgSilhouette` prosedural)
+- **5 lapisan foreground lukis** `assets/bg<era>_fg.png` (okluder dekat kamera parallax ×1.18, diturunkan
+  lewat `yOff` per era agar badan pemain tetap terbaca; absen → tetap `fgSilhouette` prosedural)
 - **5 pose momen kunci** `assets/pose_*.png`: Elena menggenggam tangan (respons empati `c1e`/`c2e`),
   Elena berlutut memeluk vial (`true_end` & kartu akhir), Arthur tua meraih kapsul (`n_b3` cabang hangat),
   Arthur muda menyodorkan vial (`r1b`), Elena teguhkan hati (`n_b1` saat ekspresi marah, loop ≥3) — pose

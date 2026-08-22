@@ -13,5 +13,7 @@
 | 009 | Asset finalize: audit pakai semua aset gen, fix bocor pink flare/frost + serpih pose reach, flare ke parapet, QA cakupan penuh (15 tembakan) | MEDIUM | DONE |
 | 010 | Seam BG/FG & penempatan: bug rumus seam_blend ditutup (junction 0==w-1), 10 bg + 1968A_fg final difix (seamdiff→0), bohlam 1968A naik agar kordel nyambung langit2 | MEDIUM | DONE |
 | 011 | Onboarding, cover interaktif, peta waktu, dan tiga mini-game afinitas wajib | HIGH | DONE |
+| 014 | Compact tableaux & foreground clearance: perjalanan lebih rapat, FG lukis diturunkan | MEDIUM | DONE |
+| 015 | Elena footfall weight: kompresi halus saat pijakan, counter-rock lebih tenang | HIGH | DONE — QA developer pending |
 
 Recommended order: 001 first (player locomotion is on screen ~60% of runtime), then 002 → 003 → 004. All landed.
