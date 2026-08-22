@@ -12,6 +12,16 @@
 
 ## BABAK 1 — 1944 (Garis Depan)
 
+### Gameplay Awal: Arloji Rusak
+
+Setelah monolog pembuka selesai, kontrol berjalan dimulai. Arloji tidak diberikan saat Elena tampil
+besar dan tidak muncul sebagai pilihan dialog.
+
+1. Elena berjalan menyusuri parit dan menemukan arloji rusak di tanah.
+2. Jalan tertahan sampai pemain memeriksa arloji dengan `Space`, `Enter`, `↓`, `S`, atau sentuhan.
+3. Pemain memutar tiga roda waktu memakai `← →`, lalu mengunci tiap roda dengan `Space` / `Enter`.
+4. Setelah ketiga roda selaras, arloji kembali berdetak dan baru disimpan ke dalam tas.
+
 ### Node: n_b1 (Pertemuan Arthur Muda)
 
 **ELENA (Loop Déjà-vu - jika loop > 0):**
@@ -94,6 +104,18 @@
 
 ## BABAK 2 — 1968 (24 Tahun Kemudian)
 
+### Gameplay Awal Rute Bunker / Laboratorium (Barang Cerita)
+
+**NARRATOR:**
+- Di awal jalur, Elena menemukan botol kaca yang pecah. Di antara kepingannya terbaring sekuntum mawar merah yang tidak pernah layu.
+
+**ELENA:**
+- Mawar ini masih hidup... tetapi botolnya hancur. Aku harus menyatukan kepingannya sebelum membawanya.
+
+*[GAMEPLAY: Susun empat kepingan botol dengan seret-lepas atau kontrol keyboard]*
+
+*[BARANG: BOTOL MAWAR ABADI disimpan setelah botol utuh]*
+
 ### Node: n_b2 (Pertemuan Arthur Dewasa/Buron)
 
 **[Déjà-vu jika loop ≥ 2]**
@@ -166,7 +188,18 @@
 
 ### Intro Laboratorium Akhir
 
+**NARRATOR:**
+- Sebuah permata sebening air memantulkan cahaya biru dari lantai laboratorium.
+
+*[BARANG: PERMATA AIR disimpan]*
+
+**NARRATOR:**
+- Di dekatnya tergeletak foto Arthur yang telah memudar, tetapi senyumnya masih jelas.
+
+*[BARANG: FOTO ARTHUR disimpan]*
+
 **ELENA:**
+- Permata ini dan foto Arthur... keduanya akan kusimpan di dalam tas.
 - Akhirnya... tahun 1999. Di ruangan inilah seluruh hidup Arthur bermuara pada satu formula terakhir.
 - Semoga penantiannya tidak sia-sia—semoga ia telah menyelesaikan penawar yang kelak menyelamatkan dunia.
 - Arthur... bertahanlah sedikit lagi. Jika harapan itu masih hidup, aku akan membawanya sampai ke masa depan.
@@ -266,6 +299,23 @@
 - Selama 55 tahun menjaga formula di bilik kriogenik ini, cintaku padamu tak pernah pudar satu detik pun.
 - Formula penawar murni 'Arthur Project' telah rampung 100%.
 
+### PILIHAN RAMUAN AKHIR
+
+**ARTHUR TUA:**
+- Elena, apakah kau membawa sesuatu yang penting untuk ramuan terakhir penawar ini—waktu yang dapat mengembalikan semuanya?
+
+**Pilihan Bunga Kuncup Abadi:**
+- "Gunakan bunga yang tak pernah layu ini."
+- Arthur menjelaskan bahwa bunga itu hanya menghentikan perubahan; penawar membutuhkan waktu yang dapat bergerak kembali.
+
+**Pilihan Permata Air:**
+- "Gunakan permata air yang murni ini."
+- Arthur menjelaskan bahwa kemurniannya bukan kunci untuk memperbaiki waktu yang telah patah.
+
+**Pilihan Jam Arloji Rusak — BENAR:**
+- "Gunakan jam arloji rusak ini. Waktunya harus kita putar kembali."
+- Detak arloji menyatu dengan formula. Waktu yang pernah patah mulai bergerak mundur dan membuka jalan menuju keputusan terakhir.
+
 ### PILIHAN FINAL (Egois vs Ikhlas)
 
 **Pilihan Egois:**
@@ -339,7 +389,11 @@
 
 5. **`{t:'goto'}`** — Lompat langsung ke node lain (tanpa pilihan)
 
-6. **`{t:'ending'}`** — Trigger akhir game
+6. **`{t:'item'}`** — Simpan barang cerita ke dalam tas
+   - `id`: identitas barang yang persisten selama satu siklus
+   - `label`: nama yang tampil pada notifikasi tas
+
+7. **`{t:'ending'}`** — Trigger akhir game
    - `kind`: loop (restart), true (selesai)
 
 ---
@@ -362,11 +416,11 @@
 ```
 START → Prologue (2088 - detak jantung) 
   ↓
-LOOP 1: 1944 (Pilihan 1→2 Empati/Logika) → Rute A/B
+LOOP 1: 1944 (Jalan → temukan & perbaiki arloji → Pilihan 1→2 Empati/Logika) → Rute A/B
   ↓
-LOOP 1: 1968 (Pilihan 3 Kabur/Bunker/Publikasi/Kriogenik)
+LOOP 1: 1968 (Temukan & susun botol mawar → Pilihan 3 Kabur/Bunker/Publikasi/Kriogenik)
   ↓
-LOOP 1: 1999 (Pilihan 4 Final - Ending Jenis)
+LOOP 1: 1999 (Selaraskan permata → susun & lem foto → pilih ramuan → Pilihan 4 Final)
   ↓
   ├─→ GAGAL (A1/B1/B2a) → Glitch Loop → Loop Counter +1 → Kembali ke 1944
   │

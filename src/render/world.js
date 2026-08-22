@@ -114,13 +114,33 @@ function drawProps(c,era,camX){ // frame deterministik dari T; reduceMotion => f
   for(const p of list){const sx=p.x-camX;if(sx<-130||sx>W+130)continue;
     drawPropFrame(c,p.id,sx,p.y,mot?Math.floor(T*p.fps)%3:0);}}
 const DIARY_X=760; // gerbang naratif wajib Babak 2, cukup jauh sebelum Arthur di x=1180
+function drawBrokenWatch(c,cam){if(G.era!=='1944'||S.watchRepaired)return;const x=WATCH_X-cam,hot=G.walk&&G.walk.watchHot,mot=OPTS.reduceMotion?0:1;
+  if(x<-60||x>W+60)return;c.save();c.translate(x,GROUND-8);c.rotate(-.24);c.shadowColor='rgba(255,204,110,.55)';c.shadowBlur=hot?20:10;c.fillStyle='#B98A3D';c.beginPath();c.arc(0,-12,18,0,TAU);c.fill();c.shadowBlur=0;c.strokeStyle='#F1D58B';c.lineWidth=2;c.beginPath();c.arc(0,-12,18,0,TAU);c.stroke();
+  c.fillStyle='#E8DAB7';c.beginPath();c.arc(0,-12,13,0,TAU);c.fill();c.strokeStyle='#493822';c.lineWidth=1.4;c.beginPath();c.moveTo(0,-12);c.lineTo(6,-20);c.moveTo(0,-12);c.lineTo(-7,-9);c.stroke();c.strokeStyle='#94342E';c.beginPath();c.moveTo(-9,-23);c.lineTo(9,-2);c.stroke();c.fillStyle='#B98A3D';rr(c,-5,-34,10,5,2);c.fill();c.restore();
+  const pu=mot?Math.sin(T*3.2)*3:0;c.save();c.textAlign='center';c.fillStyle='#F5E6C0';c.font='bold 14px '+F_UI;c.fillText(hot?'SPACE — PERIKSA ARLOJI':'✦',x,GROUND-53-pu);c.restore();}
+function drawBrokenRoseBottle(c,cam){if(G.era!=='1968'||S.roseRepaired)return;const x=ROSE_X-cam,hot=G.walk&&G.walk.roseHot,mot=OPTS.reduceMotion?0:1;if(x<-80||x>W+80)return;
+  c.save();c.translate(x,GROUND-4);c.shadowColor='rgba(220,76,88,.7)';c.shadowBlur=hot?22:11;const im=AS.imgs.rose_bottle_broken;
+  if(im&&im.width)c.drawImage(im,330,250,1640,1220,-38,-58,76,57);
+  else{c.fillStyle='rgba(220,236,232,.72)';c.strokeStyle='#DCEBE7';c.lineWidth=2;c.beginPath();c.moveTo(-29,-8);c.lineTo(-23,-45);c.lineTo(-7,-57);c.lineTo(18,-48);c.lineTo(31,-8);c.closePath();c.fill();c.stroke();c.fillStyle='#A63842';c.beginPath();c.arc(12,-22,12,0,TAU);c.fill();c.strokeStyle='#516B52';c.beginPath();c.moveTo(-9,-7);c.lineTo(8,-19);c.stroke();}
+  c.restore();const pu=mot?Math.sin(T*3.2)*3:0;c.save();c.textAlign='center';c.fillStyle='#F5E6C0';c.font='bold 14px '+F_UI;c.fillText(hot?'SPACE — PERIKSA BOTOL PECAH':'✦',x,GROUND-70-pu);c.restore();}
+function drawWaterGem(c,cam){if(G.era!=='1999'||S.gemAligned)return;const x=GEM_X-cam,hot=G.walk&&G.walk.gemHot,mot=OPTS.reduceMotion?0:1;if(x<-70||x>W+70)return;
+  c.save();c.translate(x,GROUND-27);c.rotate(mot?Math.sin(T*.8)*.08:0);c.shadowColor='rgba(92,222,255,.85)';c.shadowBlur=hot?28:16;const im=AS.imgs.water_gem_art;
+  if(im&&im.width)c.drawImage(im,650,45,1700,1450,-27,-27,54,54);else{const g=c.createLinearGradient(-24,-24,24,24);g.addColorStop(0,'#E9FFFF');g.addColorStop(.35,'#73D9EF');g.addColorStop(.72,'#467CAA');g.addColorStop(1,'#DFFBFF');c.fillStyle=g;c.beginPath();c.moveTo(0,-26);c.lineTo(22,-8);c.lineTo(16,22);c.lineTo(-13,27);c.lineTo(-25,-5);c.closePath();c.fill();c.strokeStyle='#CFFBFF';c.lineWidth=1.6;c.stroke();c.beginPath();c.moveTo(0,-26);c.lineTo(-4,8);c.lineTo(16,22);c.moveTo(-25,-5);c.lineTo(-4,8);c.lineTo(22,-8);c.stroke();}
+  c.restore();const pu=mot?Math.sin(T*3.2)*3:0;c.save();c.textAlign='center';c.fillStyle='#D9F8FF';c.font='bold 14px '+F_UI;c.fillText(hot?'SPACE — PERIKSA PERMATA AIR':'✦',x,GROUND-72-pu);c.restore();}
+function drawTornPhoto(c,cam){if(G.era!=='1999'||!S.gemAligned||S.photoRepaired)return;const x=PHOTO_X-cam,hot=G.walk&&G.walk.photoHot,mot=OPTS.reduceMotion?0:1;if(x<-80||x>W+80)return;
+  c.save();c.translate(x,GROUND-10);c.rotate(-.12);c.shadowColor='rgba(255,211,137,.55)';c.shadowBlur=hot?22:10;c.fillStyle='#EEE3C9';rr(c,-30,-42,60,38,2);c.fill();const im=AS.imgs.elena_arthur_photo;if(im&&im.width){c.save();rr(c,-26,-39,52,30,1);c.clip();c.drawImage(im,-26,-39,52,30);c.restore();}else{c.fillStyle='#8FA2AC';c.fillRect(-26,-39,52,30);c.fillStyle='#E8D3B4';c.beginPath();c.arc(-10,-25,7,0,TAU);c.arc(11,-25,7,0,TAU);c.fill();}c.strokeStyle='#94342E';c.lineWidth=1.4;c.beginPath();c.moveTo(-5,-42);c.lineTo(3,-26);c.lineTo(-2,-5);c.moveTo(-30,-22);c.lineTo(30,-19);c.stroke();c.restore();
+  const pu=mot?Math.sin(T*3.2)*3:0;c.save();c.textAlign='center';c.fillStyle='#F5E6C0';c.font='bold 14px '+F_UI;c.fillText(hot?'SPACE — PERIKSA FOTO ROBEK':'✦',x,GROUND-67-pu);c.restore();}
 function drawDiaryBook(c,cam){const x=DIARY_X-cam;if(x<-70||x>W+70)return;const hot=G.walk&&G.walk.diaryHot,read=G.walk&&G.walk.diaryRead;
   c.save();c.translate(x,GROUND-9);c.rotate(-.07);c.fillStyle='#4A2525';rr(c,-22,-15,44,24,3);c.fill();c.strokeStyle='#C99A62';c.lineWidth=2;rr(c,-22,-15,44,24,3);c.stroke();
   c.fillStyle='#E7D7B3';c.fillRect(-17,-12,34,17);c.strokeStyle='rgba(75,45,34,.5)';c.lineWidth=1;c.beginPath();c.moveTo(0,-12);c.lineTo(0,5);c.stroke();c.restore();
   if(!read){const pu=OPTS.reduceMotion?1:.5+.5*Math.sin(T*3.1);c.save();c.globalAlpha=.45+.35*pu;const g=c.createRadialGradient(x,GROUND-19,1,x,GROUND-19,28);g.addColorStop(0,'rgba(255,204,125,.9)');g.addColorStop(1,'rgba(255,204,125,0)');c.fillStyle=g;c.beginPath();c.arc(x,GROUND-19,28,0,TAU);c.fill();c.restore();}
-  if(hot){c.save();c.fillStyle='#F5F0E8';c.font='bold 13px '+F_UI;c.textAlign='center';c.fillText('▼ PERIKSA BUKU HARIAN',x,GROUND-58-(OPTS.reduceMotion?0:Math.sin(T*2.6)*3));c.restore();}}
+  if(hot){c.save();c.fillStyle='#F5F0E8';c.font='bold 13px '+F_UI;c.textAlign='center';c.fillText('SPACE — PERIKSA BUKU HARIAN',x,GROUND-58-(OPTS.reduceMotion?0:Math.sin(T*2.6)*3));c.restore();}}
 function drawHotspots(c){ // penanda titik selidik: titik cahaya hangat berdenyut + petunjuk ▼ saat dekat
   if(!G.walk)return;const FE=G.era==='1968'?'1968'+S.routeB1:G.era;const cam=G.cam,mot=OPTS.reduceMotion?0:1;
+  drawBrokenWatch(c,cam);
+  drawBrokenRoseBottle(c,cam);
+  drawWaterGem(c,cam);
+  drawTornPhoto(c,cam);
   if(G.era==='1968')drawDiaryBook(c,cam);
   for(const h of (HOTSPOTS[FE]||[])){if(SAVE.inspected[h.id])continue;const sx=h.x-cam;if(sx<-40||sx>W+40)continue;
     const pu=mot?(.5+.5*Math.sin(T*3.2+h.x)):1;

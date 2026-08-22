@@ -23,9 +23,12 @@ Untuk deploy itch.io, zip `index.html`, `src/`, `vendor/`, dan `assets/`, lalu u
 | Tutorial pembuka | `← →` ganti halaman, `Enter` lanjut, `Esc` lewati | ketuk tombol |
 | Bergerak | `← →` atau `A D` (lari: `Shift`) | tombol ◀ ▶ (lari: tahan ≫) |
 | Interaksi / mulai tantangan | `↓`, `S`, atau `Enter` | ketuk penanda |
+| Perbaiki arloji di Babak 1 | `← →` putar roda, `Space` / `Enter` kunci | ketuk lingkaran, lalu area bawah |
+| Susun botol mawar di Babak 2 | seret kepingan; atau `1–4`, `← ↑ ↓ →`, lalu `Space` | seret dan lepaskan kepingan pada bayangan botol |
+| Periksa dan baca buku harian Arthur | `Space` (juga `↓` / `S` saat membuka) | ketuk penanda buku |
 | Mini-game | `← →` untuk memilih/menyetel, `Enter` / `Space` untuk mengunci | ketuk pilihan/jalur, lalu area bawah untuk mengunci |
 | Lanjut dialog | `Enter` / `Space` / klik | ketuk layar |
-| Pilih opsi | `↑ ↓` + `Enter`, atau tombol `1` / `2` | ketuk opsi |
+| Pilih opsi | `↑ ↓` + `Enter`, atau tombol `1` / `2` / `3` | ketuk opsi |
 | Periksa titik lore (`✦` berdenyut) | `↓` atau `S` saat berdiri dekat | ketuk penanda |
 | Backlog dialog | `Tab` / `B` (gulir: `↑ ↓`) | — |
 | Jeda (mixer + aksesibilitas) | `Esc` | ikon ⏸ pojok kanan atas |
@@ -39,9 +42,12 @@ Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungs
 |---|---|
 | Sistem Kepribadian tersembunyi (Empati vs Logika) | ✔ Dialog dan tiga pendekatan gameplay bersama-sama menentukan Arthur Hangat / Sinis |
 | Tantangan era wajib dan ramah gagal | ✔ Lampu sorot 1944, penyetelan sinyal 1968, stabilisasi krio 1999; assist otomatis setelah 3 miss |
+| Temukan dan perbaiki arloji saat berjalan | ✔ Arloji berada langsung di parit 1944; tiga roda waktu harus diselaraskan sebelum benda masuk ke tas |
+| Susun kembali botol mawar saat berjalan | ✔ Botol pecah berada di awal Babak 2; empat kepingan kaca harus disatukan sebelum botol mawar abadi masuk ke tas |
 | Percabangan pohon waktu 2 → 4 → 8 | ✔ Rute 1A/1B × 2A1/2A2/2B1/2B2 → 4 kasus akhir + sub-kondisi |
 | Looping System (`loop_count++`) | ✔ Layar glitch RGB-strip + "⟲ LOOP n", reset ke Babak 1, HUD penghitung loop |
 | True Ending (Empati tinggi → B → B2 → Ikhlas) | ✔ Termasuk rahasia: statistik *hidden affinity* terungkap di kartu ending |
+| Tas barang lintas babak + ramuan akhir | ✔ Arloji rusak, bunga abadi, permata air, dan foto Arthur tersimpan sepanjang siklus; arloji membuka keputusan True Ending |
 | Koleksi enam pecahan ending + babak bonus | ✔ Hadiah unik di setiap ending, puzzle permanen 3×2, menu terkunci sampai lengkap, lalu epilog eksplorasi kota pulih |
 | Skrip Yarn Spinner | ✔ Seluruh dialog dimigrasi verbatim (node `prologue … true_end`) |
 | Asset manifest (4 sprite chibi + 3 parallax + bubble) | ✔ Semua digambar **prosedural via kode** — nol aset eksternal |
@@ -247,6 +253,12 @@ Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan,
   Babak 2 menambah satu pilihan sikap khusus di bunker dan laboratorium sebelum keputusan rute akhir
 - **Buku harian wajib Babak 2**: Elena tertahan sebelum Arthur sampai pemain memeriksa seluruh halaman;
   isi bercabang menurut rute, sikap Babak 1, dan loop, lalu menjadi pertanyaan sikap baru di Babak 3
+- **Puzzle botol mawar Babak 2**: sebelum penyetelan sinyal, Elena menemukan botol pecah berisi mawar;
+  pemain wajib menyatukan empat kepingan bergambar yang benar-benar membentuk ilustrasi utuh sebelum perjalanan terbuka
+- **Dua puzzle kenangan Babak 3**: Elena lebih dahulu memutar permata air sampai bentuknya menyatu dengan bayangan,
+  lalu menyusun empat robekan foto Elena–Arthur dan mengelem tiga sambungannya sebelum dapat menemui Arthur
+- **Penyerahan foto pada True Ending**: foto yang diperbaiki tidak hanya menjadi ikon tas; Elena memberikannya kepada
+  Arthur sebagai kenangan terakhir mereka sebelum kembali ke 2088
 - **Pacing level**: segmen jalan dibedakan per era (1944: 1800px pendekatan tegang · 1968: 1500 · 1999: 1300 rapat)
 - **Kamera look-ahead** 22% kecepatan (di atas exp-smoothing) + bob halus indikator `▼ ENTER`
 - **Mixer persepsi**: slider volume kini lewat kurva `v^2.2` (dB-feel) untuk MASTER/MUSIK/EFEK+ambience
