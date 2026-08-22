@@ -134,7 +134,12 @@ function watchTargets(){if(!Array.isArray(S.watchTargets)||S.watchTargets.length
 const ROSE_X=285,ROSE_TARGET={x:355,y:148,w:250,h:214}; // botol pecah ditemukan sebelum penyetelan sinyal Babak 2
 const GEM_X=250,GEM_TARGET={rx:.62,ry:-.86}; // dua temuan wajib Babak 3, sebelum stabilisasi krio
 function randomGemStart(){let p=null;for(let n=0;n<80;n++){const q={rx:-Math.PI+Math.random()*TAU,ry:-Math.PI+Math.random()*TAU},dx=gemAngleDist(q.rx,GEM_TARGET.rx),dy=gemAngleDist(q.ry,GEM_TARGET.ry),sil=Math.abs(Math.abs(Math.cos(q.rx))-Math.abs(Math.cos(GEM_TARGET.rx)))+Math.abs(Math.abs(Math.cos(q.ry))-Math.abs(Math.cos(GEM_TARGET.ry)));if(dx>1.05&&dy>1.05&&sil>.48){p=q;break;}}return p||{rx:GEM_TARGET.rx+1.42,ry:GEM_TARGET.ry-1.58};}
-const PHOTO_X=455,PHOTO_TARGET={x:330,y:148,w:300,h:200};
+const PHOTO_X=455,PHOTO_TARGET={x:270,y:118,w:420,h:280};
+const PHOTO_SEAMS=[
+  [[210,0],[205,18],[214,34],[202,52],[216,70],[207,88],[219,107],[204,126],[212,140]],
+  [[0,140],[24,136],[45,146],[68,137],[91,147],[115,135],[139,145],[164,137],[187,148],[212,140],[235,147],[258,136],[282,146],[305,137],[330,149],[353,139],[378,147],[399,136],[420,140]],
+  [[212,140],[204,160],[217,180],[205,201],[218,222],[207,242],[215,261],[210,280]]
+];
 const ROSE_PIECES=[
   // Delapan pecahan kaca: semua sisi retak berupa garis lurus dan berbagi titik yang sama.
   {poly:[[0,0],[82,0],[108,48],[55,73],[0,54]],home:[-245,15]},
@@ -150,10 +155,10 @@ function randomRoseHomes(){const order=ROSE_PIECES.map((_,i)=>i);for(let i=order
     for(let tries=0;tries<48;tries++){const cx=zx[0]+pw/2+Math.random()*Math.max(1,zx[1]-zx[0]-pw),cy=125+ph/2+Math.random()*Math.max(1,370-125-ph),cand={l:cx-pw/2-7,r:cx+pw/2+7,t:cy-ph/2-7,b:cy+ph/2+7,cx,cy};if(!used.some(q=>cand.l<q.r&&cand.r>q.l&&cand.t<q.b&&cand.b>q.t)){box=cand;break;}box=cand;}
     used.push(box);homes[idx]=[box.cx-ROSE_TARGET.x-(minX+maxX)/2,box.cy-ROSE_TARGET.y-(minY+maxY)/2];});return homes;}
 const PHOTO_PIECES=[
-  {poly:[[0,0],[150,0],[145,46],[157,72],[143,100],[0,100]],home:[-220,26]},
-  {poly:[[150,0],[300,0],[300,100],[232,97],[205,109],[143,100],[157,72],[145,46]],home:[220,30]},
-  {poly:[[0,100],[143,100],[157,126],[145,158],[153,200],[0,200]],home:[-220,112]},
-  {poly:[[143,100],[205,109],[232,97],[300,100],[300,200],[153,200],[145,158],[157,126]],home:[220,112]}];
+  {poly:[[0,0],[210,0],[205,18],[214,34],[202,52],[216,70],[207,88],[219,107],[204,126],[212,140],[187,148],[164,137],[139,145],[115,135],[91,147],[68,137],[45,146],[24,136],[0,140]],home:[-210,30]},
+  {poly:[[210,0],[420,0],[420,140],[399,136],[378,147],[353,139],[330,149],[305,137],[282,146],[258,136],[235,147],[212,140],[204,126],[219,107],[207,88],[216,70],[202,52],[214,34],[205,18]],home:[210,30]},
+  {poly:[[0,140],[24,136],[45,146],[68,137],[91,147],[115,135],[139,145],[164,137],[187,148],[212,140],[204,160],[217,180],[205,201],[218,222],[207,242],[215,261],[210,280],[0,280]],home:[-210,0]},
+  {poly:[[212,140],[235,147],[258,136],[282,146],[305,137],[330,149],[353,139],[378,147],[399,136],[420,140],[420,280],[210,280],[215,261],[207,242],[218,222],[205,201],[217,180],[204,160]],home:[210,0]}];
 function addStoryItem(id,label){S.inventory=S.inventory||{};if(S.inventory[id])return;S.inventory[id]=1;G.itemToast={id,label,t:0};SFX.chime();saveCycle();}
 function saveCycle(){SAVE.game={era:G.era,S:{empathy:S.empathy,logic:S.logic,routeB1:S.routeB1,routeB2:S.routeB2,loop:S.loop,challenges:Object.assign({},S.challenges),inventory:Object.assign({},S.inventory||{}),watchTargets:Array.isArray(S.watchTargets)?S.watchTargets.slice(0,3):null,watchRepaired:!!S.watchRepaired,roseRepaired:!!S.roseRepaired,gemAligned:!!S.gemAligned,photoRepaired:!!S.photoRepaired}};persistSave();}
 function startChallenge(){const cfg=CHALLENGE_CONF[G.era];if(!cfg||S.challenges[G.era])return;
@@ -255,11 +260,12 @@ function updateGemAlign(dt){const ga=G.gemAlign;if(!ga)return;ga.t+=dt;if(ga.fee
   if(ptr.tap&&ptr.y>400){ptr.tap=false;gemTryAlign(ga);}
 }
 function photoPointIn(poly,x,y){return rosePointIn(poly,x,y);}
-function startPhotoPuzzle(){if(S.photoRepaired)return;G.state='photopuzzle';G.zoom=G.zt=1;G.player.vx=0;G.photoPuzzle={pieces:PHOTO_PIECES.map((d,i)=>({ox:d.home[0],oy:d.home[1],placed:false,i})),drag:-1,dx:0,dy:0,sel:0,wasDown:ptr.down,t:0,stage:'assemble',glue:[false,false,false],glueSel:0,successT:0,feedback:'RAPIKAN EMPAT ROBEKAN FOTO',feedbackT:0};tutorialDone('interact');SFX.select();}
+function startPhotoPuzzle(){if(S.photoRepaired)return;G.state='photopuzzle';G.zoom=G.zt=1;G.player.vx=0;G.photoPuzzle={pieces:PHOTO_PIECES.map((d,i)=>({ox:d.home[0],oy:d.home[1],placed:false,i})),drag:-1,dx:0,dy:0,sel:0,wasDown:ptr.down,t:0,stage:'assemble',glue:[false,false,false],glueTrace:[0,0,0],glueSel:0,successT:0,feedback:'RAPIKAN EMPAT ROBEKAN FOTO',feedbackT:0};tutorialDone('interact');SFX.select();}
 function photoTryPlace(pp,i){const p=pp.pieces[i];if(!p||p.placed)return;if(Math.hypot(p.ox,p.oy)<42){p.ox=0;p.oy=0;p.placed=true;pp.feedback='ROBEKAN '+pp.pieces.filter(q=>q.placed).length+' / 4 TERPASANG';pp.feedbackT=.75;SFX.confirm();if(pp.pieces.every(q=>q.placed)){pp.stage='glue';pp.feedback='FOTO TERSUSUN — REKATKAN TIGA GARIS ROBEKAN';pp.feedbackT=1.4;pp.drag=-1;}}
   else{const h=PHOTO_PIECES[i].home;p.ox=h[0];p.oy=h[1];pp.feedback='TEPI FOTO BELUM COCOK';pp.feedbackT=.8;G.shakeT=OPTS.reduceMotion?0:.13;G.shakeA=3;SFX.flash();}}
 function photoGlueLine(pp,hit){if(hit<0||hit>2||pp.glue[hit])return;pp.glue[hit]=true;pp.glueSel=hit;pp.feedback='GARIS '+pp.glue.filter(Boolean).length+' / 3 TEREKAT';pp.feedbackT=.75;SFX.confirm();if(pp.glue.every(Boolean)){pp.stage='success';pp.successT=0;S.photoRepaired=true;addStoryItem('arthur_photo','FOTO ELENA & ARTHUR');}}
-function photoGluePoint(pp,x,y){const seams=[[[480,148],[480,348]],[[330,248],[630,248]],[[450,205],[510,291]]];let hit=-1,best=999;seams.forEach((s,i)=>{if(pp.glue[i])return;const ax=s[0][0],ay=s[0][1],bx=s[1][0],by=s[1][1],vx=bx-ax,vy=by-ay,t=clamp(((x-ax)*vx+(y-ay)*vy)/(vx*vx+vy*vy),0,1),d=Math.hypot(x-(ax+vx*t),y-(ay+vy*t));if(d<best){best=d;hit=i;}});if(hit>=0&&best<24)photoGlueLine(pp,hit);}
+function photoBitCount(v){let n=0;for(;v;v>>>=1)n+=v&1;return n;}
+function photoGluePoint(pp,x,y){let hit=-1,best=999,along=0;PHOTO_SEAMS.forEach((s,i)=>{if(pp.glue[i])return;let total=0;for(let n=1;n<s.length;n++)total+=Math.hypot(s[n][0]-s[n-1][0],s[n][1]-s[n-1][1]);let walked=0;for(let n=1;n<s.length;n++){const a=s[n-1],b=s[n],ax=PHOTO_TARGET.x+a[0],ay=PHOTO_TARGET.y+a[1],bx=PHOTO_TARGET.x+b[0],by=PHOTO_TARGET.y+b[1],vx=bx-ax,vy=by-ay,len=Math.hypot(vx,vy),t=clamp(((x-ax)*vx+(y-ay)*vy)/(len*len),0,1),d=Math.hypot(x-(ax+vx*t),y-(ay+vy*t));if(d<best){best=d;hit=i;along=(walked+len*t)/total;}walked+=len;}});if(hit<0||best>28)return;const bit=1<<clamp(Math.floor(along*10),0,9);pp.glueTrace[hit]|=bit;pp.glueSel=hit;const done=photoBitCount(pp.glueTrace[hit]),pct=Math.round(done*10);pp.feedback='GARIS '+(hit+1)+' DILEM '+pct+'%';pp.feedbackT=.16;if(done>=6)photoGlueLine(pp,hit);}
 function updatePhotoPuzzle(dt){const pp=G.photoPuzzle;if(!pp)return;pp.t+=dt;if(pp.feedbackT>0)pp.feedbackT-=dt;
   if(pp.stage==='success'){pp.successT+=dt;if(pp.successT>1.25){G.state='walk';G.player.x=PHOTO_X+58;G.photoPuzzle=null;G.fadeIn=.24;}return;}
   if(pp.stage==='glue'){if(keyOnce('ArrowLeft')||keyOnce('ArrowUp'))pp.glueSel=(pp.glueSel+2)%3;if(keyOnce('ArrowRight')||keyOnce('ArrowDown'))pp.glueSel=(pp.glueSel+1)%3;if(advHit())photoGlueLine(pp,pp.glueSel);if(ptr.down)photoGluePoint(pp,ptr.x,ptr.y);pp.wasDown=ptr.down;return;}
