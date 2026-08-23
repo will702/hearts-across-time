@@ -2,10 +2,11 @@ import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { InputSystem } from '../systems/InputSystem';
 
-type UIData = { input: InputSystem };
+type UIData = { input: InputSystem; eraTitle?: string };
 
 export class UIScene extends Phaser.Scene {
   private controls?: InputSystem;
+  private eraTitleText?: Phaser.GameObjects.Text;
   private prompt?: Phaser.GameObjects.Text;
   private toast?: Phaser.GameObjects.Text;
   private touchObjects: Phaser.GameObjects.Text[] = [];
@@ -20,7 +21,9 @@ export class UIScene extends Phaser.Scene {
 
   create(data: UIData): void {
     this.controls = data.input;
-    this.add.text(20, 18, 'BABAK 1 — GARIS DEPAN, 1944', {
+    const title = data.eraTitle || 'HEARTS ACROSS TIME';
+
+    this.eraTitleText = this.add.text(20, 18, title, {
       color: '#f7d984', fontFamily: 'Cinzel, serif', fontSize: '16px',
       stroke: '#140d08', strokeThickness: 4,
     });
@@ -98,11 +101,22 @@ export class UIScene extends Phaser.Scene {
     button.on('pointerup', () => this.togglePause());
   }
 
+  private getActiveGameplayScene(): string {
+    const scenes = [
+      'WatchRepairScene', 'SpotlightChallengeScene', 'SignalTuneScene',
+      'RosePuzzleScene', 'GemAlignScene', 'PhotoPuzzleScene', 'CryoBalanceScene',
+      'Era1999Scene', 'Era1968Scene', 'Era1944Scene', 'Bonus2088Scene',
+    ];
+    for (const name of scenes) {
+      if (this.scene.isActive(name) || this.scene.isPaused(name)) return name;
+    }
+    return 'Era1944Scene';
+  }
+
   private togglePause(): void {
     this.paused = !this.paused;
-    const gameplay = this.scene.isActive('WatchRepairScene') || this.scene.isPaused('WatchRepairScene')
-      ? 'WatchRepairScene'
-      : 'Era1944Scene';
+    const gameplay = this.getActiveGameplayScene();
+
     if (this.paused) {
       this.scene.pause(gameplay);
       this.controls?.clearTouch();
@@ -115,20 +129,40 @@ export class UIScene extends Phaser.Scene {
       this.pausePanel?.destroy();
       this.pausePanel = undefined;
       this.touchObjects.forEach((object) => object.setVisible(!this.modal));
-      this.registry.set('nativeState', gameplay === 'WatchRepairScene' ? 'watchrepair' : 'era1944');
+      this.registry.set('nativeState', gameplay.toLowerCase());
     }
   }
 
   private showPausePanel(): void {
     const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040302, 0.8);
-    const paper = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 420, 190, 0xf4ead8, 0.98).setStrokeStyle(3, 0x6a4930);
-    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, 'GAME DIJEDA', {
-      color: '#612a25', fontFamily: 'Cinzel, serif', fontSize: '25px', fontStyle: 'bold',
+    const paper = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 480, 280, 0xf4ead8, 0.98).setStrokeStyle(3, 0x6a4930);
+    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 90, 'GAME DIJEDA', {
+      color: '#612a25', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const resume = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 28, 'LANJUTKAN', {
+
+    const resume = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20, '▶ LANJUTKAN', {
       backgroundColor: '#94342e', color: '#fff8ea', fontFamily: 'Poppins, sans-serif',
-      fontSize: '14px', padding: { x: 28, y: 12 },
+      fontSize: '13px', padding: { x: 28, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.togglePause());
-    this.pausePanel = this.add.container(0, 0, [shade, paper, title, resume]);
+
+    const restart = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 35, 'ULANG DARI 1944', {
+      backgroundColor: '#78350f', color: '#fff8ea', fontFamily: 'Poppins, sans-serif',
+      fontSize: '13px', padding: { x: 22, y: 10 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
+      this.togglePause();
+      const save = this.registry.get('saveSystem') as { beginCycle: () => unknown };
+      const run = save.beginCycle();
+      this.scene.start('Era1944Scene', { run });
+    });
+
+    const menu = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 90, 'MENU UTAMA', {
+      backgroundColor: '#1f1315', color: '#fff8ea', fontFamily: 'Poppins, sans-serif',
+      fontSize: '13px', padding: { x: 28, y: 10 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
+      this.togglePause();
+      this.scene.start('TitleScene');
+    });
+
+    this.pausePanel = this.add.container(0, 0, [shade, paper, title, resume, restart, menu]);
   }
 }

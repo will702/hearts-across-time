@@ -40,6 +40,8 @@ export interface SaveData {
   inspected: Record<string, 1>;
   introDone: boolean;
   tutorial: Record<string, 1>;
+  bonusSeen?: boolean;
+  loreToastDone?: boolean;
   [key: string]: unknown;
 }
 
@@ -52,7 +54,7 @@ export interface StorageLike {
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 const KNOWN_SAVE_KEYS = new Set([
-  'saveVersion', 'seen', 'chosen', 'game', 'endings', 'inspected', 'introDone', 'tutorial',
+  'saveVersion', 'seen', 'chosen', 'game', 'endings', 'inspected', 'introDone', 'tutorial', 'bonusSeen', 'loreToastDone',
 ]);
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 
@@ -227,6 +229,8 @@ export function normalizeSave(value: unknown): SaveData {
     inspected: flagMap(source.inspected),
     introDone: flag(source.introDone),
     tutorial: flagMap(source.tutorial),
+    bonusSeen: flag(source.bonusSeen),
+    loreToastDone: flag(source.loreToastDone),
   };
 }
 

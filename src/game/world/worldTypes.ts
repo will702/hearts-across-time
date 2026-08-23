@@ -1,4 +1,4 @@
-export type WorldObjectType = 'watch' | 'challenge' | 'lore' | 'exit';
+export type WorldObjectType = 'watch' | 'challenge' | 'lore' | 'exit' | 'puzzle';
 
 export type SurfaceMaterial = 'mud' | 'wood' | 'metal' | 'concrete' | 'unknown';
 
@@ -29,7 +29,8 @@ export interface WorldSensorDefinition {
 
 export type WorldAction =
   | { type: 'watchrepair' }
-  | { type: 'challenge'; era: '1944' }
+  | { type: 'challenge'; era: '1944' | '1968' | '1999' }
+  | { type: 'puzzle'; id: string }
   | { type: 'lore'; id: string }
   | { type: 'dialog'; node: string };
 
@@ -39,7 +40,10 @@ export interface WorldPrompt {
 }
 
 export interface WorldState {
-  watchRepaired: boolean;
+  watchRepaired?: boolean;
+  roseRepaired?: boolean;
+  gemAligned?: boolean;
+  photoRepaired?: boolean;
   challenges: Readonly<Partial<Record<'1944' | '1968' | '1999', 'empathy' | 'logic' | boolean | null>>>;
   inspected: Readonly<Record<string, boolean | 1 | undefined>>;
   flags?: Readonly<Record<string, boolean | 1 | undefined>>;

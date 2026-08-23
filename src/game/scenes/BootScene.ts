@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { SaveSystem } from '../systems/SaveSystem';
+import { SoundManager } from '../audio/SoundManager';
 import { StoryRunner } from '../narrative/StoryRunner';
+import { SaveSystem } from '../systems/SaveSystem';
 
 function legacyOptions(): Record<string, unknown> {
   try {
@@ -20,8 +21,11 @@ export class BootScene extends Phaser.Scene {
     const save = new SaveSystem(localStorage);
     save.load();
     const options = legacyOptions();
+    const soundManager = new SoundManager(this.game);
+
     this.registry.set('saveSystem', save);
     this.registry.set('storyRunner', new StoryRunner());
+    this.registry.set('soundManager', soundManager);
     this.registry.set('options', options);
     this.registry.set('reduceMotion', options.reduceMotion === true);
     this.registry.set('nativeState', 'preload');

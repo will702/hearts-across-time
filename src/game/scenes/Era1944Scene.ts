@@ -1,7 +1,5 @@
 import Phaser from 'phaser';
-
 import { Player } from '../entities/Player';
-import { LEGACY_ENTRY_PATH } from '../narrative/storyData';
 import type { StoryRunner } from '../narrative/StoryRunner';
 import { InputSystem } from '../systems/InputSystem';
 import { InteractionSystem } from '../systems/InteractionSystem';
@@ -33,7 +31,6 @@ export class Era1944Scene extends Phaser.Scene {
   private lastSavedX = Number.NaN;
   private autosaveElapsed = 0;
   private lookAhead = 0;
-  private handingOff = false;
   private touchControls = false;
 
   constructor() {
@@ -67,7 +64,7 @@ export class Era1944Scene extends Phaser.Scene {
 
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
-    this.scene.launch('UIScene', { input: this.controls });
+    this.scene.launch('UIScene', { input: this.controls, eraTitle: 'BABAK 1 — 1944' });
     this.ui = this.scene.get('UIScene') as UIScene;
     this.lastSavedX = spawnX;
     this.save.saveCycle('1944', this.run, spawnX);
@@ -76,7 +73,6 @@ export class Era1944Scene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.handingOff) return;
     const input = this.controls.read();
     this.player.updatePlayer(input, delta);
     const body = this.player.arcadeBody;
@@ -183,6 +179,9 @@ export class Era1944Scene extends Phaser.Scene {
   private worldState(): WorldState {
     return {
       watchRepaired: this.run.watchRepaired,
+      roseRepaired: this.run.roseRepaired,
+      gemAligned: this.run.gemAligned,
+      photoRepaired: this.run.photoRepaired,
       challenges: this.run.challenges,
       inspected: this.save.data.inspected,
     };
@@ -191,6 +190,10 @@ export class Era1944Scene extends Phaser.Scene {
   private perform(action: WorldAction): void {
     if (action.type === 'watchrepair') {
       this.openWatchRepair();
+      return;
+    }
+    if (action.type === 'challenge') {
+      this.openSpotlightChallenge();
       return;
     }
     if (action.type === 'lore') {
@@ -204,7 +207,9 @@ export class Era1944Scene extends Phaser.Scene {
         : 'Jejak ditemukan: sisa suar masih menyimpan panas.');
       return;
     }
-    this.handoffToLegacy();
+    if (action.type === 'dialog') {
+      this.openArthurDialogue();
+    }
   }
 
   private openWatchRepair(): void {
@@ -227,13 +232,42 @@ export class Era1944Scene extends Phaser.Scene {
     this.scene.pause();
   }
 
-  private handoffToLegacy(): void {
-    if (!this.runner.transition('1944', 'legacy', this.run)) return;
-    this.handingOff = true;
+  private openSpotlightChallenge(): void {
     this.controls.setEnabled(false);
-    this.player.arcadeBody.stop();
-    this.save.saveCycle('1944', this.run, this.player.x);
-    location.assign(LEGACY_ENTRY_PATH);
+    this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
+    this.ui.setPrompt('');
+    this.scene.launch('SpotlightChallengeScene', {
+      run: this.run,
+      save: this.save,
+      onComplete: () => {
+        this.scene.resume();
+        this.controls.setEnabled(true);
+        this.player.arcadeBody.reset(765, ERA_1944.groundY);
+        this.lastSavedX = 765;
+        this.worldFactory.refresh(this.objects, this.worldState());
+        this.registry.set('nativeState', 'era1944');
+      },
+    });
+    this.scene.pause();
+  }
+
+  private openArthurDialogue(): void {
+    this.controls.setEnabled(false);
+    this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
+    this.scene.launch('DialogueScene', {
+      nodeId: 'n_b1',
+      run: this.run,
+      onComplete: (res?: { type: string; to?: string }) => {
+        if (res?.type === 'vortex' || res?.to === '1968') {
+          this.scene.start('VortexScene', { to: '1968', run: this.run });
+        } else {
+          this.scene.resume();
+          this.controls.setEnabled(true);
+          this.registry.set('nativeState', 'era1944');
+        }
+      },
+    });
+    this.scene.pause();
   }
 
   private playFootstep(surface: string): void {
@@ -248,8 +282,10 @@ export class Era1944Scene extends Phaser.Scene {
   }
 
   private shutdown(): void {
-    if (!this.handingOff && this.player?.active) this.save.saveCycle('1944', this.run, this.player.x);
+    if (this.player?.active) this.save.saveCycle('1944', this.run, this.player.x);
     this.scene.stop('WatchRepairScene');
+    this.scene.stop('SpotlightChallengeScene');
+    this.scene.stop('DialogueScene');
     this.scene.stop('UIScene');
     this.controls?.destroy();
     this.surfaces?.destroy();

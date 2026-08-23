@@ -21,32 +21,27 @@ declare global {
 }
 
 window.__HAT = {
-  version: 'phaser-native-1',
+  version: 'phaser-native-complete',
   game,
   snapshot: () => {
     const activeScenes = game.scene.getScenes(true).map((scene) => scene.scene.key);
-    const scene = game.scene.getScene('Era1944Scene') as Phaser.Scene & {
-      snapshot?: () => Record<string, unknown>;
-    };
-    const title = game.scene.getScene('TitleScene') as Phaser.Scene & {
-      snapshot?: () => Record<string, unknown>;
-    };
-    const watch = game.scene.getScene('WatchRepairScene') as Phaser.Scene & {
-      snapshot?: () => Record<string, unknown>;
-    };
-    const current = watch?.scene.isActive()
-      ? watch.snapshot?.()
-      : scene?.scene.isActive()
-        ? scene.snapshot?.()
-        : title?.scene.isActive()
-          ? title.snapshot?.()
-          : undefined;
+    let currentData: Record<string, unknown> | undefined;
+
+    for (const key of activeScenes) {
+      const activeScene = game.scene.getScene(key) as Phaser.Scene & {
+        snapshot?: () => Record<string, unknown>;
+      };
+      if (activeScene && typeof activeScene.snapshot === 'function') {
+        currentData = activeScene.snapshot();
+        break;
+      }
+    }
 
     return {
       activeScenes,
       renderer: game.renderer.type === Phaser.WEBGL ? 'WEBGL' : 'CANVAS',
       state: String(game.registry.get('nativeState') ?? 'boot'),
-      ...(current ?? {}),
+      ...(currentData ?? {}),
     };
   },
 };
