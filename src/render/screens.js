@@ -1147,8 +1147,8 @@ function render() {
         ctx.fillText('✦ Kelima jejak kisah ditemukan — kau membaca hidup Arthur sampai habis.', W / 2, 397);
         ctx.restore();
       }
-      ctx.fillStyle = `rgba(245,240,232,${.55 * a2})`; ctx.font = 'italic 14px Georgia,serif';
-      ctx.fillText('"...di tahun 2088, kita akan bertemu lagi sebagai dua orang biasa yang saling jatuh cinta."', W / 2, 420);
+      ctx.textAlign = 'center'; ctx.fillStyle = `rgba(245,240,232,${.55 * a2})`; ctx.font = 'italic 13.5px Georgia,serif';
+      wrap(ctx, '"...di tahun 2088, kita akan bertemu lagi sebagai dua orang biasa yang saling jatuh cinta."', 760).slice(0, 2).forEach((ln, i) => ctx.fillText(ln, W / 2, 414 + i * 17));
     }
     if (G.endCard.t > 2.6 && Math.floor(T * 2) % 2 === 0) { ctx.fillStyle = 'rgba(245,240,232,.75)'; ctx.font = '15.5px ' + F_UI; ctx.fillText('▶ MAIN LAGI (ENTER / SENTUH)', W / 2, 452); }
     // bingkai ganda kartu komik penutup
