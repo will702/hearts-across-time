@@ -1,99 +1,139 @@
 # Workflow agen Hearts Across Time
 
-_Resep perubahan minimum untuk arsitektur classic-script Phaser + Canvas saat ini._
+_Resep perubahan minimum untuk arsitektur strangler Phaser-native + legacy._
 
 ---
 
-## 📖 Menambah pilihan cerita
+## 🧭 Pilih owner sebelum mengedit
 
-1. Baca node terkait di `FIRST_IDEA.md` (nama lama `FIKS IDE.md`), `DIALOG.md`, lalu implementasinya di `src/data/story.js`.
-2. Tambah operasi pada `NODES` memakai kontrak yang sudah ada: `{t:'choice',opts:[{label,fx?,goto}]}`.
-3. Pastikan setiap `goto` menunjuk node `N(id, ops)` yang ada. Gunakan `tagEmp()`/`tagLog()` untuk pilihan affinity tanpa menampilkan statistik, atau `tagR()` hanya untuk pilihan rute.
-4. Mutasi `S` hanya di callback `fx`; respons dan transisi berikutnya tetap berupa operasi cerita.
-5. Jangan mengganti label choice tanpa sadar: `SAVE.chosen[o.label]` memakai teks label sebagai key penanda “pernah dipilih”.
-6. Sinkronkan sumber naratif bila perubahan cerita memang disetujui. Jangan mengubah flow/render untuk choice biasa.
+1. Buka `index.html` untuk vertical slice native atau `legacy.html` untuk cerita yang
+   belum dimigrasikan; jangan berasumsi keduanya menjalankan modul yang sama.
+2. Untuk Boot, Preload, Intro, Title, 1944, UI, dan arloji, mulai dari file `.ts` di
+   `src/game/`.
+3. Untuk 1968/1999, dialog lengkap, mini-game lain, loop, ending, dan bonus, mulai dari
+   classic-script `.js` owner lama.
+4. Jangan memperbaiki bug native dengan menambah global legacy, atau memperbaiki bug
+   legacy dengan menggandakan state ke scene native.
+5. Pertahankan satu seam integrasi: `hat_save` yang dinormalisasi dan navigasi melalui
+   `LEGACY_ENTRY_PATH`; `LegacyStateAdapter` menangani Continue save 1968/1999.
 
-## 🏁 Menambah atau mengubah ending
+## 🔍 Menambah object atau interaksi 1944
 
-1. Ubah node cerita di `src/data/story.js`; ending ditutup dengan `{t:'ending',kind:'loop'}` atau `{t:'ending',kind:'true'}`.
-2. Untuk ending koleksi baru, tambahkan key stabil ke `END_TOTAL` di `src/core/runtime.js`.
-3. Petakan kondisi/node ke key tersebut di `src/game/flow.js::endingPuzzleKey()` dan pertahankan `startPuzzleAward()` sebagai satu jalur pencatatan.
-4. Tambahkan judul kartu ke `src/render/screens.js::PUZZLE_TITLES` dan pastikan puzzle board tetap memiliki slot yang disengaja.
-5. Pertahankan lifecycle: gagal → `puzzleaward` → `glitch` → reset siklus; true → `puzzleaward` → `endcard` → title.
-6. Jika key lama berubah, migrasikan `SAVE.endings`; jangan membuat pemain kehilangan koleksi.
+1. Tambah geometri dan behavior data-driven di `src/game/world/era1944.ts`.
+2. Reuse `WorldObject`/`WorldFactory`; jangan membuat class baru untuk satu prop.
+3. Biarkan `InteractionSystem` mengembalikan proximity, prompt, dan action simbolik.
+4. Tangani mutasi run, reward, save, mini-game, atau transisi di `Era1944Scene`.
+5. Tambah keyboard dan touch parity melalui `InputSystem`/`UIScene`.
+6. Jika object menjadi gate, uji collider aktif sebelum completion dan benar-benar
+   terbuka setelah completion serta setelah reload.
 
-## 🔍 Menambah interactable object
+## 🌍 Memigrasikan batas berikutnya
 
-Pilih pola yang sudah ada sebelum menambah sistem baru:
+1. Pilih satu batas utuh. Batas saat ini adalah interaksi lampu sorot: native menyimpan
+   era 1944/`playerX`, lalu legacy memulihkannya lewat `?continue=1`.
+2. Batas executable berikutnya adalah tantangan lampu sorot. Inventarisasi aturan,
+   assist, posisi resume, save, pause, touch, reduced motion, aset, dan fallback legacy.
+3. Tambah scene native dan data world tanpa mengimpor global classic-script.
+4. Pindahkan seluruh perilaku yang diperlukan pemain untuk masuk, bermain, menyimpan,
+   dan keluar dari slice tersebut. Jangan menyalin dialog sebagian.
+5. Pertahankan fallback ke `legacy.html` sampai parity unit, E2E, keyboard, touch,
+   reload, dan asset/error tercapai.
+6. Setelah slice lengkap, pindahkan handoff ke dialog Arthur; jangan menghapus runtime
+   legacy atau scene lain yang belum dimigrasikan. Migrasi 1968 dilakukan sesudah batas
+   1944 berikutnya sudah eksplisit.
 
-- World 1944: tambah object di `WORLD_DEFS['1944']` dengan behavior terpisah `collision`, `proximity`, `prompt`, `tap`, `action`, dan `enabled`. Action hanya berupa intent; mutasi cerita tetap ditangani `flow.js`.
-- Lore opsional: tambah entry ke `HOTSPOTS` dan `LORE` di `src/render/world.js`; flow generic sudah menangani proximity, `SAVE.inspected`, dan modal `G.lore`.
-- Item wajib: ikuti `WATCH_X`, `ROSE_X`, `GEM_X`, atau `PHOTO_X` di `src/game/flow.js`. Tambahkan posisi, proximity flag di `G.walk`, gate traversal, input keyboard/touch, start action, completion field `S`, dan `saveCycle()`.
-- Visual dunia berada di `src/render/world.js`; marker/HUD khusus hanya ditambah di `src/render/screens.js` bila generic `drawHotspots()`/touch action tidak cukup.
+## 🎮 Menambah mini-game native
 
-Selalu sediakan jalur touch melalui `ptr`/`touchActHit()`, reset state di `resetAll()`, dan cegah reward ganda melalui completion flag atau `addStoryItem()`.
+1. Buat satu `Phaser.Scene` hanya bila mini-game membutuhkan lifecycle/pause/input
+   terpisah; untuk interaksi kecil, tetap di scene era.
+2. Terima `RunState`, `SaveSystem`, dan callback selesai sebagai data scene minimum.
+3. Gunakan Phaser Game Object, keyboard, dan pointer; jangan menggambar lewat Canvas
+   `POST_RENDER` native.
+4. Persist hanya data yang dibutuhkan Continue. Completion harus idempotent dan reward
+   tidak boleh ganda.
+5. Assist, pause, touch, dan `reduceMotion` harus memberi informasi serta input setara.
+6. Tambah unit test untuk aturan murni dan E2E untuk buka, input, pause, completion,
+   serta reload yang berisiko.
 
-## 🌍 Memigrasikan era berikutnya ke Arcade Physics
+Mini-game yang belum native tetap mengikuti pola `startX()`/`updateX()` di
+`src/game/flow.js` dan renderer `drawX()` di `src/render/screens.js`. Jangan
+memindahkannya kecuali slice era pemiliknya sedang dimigrasikan.
 
-1. Tambahkan definisi era ke `WORLD_DEFS`: `width`, `spawn`, ground/batas, lalu object collision/sensor/action. Jangan salin koordinat yang sama ke `update()` atau renderer.
-2. Aktifkan era pada `HAT_WORLD.enter()`, lalu arahkan branch `walk` era itu ke controller fisika. Biarkan action kembali ke flow agar state cerita/save tidak pindah owner.
-3. Pindahkan gate, lore proximity, dan trigger Arthur era tersebut sekaligus; hapus branch posisi manual hanya setelah seluruh interaksi era memiliki padanan data.
-4. Pertahankan input keyboard/touch, posisi resume mini-game, camera look-ahead, fase langkah, `reduceMotion`, dan fallback Canvas. Gunakan `?physicsDebug=1` untuk pemeriksaan developer.
-5. Migrasikan satu era per pass. Jangan menambah jump/platform/lane sebelum kontrol dan desain era memang meminta perubahan itu.
+## 📖 Mengubah cerita atau ending legacy
 
-## 🎮 Menambah mini-game
+1. Baca `FIRST_IDEA.md`, `DIALOG.md`, lalu node aktif di `src/data/story.js`.
+2. Ubah callback/operasi di owner legacy dan trace transisi di `src/game/flow.js`.
+3. Pertahankan label choice yang menjadi key `chosen` dan key ending yang sudah
+   tersimpan.
+4. Jangan menyalin perubahan itu ke `storyData.ts`: file native tersebut hanya metadata
+   seam, bukan duplikat dialog.
+5. Jika perubahan ikut mengubah bentuk save, tambahkan migrasi di `SaveSystem.ts` dan
+   normalisasi legacy yang sesuai.
 
-1. Reuse pola start/update/render yang ada; jangan membuat base class atau registry baru untuk satu mini-game.
-2. Di `src/game/flow.js`, buat `startX()` yang mengisi `G.state='x'` dan `G.x`, lalu `updateX(dt)` yang menangani keyboard/touch, success, assist/failure, dan kembali ke state asal.
-3. Tambahkan case `x` ke `update()` dan branch render ke `src/render/screens.js::render()`; renderer detail tetap fungsi `drawX()` di `screens.js`.
-4. Tambahkan state ke allowlist pause bila aman dipause, bersihkan di `resetAll()`, dan masukkan hasil ke `S`/`saveCycle()` hanya bila harus bertahan pada Continue.
-5. Gunakan `OPTS.reduceMotion` untuk shake, pulse, cursor motion, atau flash. Jangan mengubah timing/target secara diam-diam kecuali opsi aksesibilitas memang membutuhkan jalur statis yang setara.
-6. Sediakan prosedural fallback untuk ilustrasi yang diperlukan.
+## 🎨 Menambah aset
 
-## 🎨 Menambah aset dengan fallback
+1. Untuk scene native, muat aset di `PreloadScene` melalui Phaser Loader dan pakai key
+   stabil pada Game Object owner.
+2. Sediakan fallback minimum bila aset membawa informasi/input penting. Aset dekoratif
+   boleh gagal tanpa memblokir boot.
+3. Untuk konten legacy, gunakan `src/core/assets.js::ASSET_MANIFEST` atau
+   `AUDIO_MANIFEST` dan pertahankan fallback Canvas/WebAudio lama.
+4. Motion dekoratif memilih frame stabil saat `reduceMotion` aktif.
+5. Jangan menjalankan generator, menambah `assets/gen/`, atau membaca `.env` tanpa
+   permintaan eksplisit.
 
-1. Tambah entry stabil ke `src/core/assets.js::ASSET_MANIFEST` atau `AUDIO_MANIFEST`; jangan membaca `.env` pada runtime.
-2. Di renderer owner, periksa `AS.imgs[id]` dan `im.width`, atau gunakan helper yang mengembalikan boolean.
-3. Gambar aset bila tersedia; bila tidak, panggil fallback prosedural yang menyampaikan objek/informasi yang sama. Potret dekoratif murni boleh skip senyap.
-4. Motion frame/strip harus memilih frame 0 atau bentuk stabil saat `OPTS.reduceMotion` aktif.
-5. Pertahankan jangkar, scale, tile seam, lisensi, dan kredit. Jangan menambahkan bahan mentah `assets/gen/` atau menjalankan generator tanpa instruksi eksplisit.
+## ⌨️ Mengubah kontrol native
 
-Contoh minimal: `if(!bgFgImg(ctx,id,cam)) fgSilhouette(ctx,era,cam)`.
+1. Tambah semantics hold/edge di `InputSystem`, bukan event listener baru per object.
+2. `UIScene` hanya menyediakan affordance/hit area dan mengirim intent sentuh.
+3. Scene gameplay mengonsumsi intent dan tetap owner mutasi.
+4. Jaga parity panah/WASD, action keyboard, touch, pause, pointer-up, kehilangan fokus,
+   dan penghentian gerak pada body yang terblokir.
+5. Tes input nyata melalui Playwright; jangan mengubah posisi/state langsung dari test.
 
-## ⌨️ Mengubah kontrol keyboard dan touch
-
-1. Event capture generik tetap di `src/core/runtime.js`: `keys` untuk hold, `pressed`/`keyOnce()` untuk edge, `ptr.down` untuk hold, dan `ptr.tap` untuk edge.
-2. Tambahkan semantics state-specific di updater pemilik dalam `src/game/flow.js`, bukan pada event listener DOM.
-3. Tambah affordance dan hit area touch di `src/render/screens.js`; gunakan koordinat logical 960×540 dari `cvXY()`.
-4. Konsumsi `ptr.tap` hanya sekali dan pahami bahwa `update()` menghapus semua `pressed`/tap pada akhir frame.
-5. Jaga parity keyboard/touch, pause/mute hotspots, audio-init gesture, dan `preventDefault` untuk tombol browser yang perlu diblokir.
+Kontrol legacy tetap ditangkap `src/core/runtime.js` dan dikonsumsi
+`src/game/flow.js`; ubah jalur itu hanya untuk bug/fitur legacy.
 
 ## 💾 Mengubah saved data
 
-1. Klasifikasikan field sebagai permanen (`SAVE`), opsi (`OPTS`), atau satu siklus (`S` dan `SAVE.game.S`).
-2. Tambahkan default aman ke object pemilik. Save lama harus tetap valid ketika field tidak ada.
-3. Tambah normalisasi/coercion di `normalizeRun()` untuk field cycle; jangan percaya bentuk JSON localStorage.
-4. Tambahkan field cycle ke object literal `saveCycle()` dan bersihkan di `resetAll()`/`startGlitch()` bila harus direset.
-5. Pertahankan key lama. Jika rename atau perubahan arti tak dapat dihindari, baca key lama, tulis key baru, lalu simpan hasil migrasi tanpa menghapus progres lain.
-6. Jangan menyimpan state render sementara, WebAudio node, Image, pointer, atau object Phaser.
+1. Klasifikasikan field sebagai permanen atau satu siklus; jangan menyimpan state render
+   dan object Phaser.
+2. Tambah tipe/default di `SaveSystem.ts`, lalu coercion defensif di `normalizeSave()`
+   atau `normalizeRun()`.
+3. Naikkan `saveVersion` hanya bila perubahan arti membutuhkan discriminator; tetap
+   baca save tanpa versi dan versi lama.
+4. Persist state siklus melalui `saveCycle()` dan pertahankan key `hat_save` agar legacy
+   dapat melanjutkan.
+5. Tambah unit test untuk save kosong, rusak, versi lama, field asing aman, dan bentuk
+   baru yang ditambahkan.
+6. Uji Continue/reload pada batas native dan handoff legacy.
 
-Source saat ini belum memiliki `saveVersion`; jangan menambah versioning spekulatif. Tambahkan hanya saat migrasi nyata membutuhkan discriminator.
+## 🐛 Mendiagnosis runtime
 
-## 🐛 Mendiagnosis rendering atau transisi state
+1. Reproduksi di entry yang benar: `/` untuk native atau `/legacy.html` untuk legacy.
+2. Native: mulai dari `window.__HAT.snapshot()`, scene aktif, registry `nativeState`,
+   console, request gagal, dan body `?physicsDebug=1`.
+3. Trace `create()`/`update()` scene, lalu system/entity yang dipanggilnya. Periksa
+   shutdown listener bila bug muncul setelah restart scene.
+4. Legacy: cari seluruh writer `G.state`, lalu branch `flow.js::update()` dan
+   `screens.js::render()`; periksa urutan script dan konsumsi input edge.
+5. Periksa jalur aset tersedia dan fallback secara terpisah.
+6. Perbaiki invariant di owner bersama, bukan guard di setiap caller.
 
-1. Temukan seluruh writer state dengan `rg "G\\.state ?=" src` dan seluruh branch update/render untuk nilai tersebut.
-2. Trace entry function (`startWalk()`, `startVortex()`, `startChallenge()`, dan seterusnya), data yang dibuat di `G`, lalu case di `update()` dan branch di `render()`.
-3. Untuk bug timing, mulai dari `HeartsGameScene.update(now,delta)` dan cap `dt`; untuk bug gambar, mulai dari event `POST_RENDER` dan `render()`.
-4. Periksa urutan `<script>` dan global deferred sebelum menyimpulkan simbol hilang. Tidak ada import graph yang akan memberi error build.
-5. Periksa konsumsi input: `keyOnce()` menghapus edge segera, `ptr.tap` dibersihkan akhir update, dan hotspot pause/mute berjalan lebih awal.
-6. Periksa fallback PNG dan prosedural secara terpisah di source. Jangan memperbaiki hanya satu jalur.
-7. Periksa `OPTS.reduceMotion`, `G.paused`, dan pengecualian mutasi render (`drawParts`, `drawLensRain`, `poseFade`, `drawLog`) bila gejala bergantung frame/pause.
-8. Tentukan root cause dan perbaiki pada owner bersama dengan diff minimum. Jangan menambah guard di setiap caller bila satu invariant owner cukup.
+## 🧪 Menjalankan QA
 
-## 🧪 Menjalankan QA AI-first
+```sh
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run build
+npm run qa:smoke
+npm run qa:visual
+npm run qa
+```
 
-1. Jalankan `npm run qa:smoke` untuk logic/save/input dan `npm run qa` untuk gameplay, physics, render, UI, aset, atau audio.
-2. Playwright membuka `?qa=1`, memberi seed acak tetap, memainkan kontrol nyata, dan menunggu `window.__HAT.qa.snapshot()`; jangan mengganti kegagalan dengan timeout atau mutasi state ad-hoc.
-3. Untuk perubahan visual, jalankan `npm run qa:visual`, review frame di `qa/artifacts/frames/` dengan AI vision, lalu cek console, network, canvas, dan snapshot yang sama di Chrome DevTools.
-4. Perbaiki temuan objektif pada owner/root cause dan ulangi cek relevan. Jangan update bukti atau melemahkan assertion untuk menyembunyikan regresi.
-5. Handoff manusia hanya untuk rasa seni/narasi ambigu atau alat yang benar-benar terblokir; sebutkan cek dan bukti yang belum selesai.
+Gunakan cek yang proporsional. Perubahan save/aturan murni wajib menjalankan unit test;
+perubahan gameplay/render/input menjalankan Playwright. Untuk visual, review artefak
+`qa:visual` dengan AI vision serta periksa console, request gagal/404, ukuran canvas,
+snapshot, dan physics debug bila relevan. Jangan melemahkan assertion atau mengganti
+input pemain dengan mutasi state test-only agar suite hijau.

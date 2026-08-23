@@ -1,42 +1,80 @@
 # ⏳ Hearts Across Time — Break The Loop
 
-> 2D Side-Scroller Narrative Puzzle / Psychological Time-Loop • Phaser 4 + Canvas 2D
+> 2D Side-Scroller Narrative Puzzle / Psychological Time-Loop • Phaser 4 + TypeScript/Vite + runtime legacy Canvas
 > Dibangun untuk **COMPFEST Indie Game Jam** — implementasi penuh dari *Game Design Document* `FIRST_IDEA.md` (sebelumnya `FIKS IDE.md`).
 
 ## ▶ Cara Menjalankan
 
-Tidak butuh build step. Jalankan lewat server lokal agar modul dan font dimuat konsisten:
+Install dependency lalu jalankan entry Phaser-native melalui Vite:
 
-```
-python -m http.server 8777
-# buka http://127.0.0.1:8777/index.html
+```sh
+npm install
+npm run dev
+# buka http://127.0.0.1:8777/
 ```
 
-Untuk deploy itch.io, zip `index.html`, `src/`, `vendor/`, dan `assets/`, lalu upload sebagai **HTML5 game** (960×540, scale to fit).
+Perintah pengembangan dan verifikasi utama:
+
+```sh
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run build
+npm run qa:smoke
+npm run qa:visual
+npm run qa
+```
+
+`npm run build` menghasilkan `dist/`. Zip isi folder tersebut untuk deploy HTML5
+960×540; hasil build memuat entry native dan `legacy.html` beserta aset/runtime lama
+yang masih diperlukan.
+
+## 🚧 Status migrasi strangler
+
+`index.html` adalah runtime utama Phaser-native. Scene yang sudah native: Boot,
+Preload, Intro, Title, traversal 1944 sampai batas tantangan lampu sorot,
+UI/pause/touch, dan mini-game perbaikan arloji. Scene memakai Phaser Game Object,
+Arcade Physics, kamera, input, loader, dan save TypeScript; tidak menggunakan renderer
+Canvas lama pada `POST_RENDER`.
+
+Saat pemain mengaktifkan lampu sorot, native menyimpan era 1944 dan `playerX`, lalu
+membuka `legacy.html?continue=1`. Runtime lama memulihkan save tersebut dan memulai
+`startWalk()` pada era/posisi yang sama, sehingga tantangan lampu sorot dan cerita
+setelahnya tetap dapat dimainkan. Runtime legacy juga mempertahankan era 1968/1999,
+dialog dan rute lengkap, mini-game lain, loop, ending, serta bonus. Sampai slice
+berikutnya lengkap, keberadaan legacy adalah bagian dari perilaku produksi, bukan
+snapshot historis.
 
 ## 🎮 Kontrol
 
 | Aksi | Keyboard | Sentuh |
 |---|---|---|
 | Menu sampul | `↑ ↓` + `Enter` | ketuk menu |
-| Gameplay terakhir | `← →` / `A D`, `↓` / `S` / `Enter` untuk menyalakan simpul waktu | tombol ◀ ▶ dan ketuk `AKTIFKAN` |
-| Tutorial pembuka | `← →` ganti halaman, `Enter` lanjut, `Esc` lewati | ketuk tombol |
-| Bergerak | `← →` atau `A D` (lari: `Shift`) | tombol ◀ ▶ (lari: tahan ≫) |
+| Gameplay terakhir (legacy) | `← →` / `A D`, `↓` / `S` / `Enter` untuk menyalakan simpul waktu | tombol ◀ ▶ dan ketuk `AKTIFKAN` |
+| Tutorial pembuka (legacy) | `← →` ganti halaman, `Enter` lanjut, `Esc` lewati | ketuk tombol |
+| Bergerak | `← →` atau `A D` (lari native: `Shift`) | tombol ◀ ▶; tombol ≫ hanya legacy |
 | Interaksi / mulai tantangan | `↓`, `S`, atau `Enter` | ketuk penanda |
 | Perbaiki arloji di Babak 1 | `← →` putar roda, `Space` / `Enter` kunci | ketuk lingkaran, lalu area bawah |
-| Susun botol mawar di Babak 2 | seret kepingan; atau `1–4`, `← ↑ ↓ →`, lalu `Space` | seret dan lepaskan kepingan pada bayangan botol |
-| Periksa dan baca buku harian Arthur | `Space` (juga `↓` / `S` saat membuka) | ketuk penanda buku |
-| Mini-game | `← →` untuk memilih/menyetel, `Enter` / `Space` untuk mengunci | ketuk pilihan/jalur, lalu area bawah untuk mengunci |
-| Lanjut dialog | `Enter` / `Space` / klik | ketuk layar |
-| Pilih opsi | `↑ ↓` + `Enter`, atau tombol `1` / `2` / `3` | ketuk opsi |
+| Susun botol mawar di Babak 2 (legacy) | seret kepingan; atau `1–4`, `← ↑ ↓ →`, lalu `Space` | seret dan lepaskan kepingan pada bayangan botol |
+| Periksa dan baca buku harian Arthur (legacy) | `Space` (juga `↓` / `S` saat membuka) | ketuk penanda buku |
+| Mini-game selain arloji (legacy) | `← →` untuk memilih/menyetel, `Enter` / `Space` untuk mengunci | ketuk pilihan/jalur, lalu area bawah untuk mengunci |
+| Lanjut dialog (legacy) | `Enter` / `Space` / klik | ketuk layar |
+| Pilih opsi (legacy) | `↑ ↓` + `Enter`, atau tombol `1` / `2` / `3` | ketuk opsi |
 | Periksa titik lore (`✦` berdenyut) | `↓` atau `S` saat berdiri dekat | ketuk penanda |
-| Backlog dialog | `Tab` / `B` (gulir: `↑ ↓`) | — |
-| Jeda (mixer + aksesibilitas) | `Esc` | ikon ⏸ pojok kanan atas |
-| Bisu-suara | `M` | ikon 🔊 pojok kanan atas |
+| Backlog dialog (legacy) | `Tab` / `B` (gulir: `↑ ↓`) | — |
+| Jeda | `Esc` / `P` (native); `Esc` (legacy) | ikon ⏸ pojok kanan atas |
+| Bisu-suara (legacy) | `M` | ikon 🔊 pojok kanan atas |
+
+Kontrol gerak, arloji, touch, dan pause 1944 tersedia pada entry native. Baris untuk
+1968/1999, dialog lengkap, ending, dan bonus berlaku pada `legacy.html` sampai scene
+tersebut dimigrasikan.
 
 Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungsi jadi jalan pelan, agar pengulangan siklus tidak repot. Layar judul menampilkan penghitung **⏳ ENDING TERUNGKAP n/6** (5 rute gagal + true ending) yang tersimpan lintas sesi. Setiap ending berbeda menghadiahkan satu **Pecahan Waktu**; enam pecahan menyusun kota 2088 yang pulih dan membuka tombol **GAMEPLAY TERAKHIR** di menu utama. Mengulang ending yang sama tetap menampilkan koleksi, tetapi tidak menggandakan pecahan.
 
 ## ✅ Implementasi vs GDD
+
+Tabel ini mencatat kemampuan game secara keseluruhan pada gabungan runtime native dan
+legacy; bukan klaim bahwa seluruh fitur di bawah sudah dipindahkan ke scene native.
 
 | Fitur GDD | Status |
 |---|---|
@@ -54,6 +92,10 @@ Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungs
 | Balon kata 7-Days style | ✔ Bubble putih + ekor + chip nama (Elena merah rose / Arthur slate) |
 
 ## 🎨 Catatan Aset
+
+Rincian aset lengkap di bawah tetap menjadi kontrak runtime legacy. Vertical slice
+native memuat subset yang dipakainya melalui `PreloadScene` dan menyediakan fallback
+minimum untuk elemen gameplay wajib.
 
 Seluruh karakter & latar **sudah berupa PNG lukis asli** di `assets/` (gaya watercolor-storybook mengikuti
 referensi: garis pensil grafit sketsa + wash cat air, palet muted). Digenerate dengan
@@ -107,9 +149,10 @@ skip senyap. Spesifikasi lengkap generasi via agy/codex + komposisi offline: `pl
 
 ## 🖼 Memakai Aset PNG Buatan Sendiri (opsional, tanpa pindah engine)
 
-Game punya **lapisan aset bawaan**: letakkan PNG di folder `assets/` dan game otomatis
-memakainya. File yang tidak ada → otomatis fallback ke gambar prosedural, jadi bisa
-mengganti sebagian saja (mis. cuma sprite Elena) tanpa menyentuh kode sama sekali.
+Runtime legacy punya **lapisan aset bawaan**: letakkan PNG di folder `assets/` dan
+manifest lama otomatis memakainya. File yang tidak ada memakai fallback prosedural
+legacy. Pada runtime native, daftarkan key di `PreloadScene` dan pertahankan fallback
+minimum bila aset tersebut membawa informasi atau input wajib.
 
 ### Sprite karakter — `assets/<id>_sheet.png`
 
@@ -143,29 +186,35 @@ jangkar bawah, angka kurung = faktor parallax. Langit & grading tetap prosedural
 
 ### Deploy itch.io
 
-Zip **wajib** berisi `index.html`, `src/`, `vendor/`, dan `assets/`. File historis
-`legacy-canvas.html` dan `phaser-demo.html` telah dihapus; keduanya bukan bagian deploy atau referensi aktif.
+Jalankan `npm run build`, lalu zip **isi** `dist/`. `index.html` adalah entry native;
+`legacy.html` wajib ikut karena masih menjalankan bagian cerita yang belum dimigrasikan.
+File historis `legacy-canvas.html` dan `phaser-demo.html` tetap tidak digunakan.
 
 ## ⚙️ Arsitektur Phaser modular
 
-`index.html` kini merupakan entry point tipis. Phaser v4.2.1 di `vendor/phaser.min.js`
-menjadi pemilik lifecycle, timing, pause render, scaling, dan scene utama. Renderer
-Canvas 2D yang sudah teruji dipanggil pada fase `POST_RENDER`, sehingga seluruh dialog,
-save, audio, ending, dan fallback prosedural tetap identik selama migrasi display-list
-Phaser berlangsung bertahap.
+`index.html` memuat `src/main.ts` melalui Vite. Phaser v4.2.1 memiliki lifecycle,
+display list, Arcade Physics, input, kamera, loader, pause, dan scaling untuk scene yang
+sudah native. `src/game/systems/SaveSystem.ts` menormalisasi save lama ke
+`saveVersion: 2`. `Era1944Scene` memakai `LEGACY_ENTRY_PATH` untuk handoff pada lampu
+sorot, sedangkan `LegacyStateAdapter` menangani Continue untuk save era 1968/1999.
+
+Renderer Canvas 2D pada `POST_RENDER` hanya hidup di halaman legacy. Classic-script
+lama tetap menjadi sumber kebenaran untuk konten yang belum native dan tidak diimpor
+ke bundle TypeScript.
 
 Kode dipisah berdasarkan tanggung jawab:
 
-- `src/core/` — utilitas, audio, input, state, loader aset, karakter.
-- `src/data/` — seluruh node cerita dan pilihan.
-- `src/game/` — flow gameplay, state machine, save, serta bootstrap Phaser.
-- `src/render/` — dunia, efek, cover/onboarding, HUD, dan layar ending.
-- `src/ui/` — dialog, narator, dan pilihan.
+- `src/main.ts` + `src/game/**/*.ts` — bootstrap, scene, entity, system, world, save,
+  guard narasi, dan seam legacy untuk vertical slice native.
+- `src/core/`, `src/data/`, `src/game/*.js`, `src/render/`, `src/ui/` — runtime lengkap
+  yang belum dimigrasikan dan dimuat hanya oleh `legacy.html`.
 
 Rincian kontrak modul ada di `src/README.md`, arsitektur runtime di
 `docs/ARCHITECTURE.md`, dan resep perubahan agen di `docs/AGENT_WORKFLOWS.md`.
-Eksperimen `phaser-demo.html` dan snapshot `legacy-canvas.html` hanya tersisa di riwayat git
-dan tidak boleh mengalahkan source produksi.
+Batas migrasi berikutnya adalah tantangan lampu sorot 1944. Implementasikan tantangan
+native lengkap—assist, save/resume, pause, keyboard/touch, reduced motion, dan QA—lalu
+geser handoff ke dialog Arthur. Era 1968 baru menjadi slice era berikutnya setelah sisa
+alur 1944 memiliki owner native atau batas legacy yang eksplisit.
 
 ## 🎵 Musik & Audio (v2 — Leitmotif System)
 
@@ -267,22 +316,27 @@ Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan,
 ## 🛠 Struktur Kode Modular
 
 ```
-index.html       — entry point tipis dan urutan classic-script
-src/core/        — runtime, input, audio, state, save, manifest dan loader aset
-src/data/        — NODES, data cerita, dan definisi world fisika
-src/game/        — dialogue runner, Arcade Physics 1944, state machine, gameplay flow, save siklus, bootstrap Phaser
-src/render/      — karakter, dunia, fallback prosedural, HUD dan seluruh screen
-src/ui/          — bubble, narator, choice dan diary popup
+index.html       — entry Phaser-native Vite/TypeScript
+legacy.html      — entry classic-script untuk cerita yang belum dimigrasikan
+src/main.ts      — bootstrap Phaser-native dan snapshot debug
+src/game/**/*.ts — scene, entity, system, world, save, narasi, dan seam legacy
+src/**/*.js      — runtime legacy Canvas lengkap
 ```
 
-Semua modul berbagi global classic-script; urutan `<script>` di `index.html` adalah dependency graph.
-Lihat `src/README.md` untuk owner dan dependency setiap file.
+Modul native memakai ESM. Hanya `legacy.html` yang bergantung pada urutan global
+classic-script. Lihat `src/README.md` untuk owner dan dependency setiap runtime.
 
 ## 🧪 QA otomatis
 
-Install sekali dengan `npm install`, lalu gunakan `npm run qa:smoke` untuk cek cepat, `npm run qa:visual` untuk frame deterministik, atau `npm run qa` untuk suite penuh. Game produksi tetap tidak memiliki build step; package hanya dipakai untuk Playwright. Artefak lokal berada di `qa/artifacts/` dan tidak di-commit.
+Install sekali dengan `npm install`, lalu gunakan `npm run typecheck`, `npm run lint`,
+`npm run test:unit`, dan `npm run build` sebagai gate statis/unit/build. Gunakan
+`npm run qa:smoke` untuk cek cepat, `npm run qa:visual` untuk frame deterministik, atau
+`npm run qa` untuk suite Playwright penuh. Artefak lokal berada di `qa/artifacts/` dan
+tidak di-commit.
 
-Suite menjalankan Chromium, sedangkan agen memakai Chrome DevTools dan AI vision untuk diagnosis serta review frame perubahan. `window.__HAT.qa` hanya tersedia pada URL `?qa=1`.
+Suite menjalankan Chromium, sedangkan agen memakai Chrome DevTools dan AI vision untuk
+diagnosis serta review frame perubahan. `window.__HAT.snapshot()` memberi state native
+serializable; `?qa=1` melewati intro dan `?physicsDebug=1` menampilkan body Arcade.
 
 ## Riwayat QA
 

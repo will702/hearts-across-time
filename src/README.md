@@ -1,66 +1,92 @@
 # Peta modul `src/`
 
-_Referensi singkat untuk classic-script modular Hearts Across Time._
+_Referensi singkat untuk migrasi strangler Phaser-native Hearts Across Time._
 
 ---
 
-## 📦 Urutan load dan kontrak
+## 📦 Dua runtime yang sengaja hidup berdampingan
 
-Tidak ada `import` atau `export`. `index.html` memuat file berikut secara berurutan; global yang dibuat file awal dipakai file setelahnya. Mengubah urutan adalah perubahan interface.
+`index.html` adalah entry produksi Phaser-native. Vite memuat `src/main.ts`, lalu
+TypeScript/ESM membuat `Phaser.Game` dan scene native.
 
-| Urutan | File | Tanggung jawab dan simbol utama |
-| ---: | --- | --- |
-| 1 | `core/runtime.js` | Canvas `cv`/`ctx`, konstanta `W/H/GROUND`, utilitas, input `keys`/`pressed`/`ptr`, audio `AU`/`SFX`, state `G`/`S`, opsi `OPTS`, save `SAVE`, dan waktu `T` |
-| 2 | `core/assets.js` | `PAL`, font, `ASSET_MANIFEST`, `AUDIO_MANIFEST`, loader `AS`, buffer audio, `drawCharSheet()`, `bgLayerImg()` |
-| 3 | `render/characters.js` | Fallback prosedural `drawElena()` dan `drawArthur()` beserta wajah, tubuh, dan gerak karakter |
-| 4 | `render/world.js` | Latar/parallax, props, interactable visual, `POSES`, `HOTSPOTS`, `LORE`, `parts`, paper UI primitives, grading, post-FX, dan fallback foreground |
-| 5 | `ui/dialog.js` | `WHO`, `wrap()`, bubble/narator, choice, dan diary popup |
-| 6 | `data/story.js` | `NODES`, `N()`, `say()`, pilihan/rute, ending ops, dan `arthurDiary()`; sumber naratif adalah `FIRST_IDEA.md` (sebelumnya `FIKS IDE.md`) |
-| 7 | `data/worlds.js` | `WORLD_DEFS` dan geometri/sensor/action data-driven untuk traversal Arcade Physics |
-| 8–11 | `game/{world-object,surface-system,interaction-system,player-controller}.js` | Body/surface statis, sensor proximity, input interaksi, sinkronisasi `G.player`, dan facade `HAT_WORLD` |
-| 12 | `game/flow.js` | `D`, runner operasi cerita, `G.state` update, traversal, input consumption, interactable, mini-game, save siklus, pause, ending, dan bonus |
-| 13 | `render/screens.js` | Komposisi scene/HUD/screen, renderer mini-game, `render()`, pause/backlog/mute UI |
-| 14 | `game/main.js` | `HeartsGameScene`, Arcade config, `PHASER_CONFIG`, `HAT_GAME`, hook `POST_RENDER`, intro video, lifecycle, `window.__HAT`, dan bridge `?qa=1` |
+`legacy.html` mempertahankan game lengkap sebelum migrasi. Halaman ini masih memuat
+classic-script `.js` berurutan dan menjadi owner narasi 1968/1999, dialog bercabang,
+mini-game yang belum dipindah, loop, ending, serta bonus. Jangan mengubah urutan script
+di `legacy.html` tanpa menelusuri semua global yang diproduksi dan dikonsumsi.
 
-## 🔗 Dependency penting
+Sumber kebenaran berlaku per wilayah:
 
-- `runtime.js` menangkap DOM/input dan membuat state; fungsi audionya memanggil helper buffer yang baru tersedia setelah `assets.js` termuat.
-- `assets.js` memakai `AU`/`ac()` dari runtime dan menyediakan fallback-aware helpers untuk renderer.
-- `characters.js` memakai utilitas runtime serta `PAL`, `AS`, dan `drawCharSheet()` dari assets.
-- `world.js` memakai runtime/assets dan menyediakan global yang dikonsumsi flow/screens. Referensi seperti `WATCH_X` baru dievaluasi saat fungsi dipanggil setelah `flow.js` termuat.
-- `dialog.js` memakai primitive kertas `sketchRR()`, `inkTag()`, dan `PAPER_COL` dari world.
-- `story.js` membuat callback yang memutasi `S` ketika choice dijalankan oleh flow.
-- `worlds.js` mendefinisikan traversal fisika 1944; empat modul berikutnya membentuk `HAT_WORLD`, tetapi action cerita tetap dikembalikan ke `flow.js`.
-- `flow.js` mengonsumsi `NODES`, world globals, input, audio, save, dan assets; file ini adalah owner transisi gameplay.
-- `screens.js` mengonsumsi seluruh layer sebelumnya. `render()` memilih cabang dari `G.state` dan menggambar langsung ke `ctx`.
-- `main.js` harus terakhir karena `update()` dan `render()` harus sudah tersedia ketika Phaser dibuat.
+- Vertical slice native: `src/main.ts` dan file `.ts` di `src/game/`.
+- Konten yang belum dimigrasikan: `legacy.html` dan file `.js` lama.
+- Narasi/GDD: `FIRST_IDEA.md`, `DIALOG.md`, lalu implementasi aktif di
+  `src/data/story.js` sampai runner naratif native benar-benar menggantikannya.
 
-## 🧭 Pemilik fitur
+## 🎬 Scene Phaser-native
 
-| Fitur | Owner | Pendukung |
-| --- | --- | --- |
-| Game flow dan state transition | `game/flow.js::update()` | `data/story.js`, `render/screens.js` |
-| Capture keyboard/mouse/touch | `core/runtime.js` | `game/flow.js` mengonsumsi; `render/screens.js` menggambar kontrol sentuh |
-| Rendering | `render/screens.js::render()` | `render/characters.js`, `render/world.js`, `ui/dialog.js` |
-| Dialogue runner | `game/flow.js::{startNode,step,updateDialog}` | `data/story.js::NODES`, `ui/dialog.js` |
-| Audio | `core/runtime.js` | manifest/buffer di `core/assets.js`; mute UI di `render/screens.js` |
-| Save/load | `core/runtime.js::{SAVE,persistSave,normalizeRun}` | `game/flow.js::saveCycle()` dan `titleMenu()` |
-| Story data | `data/story.js` | `FIRST_IDEA.md` untuk GDD; `DIALOG.md` sebagai referensi rinci |
-| Phaser lifecycle | `game/main.js::HeartsGameScene` | flow update dan screen render |
-| World fisika 1944 | `data/worlds.js`, `game/player-controller.js::HAT_WORLD` | `flow.js` tetap memproses action cerita |
+| Scene | Tanggung jawab |
+| --- | --- |
+| `BootScene` | Memuat dan menormalisasi save, membuat `StoryRunner`, serta membaca opsi `reduceMotion` |
+| `PreloadScene` | Memuat aset native melalui Phaser Loader dan membuat fallback minimum |
+| `IntroScene` | Memutar atau melewati intro dengan Game Object Phaser |
+| `TitleScene` | Menu keyboard/touch, continue, siklus baru, replay intro, dan akses cerita legacy |
+| `Era1944Scene` | Traversal 1944: world, pemain, kamera, arloji, lore, autosave, dan handoff lampu sorot |
+| `UIScene` | HUD, prompt, kontrol sentuh, toast, dan pause overlay |
+| `WatchRepairScene` | Mini-game perbaikan arloji dengan keyboard/touch dan assist tiga miss |
+
+Belum native: tantangan lampu sorot dan dialog lanjutan 1944, era 1968, era 1999,
+dialog/rute lengkap, mini-game selain arloji, loop/ending, dan bonus. Semua tetap dapat
+dijalankan melalui `legacy.html?continue=1` atau tombol cerita lengkap.
+
+## 🧩 Modul native
+
+| Lokasi | Owner |
+| --- | --- |
+| `main.ts` | Bootstrap `Phaser.Game` dan snapshot debug `window.__HAT.snapshot()` |
+| `game/config.ts` | Ukuran 960×540, Scale FIT, Arcade Physics, dan daftar scene |
+| `game/entities/Player.ts` | Sprite Elena, body kaki 24×12, gerak, animasi, dan langkah |
+| `game/systems/InputSystem.ts` | Intent keyboard dan touch per frame |
+| `game/systems/SurfaceSystem.ts` | Static Arcade surfaces dan collider |
+| `game/systems/InteractionSystem.ts` | Proximity, prompt, dan action object tanpa mutasi cerita |
+| `game/systems/SaveSystem.ts` | Trust boundary `hat_save`, migrasi `saveVersion`, dan autosave siklus |
+| `game/world/` | Definisi data 1944, Game Object dunia, dan pembuatan object |
+| `game/narrative/` | Guard transisi native dan metadata batas legacy; bukan salinan dialog |
+| `game/legacy/LegacyStateAdapter.ts` | Continue save 1968/1999 melalui runtime legacy |
+
+State native yang dibagi antar-scene disimpan di registry Phaser: `saveSystem`,
+`storyRunner`, `reduceMotion`, `loadErrors`, dan `nativeState`. State satu siklus memakai
+`RunState`; mutasi gameplay tetap dilakukan scene/system pemilik, bukan renderer.
+
+## 🧱 Runtime legacy
+
+Classic-script lama tetap berada di `src/core/`, `src/data/`, `src/game/*.js`,
+`src/render/`, dan `src/ui/`. Kontrak utamanya tidak berubah:
+
+- `src/data/story.js` tetap owner dialog dan percabangan yang belum native.
+- `src/game/flow.js` tetap owner state machine, mini-game, loop, dan ending legacy.
+- `src/render/screens.js` tetap renderer Canvas 2D legacy melalui `POST_RENDER`.
+- `src/game/main.js` tetap bootstrap halaman `legacy.html`.
+
+Kode native tidak mengimpor global legacy. Integrasi hanya lewat data save yang
+dinormalisasi dan navigasi eksplisit.
 
 ## 🛠️ Lokasi perubahan umum
 
 | Perubahan | Mulai dari |
 | --- | --- |
-| Tambah/edit dialog atau choice | `data/story.js`; cocokkan `FIRST_IDEA.md` dan `DIALOG.md` |
-| Tambah/edit ending | `data/story.js`, lalu kontrak ending di `game/flow.js` dan label visual di `render/screens.js` |
-| Tambah interactable/lore | Untuk 1944 gunakan `data/worlds.js`; era legacy masih memakai `flow.js` dan `render/world.js::HOTSPOTS` |
-| Tambah mini-game | State/start/update di `game/flow.js`; renderer di `render/screens.js`; reset/save/pause sesuai kebutuhan |
-| Ubah gerak atau kontrol | Capture mentah di `core/runtime.js`; konsumsi di `game/flow.js`; touch affordance di `render/screens.js` |
-| Tambah aset | `core/assets.js::ASSET_MANIFEST`, lalu jalur PNG dan fallback prosedural di renderer pemilik |
-| Ubah save | Default/load/normalisasi di `core/runtime.js`; whitelist cycle di `game/flow.js::saveCycle()` |
-| Ubah audio | Synth/bus/opsi di `core/runtime.js`; file opsional di `core/assets.js::AUDIO_MANIFEST` |
-| Ubah lifecycle/scale/POST_RENDER | `game/main.js`; periksa overlap `core/runtime.js::fit()` dan `G.paused` |
+| Gerak/fisika 1944 | `game/entities/Player.ts`, `game/systems/SurfaceSystem.ts`, `game/world/era1944.ts` |
+| Object/interaksi 1944 | `game/world/era1944.ts`, `game/world/WorldObject.ts`, `game/systems/InteractionSystem.ts` |
+| HUD/touch/pause native | `game/scenes/UIScene.ts`, lalu `game/systems/InputSystem.ts` |
+| Arloji native | `game/scenes/WatchRepairScene.ts` dan field terkait di `SaveSystem.ts` |
+| Save/migrasi | `game/systems/SaveSystem.ts`; pertahankan kompatibilitas `hat_save` legacy |
+| Dialog/rute/ending yang belum native | File `.js` legacy; cocokkan `FIRST_IDEA.md` dan `DIALOG.md` |
+| Memigrasikan tantangan lampu sorot | Tambah scene/aturan native lengkap, lalu pindahkan handoff ke dialog Arthur |
 
-Detail runtime, state, render, input, dan save tersedia di `../docs/ARCHITECTURE.md`. Langkah aman per jenis perubahan tersedia di `../docs/AGENT_WORKFLOWS.md`.
+Batas migrasi saat ini terjadi ketika pemain mengaktifkan lampu sorot. Native menyimpan
+era 1944 dan `playerX`, lalu membuka `legacy.html?continue=1`; `src/game/main.js`
+memulihkan run dan posisi itu sebelum `startWalk()`. Batas berikutnya yang dapat
+dieksekusi adalah memindahkan tantangan lampu sorot secara utuh, lalu melakukan handoff
+di dialog Arthur. Sampai itu lengkap, pertahankan redirect agar cerita tetap dapat
+diselesaikan.
+
+Rincian runtime ada di `../docs/ARCHITECTURE.md`; resep perubahan ada di
+`../docs/AGENT_WORKFLOWS.md`.
