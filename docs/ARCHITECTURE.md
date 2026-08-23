@@ -15,7 +15,8 @@ flowchart LR
 
     browser[Browser memuat index.html] --> scripts[Classic scripts berurutan]
     scripts --> phaser[Phaser.Game dan HeartsGameScene]
-    phaser --> frame_update[update now delta]
+    phaser --> arcade[Arcade Physics step 1944]
+    arcade --> frame_update[update now delta]
     frame_update --> game_update[flow update dt]
     phaser --> post_render[POST_RENDER]
     post_render --> canvas_render[screens render ke ctx]
@@ -26,13 +27,13 @@ flowchart LR
     class post_render,canvas_render render
 ```
 
-`HeartsGameScene.update()` membatasi delta ke 0–0,05 detik. `drawGame()` memanggil `render()` setelah render Phaser. `window.__HAT` mengekspos referensi debug ke game, scene, `G`, `S`, `D`, dan `AS`; bukan API save atau integrasi stabil.
+`HeartsGameScene.update()` membatasi delta ke 0–0,05 detik. `drawGame()` memanggil `render()` setelah render Phaser. `window.__HAT` mengekspos referensi debug ke game, scene, `G`, `S`, `D`, `AS`, dan `HAT_WORLD`; bukan API save atau integrasi stabil. Pada `?qa=1`, sub-API `window.__HAT.qa` menyediakan snapshot serializable, freeze/resume frame, opsi aman, dan checkpoint deterministik untuk Playwright.
 
 Ownership runtime tetap hibrida:
 
-- Phaser memiliki scene lifecycle, clock frame, canvas game, Scale FIT/CENTER_BOTH, dan `POST_RENDER`.
+- Phaser memiliki scene lifecycle, clock frame, Arcade Physics 1944, canvas game, Scale FIT/CENTER_BOTH, dan `POST_RENDER`.
 - `runtime.js::fit()` masih menulis ukuran CSS canvas pada resize.
-- `G.paused`/`setPaused()` membekukan update gameplay dan men-duck audio; Phaser scene tetap aktif.
+- `G.paused`/`setPaused()` membekukan update gameplay, Arcade world, dan men-duck audio; Phaser scene tetap aktif.
 - `visibilitychange` di `main.js` menangguhkan/melanjutkan WebAudio sesuai visibilitas dan pause.
 
 ## 🔄 State machine
@@ -88,7 +89,9 @@ flowchart TB
     assets --> world[render/world.js]
     world --> dialog[ui/dialog.js]
     runtime --> story[data/story.js]
-    story --> flow[game/flow.js]
+    story --> worlds[data/worlds.js]
+    worlds --> physics[empat modul physics]
+    physics --> flow[game/flow.js]
     world --> flow
     characters --> screens[render/screens.js]
     dialog --> screens
@@ -101,11 +104,19 @@ flowchart TB
     classDef game fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
     classDef view fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#3b0764
     class runtime,assets core
-    class story,flow,main game
+    class story,worlds,physics,flow,main game
     class characters,world,dialog,screens view
 ```
 
 Ini bukan dependency graph ESM. Semua simbol berada di global lexical scope classic-script; reorder, rename global, atau menambah `type="module"` dapat memutus runtime.
+
+## 🌍 Traversal Arcade Physics 1944
+
+`WORLD_DEFS['1944']` adalah sumber geometri untuk spawn, ground, batas dunia, arloji, gate lampu sorot, lore, dan sensor Arthur. `SurfaceSystem` membuat static bodies; `InteractionSystem` memeriksa sensor dan mengembalikan action simbolik; `flow.js` tetap menjalankan mini-game, lore, dan dialog.
+
+Elena memakai dynamic body kaki 24×12. `PlayerController` mempertahankan akselerasi/gesekan lama, lalu menyinkronkan `x`, `y`, `vx`, `acc`, fase langkah, stride, dan arah ke `G.player`. Renderer Canvas membaca state itu; background, foreground, atmosfer, spritesheet, dan fallback prosedural tidak menjadi Phaser Game Object.
+
+Body dihentikan saat pause, modal, mini-game, dialog, atau keluar dari 1944. Ketika state kembali ke `walk`, body di-reset dari posisi legacy agar write-back mini-game tetap kompatibel. Overlay body aktual tersedia lewat `?physicsDebug=1` dan digambar setelah renderer Canvas supaya tidak tertutup `POST_RENDER`.
 
 ## 🧠 State ownership dan mutasi
 

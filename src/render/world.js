@@ -117,7 +117,7 @@ const DIARY_X=700; // gerbang naratif wajib Babak 2, di tableau terakhir sebelum
 function drawBrokenWatch(c,cam){if(G.era!=='1944'||S.watchRepaired)return;const x=WATCH_X-cam,hot=G.walk&&G.walk.watchHot,mot=OPTS.reduceMotion?0:1;
   if(x<-60||x>W+60)return;c.save();c.translate(x,GROUND-8);c.rotate(-.24);c.shadowColor='rgba(255,204,110,.55)';c.shadowBlur=hot?20:10;c.fillStyle='#B98A3D';c.beginPath();c.arc(0,-12,18,0,TAU);c.fill();c.shadowBlur=0;c.strokeStyle='#F1D58B';c.lineWidth=2;c.beginPath();c.arc(0,-12,18,0,TAU);c.stroke();
   c.fillStyle='#E8DAB7';c.beginPath();c.arc(0,-12,13,0,TAU);c.fill();c.strokeStyle='#493822';c.lineWidth=1.4;c.beginPath();c.moveTo(0,-12);c.lineTo(6,-20);c.moveTo(0,-12);c.lineTo(-7,-9);c.stroke();c.strokeStyle='#94342E';c.beginPath();c.moveTo(-9,-23);c.lineTo(9,-2);c.stroke();c.fillStyle='#B98A3D';rr(c,-5,-34,10,5,2);c.fill();c.restore();
-  const pu=mot?Math.sin(T*3.2)*3:0;c.save();c.textAlign='center';c.fillStyle='#F5E6C0';c.font='bold 14px '+F_UI;c.fillText(hot?'SPACE — PERIKSA ARLOJI':'✦',x,GROUND-53-pu);c.restore();}
+  const pu=mot?Math.sin(T*3.2)*3:0;c.save();c.textAlign='center';c.fillStyle='#F5E6C0';c.font='bold 14px '+F_UI;c.fillText(hot?(G.walk.prompt||'SPACE — PERIKSA ARLOJI'):'✦',x,GROUND-53-pu);c.restore();}
 function drawBrokenRoseBottle(c,cam){if(G.era!=='1968'||S.roseRepaired)return;const x=ROSE_X-cam,hot=G.walk&&G.walk.roseHot,mot=OPTS.reduceMotion?0:1;if(x<-80||x>W+80)return;
   c.save();c.translate(x,GROUND-4);c.shadowColor='rgba(220,76,88,.7)';c.shadowBlur=hot?22:11;const im=AS.imgs.rose_bottle_broken;
   if(im&&im.width)c.drawImage(im,330,250,1640,1220,-38,-58,76,57);
@@ -142,7 +142,8 @@ function drawHotspots(c){ // penanda titik selidik: titik cahaya hangat berdenyu
   drawWaterGem(c,cam);
   drawTornPhoto(c,cam);
   if(G.era==='1968')drawDiaryBook(c,cam);
-  for(const h of (HOTSPOTS[FE]||[])){if(SAVE.inspected[h.id])continue;const sx=h.x-cam;if(sx<-40||sx>W+40)continue;
+  const hs1944=FE==='1944'?WORLD_DEFS['1944'].objects.filter(o=>o.kind==='lore'):null;
+  for(const h of (hs1944||HOTSPOTS[FE]||[])){if(SAVE.inspected[h.id])continue;const sx=h.x-cam;if(sx<-40||sx>W+40)continue;
     const pu=mot?(.5+.5*Math.sin(T*3.2+h.x)):1;
     c.save();c.globalAlpha=.55+.35*pu;
     const g=c.createRadialGradient(sx,GROUND-6,1,sx,GROUND-6,16+6*pu);g.addColorStop(0,'rgba(255,214,140,.85)');g.addColorStop(1,'rgba(255,214,140,0)');
@@ -150,8 +151,8 @@ function drawHotspots(c){ // penanda titik selidik: titik cahaya hangat berdenyu
     c.globalAlpha=1;c.fillStyle='#F5E6C0';c.font='bold 15px '+F_UI;c.textAlign='center';
     c.fillText('✦',sx,GROUND-20-mot*Math.sin(T*2.6+h.x)*4);c.restore();}
   const hot=G.walk.hot;if(hot){const sx=hot.x-cam;c.save();c.globalAlpha=.9;c.fillStyle='#F5F0E8';c.font='12px '+F_UI;c.textAlign='center';
-    c.fillText('▼ periksa',sx,GROUND-44-mot*Math.sin(T*2.6)*3);c.restore();}
-  if(G.walk.challengeHot){const cfg=CHALLENGE_CONF[G.era],sx=cfg.x-cam;c.save();c.fillStyle='#F5E6C0';c.font='bold 14px '+F_UI;c.textAlign='center';c.fillText('▼ AKTIFKAN',sx,GROUND-78-mot*Math.sin(T*2.6)*3);c.strokeStyle='#F1D58B';c.lineWidth=2;c.beginPath();c.arc(sx,GROUND-42,18,0,TAU);c.stroke();c.restore();}}
+    c.fillText(G.walk.prompt||'▼ periksa',sx,GROUND-44-mot*Math.sin(T*2.6)*3);c.restore();}
+  if(G.walk.challengeHot){const cfg=CHALLENGE_CONF[G.era],sx=cfg.x-cam;c.save();c.fillStyle='#F5E6C0';c.font='bold 14px '+F_UI;c.textAlign='center';c.fillText(G.walk.prompt||'▼ AKTIFKAN',sx,GROUND-78-mot*Math.sin(T*2.6)*3);c.strokeStyle='#F1D58B';c.lineWidth=2;c.beginPath();c.arc(sx,GROUND-42,18,0,TAU);c.stroke();c.restore();}}
 function bgFgImg(c,id,camX){ // lapisan foreground lukis (parallax 1.18); false => pemanggil pakai fgSilhouette
   const cfg=ASSET_MANIFEST[id],im=AS.imgs[id];if(!cfg||!im||!im.width)return false;
   const dh=cfg.h||150,dw=Math.round(im.width*dh/im.height),off=-((camX*1.18)%dw);
@@ -168,7 +169,6 @@ const POSES={c1e:{side:'elena',id:'pose_elena_hold'},c2e:{side:'elena',id:'pose_
   n_b1:{side:'elena',id:'pose_elena_resolve',expr:'angry'},r1b:{side:'arthur',id:'pose_arthur_muda_vial'}};
 /* --- TITIK SELIDIK (lore hotspot) per era — ↓ ketika dekat; sekali seumur save (SAVE.inspected) --- */
 const HOTSPOTS={
-  '1944':[{x:480,id:'lore_crate'},{x:1000,id:'lore_flare'}],
   '1968A':[{x:560,id:'lore_photo'},{x:780,id:'lore_tape'}],
   '1968B':[{x:560,id:'lore_photo'},{x:780,id:'lore_tape'}],
   '1999':[{x:420,id:'lore_clip'}]};

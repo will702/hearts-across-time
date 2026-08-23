@@ -17,12 +17,13 @@ Jika dokumen dan kode berbeda, dokumentasikan serta pertahankan perilaku kode ke
 
 ## 🏗️ Arsitektur saat ini
 
-Game adalah aplikasi browser 960×540 tanpa build step, bundler, package manifest, atau ESM. `index.html` adalah entry point tipis yang memuat Phaser 4.2.1 vendored dan sembilan classic script dalam urutan tetap.
+Game adalah aplikasi browser 960×540 tanpa build step, bundler, atau ESM. `package.json` hanya menyediakan tooling QA Playwright; produksi tetap dijalankan langsung dari `index.html`, yang memuat Phaser 4.2.1 vendored dan empat belas classic script dalam urutan tetap.
 
 - Phaser `HeartsGameScene` memiliki lifecycle scene dan frame timing. `update(now, delta)` membatasi `dt` ke 0,05 detik lalu memanggil `update(dt)`.
 - Renderer Canvas 2D menggambar ke canvas Phaser pada event `Phaser.Core.Events.POST_RENDER` melalui `render()`.
 - Scaling memakai `Phaser.Scale.FIT`/`CENTER_BOTH`, tetapi `src/core/runtime.js::fit()` masih mengatur ukuran CSS canvas saat resize. Keduanya aktif.
-- Pause gameplay memakai `G.paused` dan `setPaused()`; scene Phaser tidak di-pause. Saat tab tersembunyi, Phaser menangani tick dan `src/game/main.js` menangguhkan WebAudio.
+- Traversal 1944 memakai Arcade Physics dengan body kaki Elena, surface statis, dan sensor interaksi; era lain masih memakai koordinat legacy di `flow.js`.
+- Pause gameplay memakai `G.paused` dan `setPaused()`; scene Phaser tidak di-pause, tetapi Arcade Physics ikut pause/resume. Saat tab tersembunyi, Phaser menangani tick dan `src/game/main.js` menangguhkan WebAudio.
 - Modul berbagi global classic-script; tidak ada `import`/`export`. Urutan `<script>` di `index.html` adalah dependency graph dan interface internal.
 
 Urutan produksi:
@@ -34,9 +35,14 @@ Urutan produksi:
 5. `src/render/world.js`
 6. `src/ui/dialog.js`
 7. `src/data/story.js`
-8. `src/game/flow.js`
-9. `src/render/screens.js`
-10. `src/game/main.js`
+8. `src/data/worlds.js`
+9. `src/game/world-object.js`
+10. `src/game/surface-system.js`
+11. `src/game/interaction-system.js`
+12. `src/game/player-controller.js`
+13. `src/game/flow.js`
+14. `src/render/screens.js`
+15. `src/game/main.js`
 
 Jangan mengubah urutan tanpa menelusuri semua global yang diproduksi dan dikonsumsi. Beberapa referensi sengaja deferred: fungsi di `runtime.js` memakai helper aset setelah semua script termuat, sedangkan fungsi dunia memakai konstanta flow ketika baru dipanggil.
 
@@ -45,8 +51,8 @@ Jangan mengubah urutan tanpa menelusuri semua global yang diproduksi dan dikonsu
 | Direktori | Tanggung jawab |
 | --- | --- |
 | `src/core/` | Canvas/context, utilitas, input mentah, state global, opsi, localStorage, WebAudio, manifest dan loader aset |
-| `src/data/` | `NODES`, operasi cerita, pilihan, dan isi buku harian |
-| `src/game/` | Runner dialog, state machine, traversal, interactable, mini-game, save siklus, pause, bonus, dan bootstrap Phaser |
+| `src/data/` | `NODES`, operasi cerita, pilihan, isi buku harian, dan `WORLD_DEFS` traversal fisika |
+| `src/game/` | Runner dialog, state machine, Arcade Physics 1944, traversal legacy, interactable, mini-game, save siklus, pause, bonus, dan bootstrap Phaser |
 | `src/render/` | Karakter, dunia, fallback prosedural, efek, seluruh layar/HUD, dan fungsi `render()` |
 | `src/ui/` | Bubble dialog, narator, choice, diary popup, dan text wrapping |
 
@@ -88,16 +94,18 @@ Pipeline Python berada di `scripts/`: `gen_image*.py`/`gen_*.py` menghasilkan ba
 ## 🔒 Keamanan dan git
 
 - `.env` berisi API key dan di-gitignore. Jangan membaca nilainya ke output, mencetak, menyimpan, atau commit file tersebut.
-- Jangan commit `.env`, `.venv/`, `node_modules/`, `assets/gen/`, `qa/`, log, cache Python, atau screenshot.
+- Jangan commit `.env`, `.venv/`, `node_modules/`, `assets/gen/`, `qa/artifacts/`, log, cache Python, atau screenshot. Source test di `qa/` wajib di-versioning.
 - Pertahankan kredit CC0 audio di `README.md` dan lisensi SIL OFL font di `assets/fonts/`.
 - Gunakan Conventional Commits berbahasa Inggris dan satu pass per commit bila developer meminta commit.
 - Pertahankan perubahan milik user; periksa status/diff sebelum mengedit dan stage hanya path yang diminta.
 
 ## 🧪 Kebijakan QA
 
-Seluruh Playwright, screenshot, inspeksi visual, playtest, console/404 check, route verification, dan persetujuan akhir adalah milik developer manusia. Agen hanya mengimplementasikan atau memperbaiki fitur dan dokumentasi, kecuali developer secara eksplisit meminta QA tertentu.
+QA memakai model AI-first hybrid. Agen wajib menjalankan cek yang relevan, memperbaiki kegagalan objektif pada root cause, lalu mengulang cek sampai lolos. Gunakan `npm run qa:smoke` untuk perubahan logic/save/input dan `npm run qa` untuk perubahan gameplay, physics, render, UI, aset, atau audio.
 
-Folder `qa/` di-gitignore dan tidak tersedia dalam checkout ini; perintah QA lama di riwayat dokumentasi bukan kontrak yang bisa diasumsikan berjalan. Saat menyerahkan perubahan, nyatakan bahwa gameplay/visual belum diverifikasi oleh agen.
+Untuk perubahan visual/gameplay, agen juga wajib mereview artefak deterministik `npm run qa:visual` dengan AI vision serta memeriksa runtime melalui Chrome DevTools: console, request gagal/404, ukuran canvas, `window.__HAT.qa.snapshot()`, dan `?physicsDebug=1` bila menyentuh traversal. Jangan menebak state dari screenshot; Playwright memainkan input nyata dan menunggu snapshot dari `?qa=1`.
+
+Agen boleh langsung memperbaiki clipping, overlap, objek melayang, aset/prompt hilang, state/save salah, error browser, atau ketidaksesuaian acceptance criteria. Jangan melemahkan assertion agar hijau. Serahkan ke manusia hanya keputusan rasa seni/narasi yang benar-benar ambigu atau QA yang terblokir alat, dan laporkan bukti serta cek yang belum selesai.
 
 ## ✍️ Konvensi perubahan
 

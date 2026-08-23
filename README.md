@@ -269,8 +269,8 @@ Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan,
 ```
 index.html       — entry point tipis dan urutan classic-script
 src/core/        — runtime, input, audio, state, save, manifest dan loader aset
-src/data/        — NODES dan data cerita
-src/game/        — dialogue runner, state machine, gameplay flow, save siklus, bootstrap Phaser
+src/data/        — NODES, data cerita, dan definisi world fisika
+src/game/        — dialogue runner, Arcade Physics 1944, state machine, gameplay flow, save siklus, bootstrap Phaser
 src/render/      — karakter, dunia, fallback prosedural, HUD dan seluruh screen
 src/ui/          — bubble, narator, choice dan diary popup
 ```
@@ -278,11 +278,15 @@ src/ui/          — bubble, narator, choice dan diary popup
 Semua modul berbagi global classic-script; urutan `<script>` di `index.html` adalah dependency graph.
 Lihat `src/README.md` untuk owner dan dependency setiap file.
 
-## 🧪 Riwayat QA Developer
+## 🧪 QA otomatis
 
-Catatan berikut adalah hasil pass historis, bukan jaminan checkout saat ini. Folder `qa/`
-di-gitignore dan skrip yang disebut dapat tidak tersedia. Sesuai kebijakan proyek, developer manusia
-menentukan serta menjalankan QA, screenshot, inspeksi visual, console/404 check, dan playtest terbaru.
+Install sekali dengan `npm install`, lalu gunakan `npm run qa:smoke` untuk cek cepat, `npm run qa:visual` untuk frame deterministik, atau `npm run qa` untuk suite penuh. Game produksi tetap tidak memiliki build step; package hanya dipakai untuk Playwright. Artefak lokal berada di `qa/artifacts/` dan tidak di-commit.
+
+Suite menjalankan Chromium, sedangkan agen memakai Chrome DevTools dan AI vision untuk diagnosis serta review frame perubahan. `window.__HAT.qa` hanya tersedia pada URL `?qa=1`.
+
+## Riwayat QA
+
+Catatan berikut adalah hasil pass historis, bukan jaminan checkout saat ini. Nama skrip lama dapat berbeda dari suite yang sekarang di-versioning; hasil terbaru ditentukan oleh `npm run qa` dan artefak CI.
 
 - Rute golden penuh: Prologue → Empati×2 → 1B → 2B2 → Ikhlas → **True Ending** (0 error)
 - Rute gagal: Logika×2 → 1A → 2A1 → TIMELINE COLLAPSE → **glitch loop** → kembali ke 1944 dengan intro loop

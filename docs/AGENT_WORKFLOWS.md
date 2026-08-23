@@ -26,11 +26,20 @@ _Resep perubahan minimum untuk arsitektur classic-script Phaser + Canvas saat in
 
 Pilih pola yang sudah ada sebelum menambah sistem baru:
 
+- World 1944: tambah object di `WORLD_DEFS['1944']` dengan behavior terpisah `collision`, `proximity`, `prompt`, `tap`, `action`, dan `enabled`. Action hanya berupa intent; mutasi cerita tetap ditangani `flow.js`.
 - Lore opsional: tambah entry ke `HOTSPOTS` dan `LORE` di `src/render/world.js`; flow generic sudah menangani proximity, `SAVE.inspected`, dan modal `G.lore`.
 - Item wajib: ikuti `WATCH_X`, `ROSE_X`, `GEM_X`, atau `PHOTO_X` di `src/game/flow.js`. Tambahkan posisi, proximity flag di `G.walk`, gate traversal, input keyboard/touch, start action, completion field `S`, dan `saveCycle()`.
 - Visual dunia berada di `src/render/world.js`; marker/HUD khusus hanya ditambah di `src/render/screens.js` bila generic `drawHotspots()`/touch action tidak cukup.
 
 Selalu sediakan jalur touch melalui `ptr`/`touchActHit()`, reset state di `resetAll()`, dan cegah reward ganda melalui completion flag atau `addStoryItem()`.
+
+## 🌍 Memigrasikan era berikutnya ke Arcade Physics
+
+1. Tambahkan definisi era ke `WORLD_DEFS`: `width`, `spawn`, ground/batas, lalu object collision/sensor/action. Jangan salin koordinat yang sama ke `update()` atau renderer.
+2. Aktifkan era pada `HAT_WORLD.enter()`, lalu arahkan branch `walk` era itu ke controller fisika. Biarkan action kembali ke flow agar state cerita/save tidak pindah owner.
+3. Pindahkan gate, lore proximity, dan trigger Arthur era tersebut sekaligus; hapus branch posisi manual hanya setelah seluruh interaksi era memiliki padanan data.
+4. Pertahankan input keyboard/touch, posisi resume mini-game, camera look-ahead, fase langkah, `reduceMotion`, dan fallback Canvas. Gunakan `?physicsDebug=1` untuk pemeriksaan developer.
+5. Migrasikan satu era per pass. Jangan menambah jump/platform/lane sebelum kontrol dan desain era memang meminta perubahan itu.
 
 ## 🎮 Menambah mini-game
 
@@ -81,4 +90,10 @@ Source saat ini belum memiliki `saveVersion`; jangan menambah versioning spekula
 7. Periksa `OPTS.reduceMotion`, `G.paused`, dan pengecualian mutasi render (`drawParts`, `drawLensRain`, `poseFade`, `drawLog`) bila gejala bergantung frame/pause.
 8. Tentukan root cause dan perbaiki pada owner bersama dengan diff minimum. Jangan menambah guard di setiap caller bila satu invariant owner cukup.
 
-QA runtime, screenshot, Playwright, console/404, dan playtest tetap dijalankan developer manusia kecuali diminta eksplisit. Agen menyerahkan perubahan sebagai belum diverifikasi secara gameplay/visual.
+## 🧪 Menjalankan QA AI-first
+
+1. Jalankan `npm run qa:smoke` untuk logic/save/input dan `npm run qa` untuk gameplay, physics, render, UI, aset, atau audio.
+2. Playwright membuka `?qa=1`, memberi seed acak tetap, memainkan kontrol nyata, dan menunggu `window.__HAT.qa.snapshot()`; jangan mengganti kegagalan dengan timeout atau mutasi state ad-hoc.
+3. Untuk perubahan visual, jalankan `npm run qa:visual`, review frame di `qa/artifacts/frames/` dengan AI vision, lalu cek console, network, canvas, dan snapshot yang sama di Chrome DevTools.
+4. Perbaiki temuan objektif pada owner/root cause dan ulangi cek relevan. Jangan update bukti atau melemahkan assertion untuk menyembunyikan regresi.
+5. Handoff manusia hanya untuk rasa seni/narasi ambigu atau alat yang benar-benar terblokir; sebutkan cek dan bukti yang belum selesai.

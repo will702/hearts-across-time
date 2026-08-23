@@ -1,0 +1,12 @@
+{
+  "name": "hearts-across-time-qa",
+  "private": true,
+  "scripts": {
+    "qa": "playwright test",
+    "qa:smoke": "playwright test --grep @smoke",
+    "qa:visual": "playwright test --grep @visual"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

@@ -140,11 +140,11 @@ function loopHint() {
 }
 const CHALLENGE_CONF = {
   // P1: mekanik berbeda per era — dodge sorot 1944 • tune sinyal 1968 • balance krio 1999
-  '1944': { mode: 'dodge', x: 700, title: 'PENYEBERANGAN LAMPU SOROT', left: 'Alihkan sorot dari medis terluka', right: 'Putus daya dan menyeberang langsung', targets: [.24, .68, .43] },
+  '1944': { mode: 'dodge', x: worldObjectDef('1944', 'spotlight').x, title: 'PENYEBERANGAN LAMPU SOROT', left: 'Alihkan sorot dari medis terluka', right: 'Putus daya dan menyeberang langsung', targets: [.24, .68, .43] },
   '1968': { mode: 'tune', x: 500, title: 'PENYETELAN SINYAL', left: 'Ikuti frekuensi panggilan Arthur', right: 'Isolasi pembawa data formula', targets: [.3, .72, .48] },
   '1999': { mode: 'balance', x: 590, title: 'STABILISASI KRIO', left: 'Dahulukan tanda vital Arthur', right: 'Dahulukan kemurnian serum', targets: [.66, .34, .58] }
 };
-const WATCH_X = 420, WATCH_START = [.68, .08, .39]; // arloji ditemukan saat traversal Babak 1, sebelum lampu sorot
+const WATCH_X = worldObjectDef('1944', 'watch').x, WATCH_START = [.68, .08, .39]; // posisi arloji dimiliki definisi dunia 1944
 function randomWatchTargets() { return WATCH_START.map(start => { let v = start; for (let n = 0; n < 12 && Math.min(Math.abs(v - start), 1 - Math.abs(v - start)) < .14; n++)v = Math.round((.04 + Math.random() * .92) * 48) / 48; return v; }); }
 function watchTargets() { if (!Array.isArray(S.watchTargets) || S.watchTargets.length !== 3) S.watchTargets = randomWatchTargets(); return S.watchTargets; }
 const ROSE_X = 285, ROSE_TARGET = { x: 355, y: 148, w: 250, h: 214 }; // botol pecah ditemukan sebelum penyetelan sinyal Babak 2
@@ -203,7 +203,7 @@ function missChallenge(ch) {
 }
 function updateChallenge(dt) {
   const ch = G.challenge, cfg = CHALLENGE_CONF[ch.era]; ch.t += dt; if (ch.feedbackT > 0) ch.feedbackT -= dt;
-  if (ch.stage === 'success') { ch.successT += dt; if (ch.successT > 1.05) { G.state = 'walk'; G.player.x = cfg.x + 65; G.challenge = null; G.fadeIn = .28; } return; }
+  if (ch.stage === 'success') { ch.successT += dt; if (ch.successT > 1.05) { G.state = 'walk'; G.player.x = ch.era === '1944' ? worldObjectDef('1944', 'spotlight').resumeX : cfg.x + 65; G.challenge = null; G.fadeIn = .28; } return; }
   if (ch.stage === 'choose') {
     if (keyOnce('ArrowLeft') || keyOnce('a') || keyOnce('A')) { ch.sel = 0; SFX.select(); }
     if (keyOnce('ArrowRight') || keyOnce('d') || keyOnce('D')) { ch.sel = 1; SFX.select(); }
@@ -268,7 +268,7 @@ function startWatchRepair() {
 }
 function updateWatchRepair(dt) {
   const wr = G.watchRepair; if (!wr) return; wr.t += dt; if (wr.feedbackT > 0) wr.feedbackT -= dt;
-  if (wr.stage === 'success') { wr.successT += dt; if (wr.successT > 1.15) { G.state = 'walk'; G.player.x = WATCH_X + 58; G.watchRepair = null; G.fadeIn = .24; } return; }
+  if (wr.stage === 'success') { wr.successT += dt; if (wr.successT > 1.15) { G.state = 'walk'; G.player.x = worldObjectDef('1944', 'watch').resumeX; G.watchRepair = null; G.fadeIn = .24; } return; }
   let d = 0; if (keys['ArrowLeft'] || keys['a'] || keys['A']) d--; if (keys['ArrowRight'] || keys['d'] || keys['D']) d++;
   if (d) wr.angles[wr.ring] = (wr.angles[wr.ring] + d * dt * (wr.assist ? .28 : .42) + 1) % 1;
   let lock = advHit(), tapLock = false; if (ptr.tap) {
@@ -344,16 +344,43 @@ function updatePhotoPuzzle(dt) {
   if (ptr.down && pp.drag >= 0) { const p = pp.pieces[pp.drag]; p.ox = ptr.x - pp.dx; p.oy = ptr.y - pp.dy; } if (pp.wasDown && !ptr.down && pp.drag >= 0) { const i = pp.drag; pp.drag = -1; photoTryPlace(pp, i); } pp.wasDown = ptr.down;
 }
 function startWalk(era) {
-  G.era = era; G.state = 'walk'; G.zoom = G.zt = 1; const cfg = ERA_CONF[era];
+  G.era = era; G.state = 'walk'; G.zoom = G.zt = 1; const cfg = ERA_CONF[era], world = WORLD_DEFS[era];
   if (era === '1944') watchTargets(); // target baru dibuat saat Babak 1 dimulai, lalu dipertahankan oleh autosave siklus
   G.echoSeg = 0; G.echoT = 0; G.echoRec = []; // P2: mulai rekam jejak untuk gema loop berikutnya
   G.walk = {
-    era, len: cfg.len, arX: cfg.arX, ar: era === '1968' ? (S.routeB1 === 'A' ? 'buron' : 'dewasa') : cfg.ar, node: cfg.node, hot: null, watchHot: false, roseHot: false, gemHot: false, photoHot: false, diaryHot: false, diaryRead: era !== '1968',
+    era, len: world ? world.width : cfg.len, arX: world ? worldObjectDef(era, 'arthur').x : cfg.arX, ar: era === '1968' ? (S.routeB1 === 'A' ? 'buron' : 'dewasa') : cfg.ar, node: cfg.node, hot: null, watchHot: false, roseHot: false, gemHot: false, photoHot: false, diaryHot: false, diaryRead: era !== '1968', prompt: '', promptTouch: '',
     cap: era === '1968' ? (S.routeB1 === 'A' ? 'BABAK 2 — BUNKER BAWAH TANAH, 1968' : 'BABAK 2 — LABORATORIUM MILITER, 1968') : cfg.cap
   };
-  G.player.x = 90; G.player.facingRight = true; G.player.vx = 0; G.player.stride = 0; G.player.turnT = 0; G.player.acc = 0; G.diary = null; G.caption = G.walk.cap; G.captionT = 3.2; parts.length = 0;
+  G.player.x = world ? world.spawn.x : 90; G.player.y = world ? world.spawn.y : GROUND; G.player.facingRight = true; G.player.vx = 0; G.player.stride = 0; G.player.turnT = 0; G.player.acc = 0; G.diary = null; G.caption = G.walk.cap; G.captionT = 3.2; parts.length = 0;
+  HAT_WORLD.enter(era);
   setAmbience(cfg.amb);
   saveCycle(); // autosave, termasuk hasil mini-game per siklus
+}
+
+function openLore(id) {
+  SAVE.inspected[id] = 1;
+  if (loreFoundCount() >= LORE_IDS.length && !SAVE.loreToastDone) {
+    SAVE.loreToastDone = 1; persistSave(); SFX.chime();
+    G.lore = { lines: ['[ Kelima jejak kisah Arthur kini lengkap di ingatanmu — peti obat, suar, foto sobek, pita "АРТУР-1", log kapsul berembun. ]',
+      '[ Ada getar halus di udara... seakan lingkaran waktu ini mulai mengenali dirimu sedikit lebih dalam. ]'], i: 0, prog: 0, popT: 0 };
+  }
+  else { persistSave(); SFX.select(); G.lore = { lines: LORE[id], i: 0, prog: 0, popT: 0 }; }
+}
+function startEraDialog() {
+  ECHO.cur[echoKey()] = G.echoRec; G.state = 'dialog'; G.camTarget = clamp(G.walk.arX - 640, 0, G.walk.len - W);
+  D.arKind = G.walk.ar; D.arExpr = 'neutral'; D.elExpr = 'neutral'; startNode(G.walk.node);
+}
+function updatePhysicsWalk1944(dt) {
+  const action = HAT_WORLD.update(dt), p = G.player;
+  G.echoT += dt; G.segT = (G.segT || 0) + dt;
+  if (G.echoT >= .12) { G.echoT -= .12; if (G.echoRec.length < 600) G.echoRec.push(p.x); }
+  G.camTarget = clamp(p.x - 300 + clamp(p.vx * .22, -75, 75), 0, G.walk.len - W); G.cam = lerp(G.cam, G.camTarget, 1 - Math.pow(.001, dt));
+  spawnParts('1944'); AU.boomTimer -= dt; if (AU.boomTimer <= 0) { AU.boomTimer = 6 + Math.random() * 7; G.skyFlash = 1; noise(1.4, 70, .14); }
+  if (!action) return;
+  if (action.type === 'watchrepair') startWatchRepair();
+  else if (action.type === 'challenge') startChallenge();
+  else if (action.type === 'lore') { openLore(action.id); G.walk.hot = null; }
+  else if (action.type === 'dialog') startEraDialog();
 }
 function startEndCard() { G.state = 'endcard'; G.zoom = G.zt = 1; G.endCard = { t: 0 }; SFX.chime(); setAmbience('1999'); setSong('end'); duckMusic(1, 1.2); SAVE.game = null; persistSave(); }
 function endingPuzzleKey(kind) { if (kind !== 'loop') return 'true'; if (D.node === 'r3f') return 'rebut'; if (D.node === 'paradox') return 'paradox'; return S.routeB2 === 'A1' ? 'A1' : S.routeB2 === 'B1' ? 'B1' : S.routeB2 === 'B2' ? 'B2lock' : null; }
@@ -776,6 +803,7 @@ function tszIdx() { const i = TSZ.indexOf(OPTS.textScale); return i < 0 ? 0 : i;
 // jeda: beku kan state + musik/ambience turun otomatis (naik lagi saat lanjut)
 function setPaused(on) {
   if (G.paused === on) return; G.paused = on;
+  HAT_WORLD.setPaused(on);
   duckMusic(on ? .12 : .85, on ? .3 : .8);
   if (AU.ambBus && AU.ctx) {
     const t = AU.ctx.currentTime; AU.ambBus.gain.cancelScheduledValues(t); AU.ambBus.gain.setValueAtTime(AU.ambBus.gain.value, t);
@@ -896,6 +924,7 @@ function update(dt) {
         }
         break;
       }
+      if (G.era === '1944') { updatePhysicsWalk1944(dt); break; }
       const p = G.player; let dir = 0;
       if (keys['ArrowRight'] || keys['d'] || keys['D']) dir += 1;
       if (keys['ArrowLeft'] || keys['a'] || keys['A']) dir -= 1;
@@ -915,11 +944,6 @@ function update(dt) {
       p.x = clamp(p.x + p.vx * dt, 64, G.walk.len - 40);
       G.echoT += dt; G.segT = (G.segT || 0) + dt;
       if (G.echoT >= .12) { G.echoT -= .12; if (G.echoRec.length < 600) G.echoRec.push(p.x); } // P2: sampel jejak ±8/detik (maks 72 dtk)
-      // arloji berada di dunia 1944, bukan pada monolog pembuka; wajib diperbaiki sebelum lanjut
-      const needWatch = G.era === '1944' && !S.watchRepaired;
-      if (needWatch && p.x > WATCH_X - 34) { p.x = WATCH_X - 34; if (p.vx > 0) p.vx = 0; }
-      G.walk.watchHot = needWatch && Math.abs(p.x - (WATCH_X - 34)) < 66;
-      if (G.walk.watchHot && (keyOnce('ArrowDown') || keyOnce('s') || keyOnce('S') || advHit() || (ptr.tap && Math.abs(ptr.x - (WATCH_X - G.cam)) < 75) || touchActHit())) { ptr.tap = false; startWatchRepair(); break; }
       // Botol mawar adalah temuan dunia Babak 2: perjalanan tertahan sampai kepingannya kembali utuh.
       const needRose = G.era === '1968' && !S.roseRepaired;
       if (needRose && p.x > ROSE_X - 34) { p.x = ROSE_X - 34; if (p.vx > 0) p.vx = 0; }
@@ -966,22 +990,9 @@ function update(dt) {
       const FEh = G.era === '1968' ? '1968' + S.routeB1 : G.era;
       const hs = (HOTSPOTS[FEh] || []).find(h => !SAVE.inspected[h.id] && Math.abs(p.x - h.x) < 52);
       G.walk.hot = hs || null;
-      if (hs && (keyOnce('ArrowDown') || keyOnce('s') || keyOnce('S') || advHit() || (ptr.tap && Math.hypot(ptr.x - (hs.x - G.cam), ptr.y - (GROUND - 14)) < 40) || touchActHit())) {
-        ptr.tap = false;
-        SAVE.inspected[hs.id] = 1;
-        if (loreFoundCount() >= LORE_IDS.length && !SAVE.loreToastDone) { // P3: kelima jejak lengkap → hadiah naratif sekali seumur save
-          SAVE.loreToastDone = 1; persistSave(); SFX.chime();
-          G.lore = {
-            lines: ['[ Kelima jejak kisah Arthur kini lengkap di ingatanmu — peti obat, suar, foto sobek, pita "АРТУР-1", log kapsul berembun. ]',
-              '[ Ada getar halus di udara... seakan lingkaran waktu ini mulai mengenali dirimu sedikit lebih dalam. ]'], i: 0, prog: 0, popT: 0
-          };
-        }
-        else { persistSave(); SFX.select(); G.lore = { lines: LORE[hs.id], i: 0, prog: 0, popT: 0 }; }
-        G.walk.hot = null; break;
-      }
+      if (hs && (keyOnce('ArrowDown') || keyOnce('s') || keyOnce('S') || advHit() || (ptr.tap && Math.hypot(ptr.x - (hs.x - G.cam), ptr.y - (GROUND - 14)) < 40) || touchActHit())) { ptr.tap = false; openLore(hs.id); G.walk.hot = null; break; }
       if (p.x > G.walk.arX - 175) {
-        ECHO.cur[echoKey()] = G.echoRec; G.state = 'dialog'; G.camTarget = clamp(G.walk.arX - 640, 0, G.walk.len - W);
-        D.arKind = G.walk.ar; D.arExpr = 'neutral'; D.elExpr = 'neutral'; startNode(G.walk.node);
+        startEraDialog();
       }
       break;
     }

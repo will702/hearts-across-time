@@ -16,9 +16,11 @@ Tidak ada `import` atau `export`. `index.html` memuat file berikut secara beruru
 | 4 | `render/world.js` | Latar/parallax, props, interactable visual, `POSES`, `HOTSPOTS`, `LORE`, `parts`, paper UI primitives, grading, post-FX, dan fallback foreground |
 | 5 | `ui/dialog.js` | `WHO`, `wrap()`, bubble/narator, choice, dan diary popup |
 | 6 | `data/story.js` | `NODES`, `N()`, `say()`, pilihan/rute, ending ops, dan `arthurDiary()`; sumber naratif adalah `FIRST_IDEA.md` (sebelumnya `FIKS IDE.md`) |
-| 7 | `game/flow.js` | `D`, runner operasi cerita, `G.state` update, traversal, input consumption, interactable, mini-game, save siklus, pause, ending, dan bonus |
-| 8 | `render/screens.js` | Komposisi scene/HUD/screen, renderer mini-game, `render()`, pause/backlog/mute UI |
-| 9 | `game/main.js` | `HeartsGameScene`, `PHASER_CONFIG`, `HAT_GAME`, hook `POST_RENDER`, intro video, visibility/audio lifecycle, dan `window.__HAT` |
+| 7 | `data/worlds.js` | `WORLD_DEFS` dan geometri/sensor/action data-driven untuk traversal Arcade Physics |
+| 8–11 | `game/{world-object,surface-system,interaction-system,player-controller}.js` | Body/surface statis, sensor proximity, input interaksi, sinkronisasi `G.player`, dan facade `HAT_WORLD` |
+| 12 | `game/flow.js` | `D`, runner operasi cerita, `G.state` update, traversal, input consumption, interactable, mini-game, save siklus, pause, ending, dan bonus |
+| 13 | `render/screens.js` | Komposisi scene/HUD/screen, renderer mini-game, `render()`, pause/backlog/mute UI |
+| 14 | `game/main.js` | `HeartsGameScene`, Arcade config, `PHASER_CONFIG`, `HAT_GAME`, hook `POST_RENDER`, intro video, lifecycle, `window.__HAT`, dan bridge `?qa=1` |
 
 ## 🔗 Dependency penting
 
@@ -28,6 +30,7 @@ Tidak ada `import` atau `export`. `index.html` memuat file berikut secara beruru
 - `world.js` memakai runtime/assets dan menyediakan global yang dikonsumsi flow/screens. Referensi seperti `WATCH_X` baru dievaluasi saat fungsi dipanggil setelah `flow.js` termuat.
 - `dialog.js` memakai primitive kertas `sketchRR()`, `inkTag()`, dan `PAPER_COL` dari world.
 - `story.js` membuat callback yang memutasi `S` ketika choice dijalankan oleh flow.
+- `worlds.js` mendefinisikan traversal fisika 1944; empat modul berikutnya membentuk `HAT_WORLD`, tetapi action cerita tetap dikembalikan ke `flow.js`.
 - `flow.js` mengonsumsi `NODES`, world globals, input, audio, save, dan assets; file ini adalah owner transisi gameplay.
 - `screens.js` mengonsumsi seluruh layer sebelumnya. `render()` memilih cabang dari `G.state` dan menggambar langsung ke `ctx`.
 - `main.js` harus terakhir karena `update()` dan `render()` harus sudah tersedia ketika Phaser dibuat.
@@ -44,6 +47,7 @@ Tidak ada `import` atau `export`. `index.html` memuat file berikut secara beruru
 | Save/load | `core/runtime.js::{SAVE,persistSave,normalizeRun}` | `game/flow.js::saveCycle()` dan `titleMenu()` |
 | Story data | `data/story.js` | `FIRST_IDEA.md` untuk GDD; `DIALOG.md` sebagai referensi rinci |
 | Phaser lifecycle | `game/main.js::HeartsGameScene` | flow update dan screen render |
+| World fisika 1944 | `data/worlds.js`, `game/player-controller.js::HAT_WORLD` | `flow.js` tetap memproses action cerita |
 
 ## 🛠️ Lokasi perubahan umum
 
@@ -51,7 +55,7 @@ Tidak ada `import` atau `export`. `index.html` memuat file berikut secara beruru
 | --- | --- |
 | Tambah/edit dialog atau choice | `data/story.js`; cocokkan `FIRST_IDEA.md` dan `DIALOG.md` |
 | Tambah/edit ending | `data/story.js`, lalu kontrak ending di `game/flow.js` dan label visual di `render/screens.js` |
-| Tambah interactable/lore | Konstanta dan logic di `game/flow.js`; visual/HOTSPOTS di `render/world.js` |
+| Tambah interactable/lore | Untuk 1944 gunakan `data/worlds.js`; era legacy masih memakai `flow.js` dan `render/world.js::HOTSPOTS` |
 | Tambah mini-game | State/start/update di `game/flow.js`; renderer di `render/screens.js`; reset/save/pause sesuai kebutuhan |
 | Ubah gerak atau kontrol | Capture mentah di `core/runtime.js`; konsumsi di `game/flow.js`; touch affordance di `render/screens.js` |
 | Tambah aset | `core/assets.js::ASSET_MANIFEST`, lalu jalur PNG dan fallback prosedural di renderer pemilik |

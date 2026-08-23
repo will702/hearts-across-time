@@ -15,7 +15,7 @@ function drawChars(c, mode, cam) {
   const bnc = w => speaking === w ? Math.exp(-4.5 * G.speak.t) * Math.sin(13 * G.speak.t) * 3.5 : 0; // pantul halus karakter yang bicara
   const breathE = (mode !== 'walk' || !p.moving) ? Math.sin(T * 1.6) * 1.1 : 0; // tarikan napas idle
   const elScreenX = mode === 'walk' ? p.x - cam : (mode === 'prologue' ? W * 0.42 : (G.walk ? G.walk.arX - 190 - cam : W * 0.42));
-  c.save(); c.translate(elScreenX, GROUND - bnc('elena') + breathE); c.scale(mode === 'dialog' ? 1.16 : 1.1, mode === 'dialog' ? 1.16 : 1.1); groundShadow(c, p.moving && mode === 'walk' ? .82 : 1);
+  c.save(); c.translate(elScreenX, (mode === 'walk' ? p.y || GROUND : GROUND) - bnc('elena') + breathE); c.scale(mode === 'dialog' ? 1.16 : 1.1, mode === 'dialog' ? 1.16 : 1.1); groundShadow(c, p.moving && mode === 'walk' ? .82 : 1);
   if (mode === 'walk' && p.turnT > 0) c.scale(1 - .18 * Math.sin(Math.PI * (1 - clamp(p.turnT / .14, 0, 1))), 1); // squash berganti arah
   if (!p.facingRight && mode === 'walk') c.scale(-1, 1);
   const pz = POSES[D.node];
@@ -996,7 +996,7 @@ function render() {
         sketchRR(ctx, TOUCH_ACT.x - TOUCH_ACT.w / 2, TOUCH_ACT.y - TOUCH_ACT.h / 2, TOUCH_ACT.w, TOUCH_ACT.h, 9, { shadow: false });
         ctx.save(); ctx.translate(TOUCH_ACT.x, TOUCH_ACT.y); ctx.scale(pu, pu);
         ctx.fillStyle = '#94342E'; ctx.font = 'bold 13px ' + F_UI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(G.walk.challengeHot ? '▼ AKTIFKAN' : G.walk.watchHot ? 'SPACE — ARLOJI' : G.walk.roseHot ? 'SPACE — BOTOL' : G.walk.gemHot ? 'SPACE — PERMATA' : G.walk.photoHot ? 'SPACE — FOTO' : G.walk.diaryHot ? 'SPACE — BUKU' : 'SPACE — PERIKSA', 0, 1);
+        ctx.fillText(G.walk.promptTouch || (G.walk.challengeHot ? '▼ AKTIFKAN' : G.walk.watchHot ? 'SPACE — ARLOJI' : G.walk.roseHot ? 'SPACE — BOTOL' : G.walk.gemHot ? 'SPACE — PERMATA' : G.walk.photoHot ? 'SPACE — FOTO' : G.walk.diaryHot ? 'SPACE — BUKU' : 'SPACE — PERIKSA'), 0, 1);
         ctx.restore(); ctx.textBaseline = 'alphabetic';
       }
     }
