@@ -161,7 +161,7 @@ const G={state:'load',t:0,player:{x:90,phase:0,moving:false,face:1,facingRight:t
   vortex:null,glitch:null,flash:0,whiteFlash:0,skyFlash:0,
   era:'2088',shakeT:0,shakeA:0,endCard:null,fadeIn:0,prologueDone:false,
   zoom:1,zt:1,zwx:W/2, // G1 kamera emosional: zoom aktual / target / fokus dunia-X pembicara
-  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,titleSel:1,titleConfirm:false,challenge:null,watchRepair:null,rosePuzzle:null,gemAlign:null,photoPuzzle:null,tutorialFade:0,itemToast:null,gameIntro:null,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null,finalLabIntro:null,puzzleAward:null,bonus:null,bonusEnd:null};
+  paused:false,pSel:0,pulse:null,titleT:0,titleReady:false,titleSel:1,titleConfirm:false,challenge:null,watchRepair:null,rosePuzzle:null,gemAlign:null,photoPuzzle:null,tutorialFade:0,itemToast:null,gameIntro:null,prologueT:0,warIntro:null,bunkerIntro:null,labIntro:null,finalLabIntro:null,puzzleAward:null,bonus:null,bonusEnd:null,bonusDiff:null,bonusRose:null,bonusDinner:null,bonusCats:null,bonusChem:null};
 let T=0; // waktu global detik
 
 /* ---------- Opsi & penyimpanan (localStorage) ---------- */
