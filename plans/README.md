@@ -1,5 +1,9 @@
 # Animation Plans — Hearts Across Time
 
+> **ARSIP HISTORIS:** Dokumen 001–015 merekam keputusan dan pass pada saat dibuat. Status
+> `DONE` bukan bukti bahwa detailnya masih cocok dengan checkout sekarang. Untuk arsitektur,
+> nilai, path, dan perilaku aktif, selalu ikuti `index.html`, `src/`, `AGENTS.md`, dan `docs/`.
+
 | # | Title | Severity | Status |
 |---|-------|----------|--------|
 | 001 | Weighty walking: acceleration, speed-driven stride, turn squash | HIGH | DONE |

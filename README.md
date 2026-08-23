@@ -1,7 +1,7 @@
 # ⏳ Hearts Across Time — Break The Loop
 
 > 2D Side-Scroller Narrative Puzzle / Psychological Time-Loop • Phaser 4 + Canvas 2D
-> Dibangun untuk **COMPFEST Indie Game Jam** — implementasi penuh dari *Game Design Document* `FIKS IDE.md`.
+> Dibangun untuk **COMPFEST Indie Game Jam** — implementasi penuh dari *Game Design Document* `FIRST_IDEA.md` (sebelumnya `FIKS IDE.md`).
 
 ## ▶ Cara Menjalankan
 
@@ -50,7 +50,7 @@ Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungs
 | Tas barang lintas babak + ramuan akhir | ✔ Arloji rusak, bunga abadi, permata air, dan foto Arthur tersimpan sepanjang siklus; arloji membuka keputusan True Ending |
 | Koleksi enam pecahan ending + babak bonus | ✔ Hadiah unik di setiap ending, puzzle permanen 3×2, menu terkunci sampai lengkap, lalu epilog eksplorasi kota pulih |
 | Skrip Yarn Spinner | ✔ Seluruh dialog dimigrasi verbatim (node `prologue … true_end`) |
-| Asset manifest (4 sprite chibi + 3 parallax + bubble) | ✔ Semua digambar **prosedural via kode** — nol aset eksternal |
+| Asset manifest (sprite, parallax, ilustrasi, font, audio) | ✔ Aset opsional dimuat dari `assets/`; jalur prosedural/senyap tetap menangani file yang absen |
 | Balon kata 7-Days style | ✔ Bubble putih + ekor + chip nama (Elena merah rose / Arthur slate) |
 
 ## 🎨 Catatan Aset
@@ -143,8 +143,8 @@ jangkar bawah, angka kurung = faktor parallax. Langit & grading tetap prosedural
 
 ### Deploy itch.io
 
-Zip **wajib** berisi `index.html`, `src/`, `vendor/`, dan `assets/`. `legacy-canvas.html`
-opsional dan hanya dipakai sebagai pembanding QA.
+Zip **wajib** berisi `index.html`, `src/`, `vendor/`, dan `assets/`. File historis
+`legacy-canvas.html` dan `phaser-demo.html` telah dihapus; keduanya bukan bagian deploy atau referensi aktif.
 
 ## ⚙️ Arsitektur Phaser modular
 
@@ -162,9 +162,10 @@ Kode dipisah berdasarkan tanggung jawab:
 - `src/render/` — dunia, efek, cover/onboarding, HUD, dan layar ending.
 - `src/ui/` — dialog, narator, dan pilihan.
 
-Rincian kontrak modul ada di `src/README.md`. `phaser-demo.html` tetap tersedia
-sebagai eksperimen display-list native untuk scene jalan 2088, sedangkan
-`legacy-canvas.html` adalah snapshot game sebelum entry point berpindah ke Phaser.
+Rincian kontrak modul ada di `src/README.md`, arsitektur runtime di
+`docs/ARCHITECTURE.md`, dan resep perubahan agen di `docs/AGENT_WORKFLOWS.md`.
+Eksperimen `phaser-demo.html` dan snapshot `legacy-canvas.html` hanya tersisa di riwayat git
+dan tidak boleh mengalahkan source produksi.
 
 ## 🎵 Musik & Audio (v2 — Leitmotif System)
 
@@ -259,27 +260,29 @@ Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan,
   lalu menyusun empat robekan foto Elena–Arthur dan mengelem tiga sambungannya sebelum dapat menemui Arthur
 - **Penyerahan foto pada True Ending**: foto yang diperbaiki tidak hanya menjadi ikon tas; Elena memberikannya kepada
   Arthur sebagai kenangan terakhir mereka sebelum kembali ke 2088
-- **Pacing level**: segmen jalan dibedakan per era (1944: 1800px pendekatan tegang · 1968: 1500 · 1999: 1300 rapat)
+- **Pacing level**: segmen jalan dibedakan per era (`ERA_CONF`: 1944 1450px · 1968 1200px · 1999 1100px)
 - **Kamera look-ahead** 22% kecepatan (di atas exp-smoothing) + bob halus indikator `▼ ENTER`
 - **Mixer persepsi**: slider volume kini lewat kurva `v^2.2` (dB-feel) untuk MASTER/MUSIK/EFEK+ambience
 
-## 🛠 Struktur Kode (dalam `index.html`)
+## 🛠 Struktur Kode Modular
 
 ```
-PAL / ASSET_MANIFEST — palet warna terpusat + daftar aset PNG opsional (fallback prosedural)
-AS / drawCharSheet / bgLayerImg — loader aset + penggambar spritesheet/parallax PNG
-groundShadow   — bayangan lembut kaki karakter
-drawElena / drawArthur — sprite chibi prosedural (ekspresi: neutral/smile/sad/shock/angry/mad/warm + air mata/keringat)
-bg1944 / bg1968 / bg1999 / bg2088 — parallax 3-layer deterministik (seeded rand) + searchlight/god rays/neon/api
-NODES          — seluruh dialog & percabangan (mirror dari file .yarn) + varian déjà-vu sadar-loop
-LOG / drawLog  — backlog 30 baris terakhir (TAB/B); markEnd + END_TOTAL — penghitung ending n/6 di judul
-setPaused / pauseItems — jeda: ducking musik & ambience, slider MASTER/MUSIK/EFEK, ukuran teks, reduceMotion
-SONGS / MUS    — sequencer musik leitmotif (pad/bass/musicbox/bell/tick + delay & reverb)
-SFX / setAmbience / setSong / duckMusic — audio prosedural WebAudio (SFX + ambience + musik per era)
-update/render  — state machine: load → title → tutorial → prologue → intro era → walk → dialog → vortex → glitch → endcard
+index.html       — entry point tipis dan urutan classic-script
+src/core/        — runtime, input, audio, state, save, manifest dan loader aset
+src/data/        — NODES dan data cerita
+src/game/        — dialogue runner, state machine, gameplay flow, save siklus, bootstrap Phaser
+src/render/      — karakter, dunia, fallback prosedural, HUD dan seluruh screen
+src/ui/          — bubble, narator, choice dan diary popup
 ```
 
-## 🧪 Sudah Diuji Otomatis (Playwright headless)
+Semua modul berbagi global classic-script; urutan `<script>` di `index.html` adalah dependency graph.
+Lihat `src/README.md` untuk owner dan dependency setiap file.
+
+## 🧪 Riwayat QA Developer
+
+Catatan berikut adalah hasil pass historis, bukan jaminan checkout saat ini. Folder `qa/`
+di-gitignore dan skrip yang disebut dapat tidak tersedia. Sesuai kebijakan proyek, developer manusia
+menentukan serta menjalankan QA, screenshot, inspeksi visual, console/404 check, dan playtest terbaru.
 
 - Rute golden penuh: Prologue → Empati×2 → 1B → 2B2 → Ikhlas → **True Ending** (0 error)
 - Rute gagal: Logika×2 → 1A → 2A1 → TIMELINE COLLAPSE → **glitch loop** → kembali ke 1944 dengan intro loop
