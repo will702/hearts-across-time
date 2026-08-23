@@ -7,6 +7,7 @@ import { getArthurDiary } from '../narrative/storyScript';
 export type DiarySceneData = {
   run: NarrativeState;
   onComplete: () => void;
+  onCancel?: () => void;
 };
 
 export class DiaryScene extends Phaser.Scene {
@@ -45,7 +46,7 @@ export class DiaryScene extends Phaser.Scene {
     } else if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.a)) {
       this.prevPage();
     } else if (Phaser.Input.Keyboard.JustDown(this.keys.esc)) {
-      this.close();
+      this.cancel();
     }
   }
 
@@ -89,7 +90,7 @@ export class DiaryScene extends Phaser.Scene {
 
     this.add.text(GAME_WIDTH / 2, 435, 'TUTUP CATATAN (ESC)', {
       backgroundColor: '#2b1d13', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 16, y: 8 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.close());
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.cancel());
   }
 
   private showPage(page: number): void {
@@ -104,7 +105,7 @@ export class DiaryScene extends Phaser.Scene {
       this.soundManager?.playPaperFlip();
       this.showPage(this.currentPage + 1);
     } else {
-      this.close();
+      this.complete();
     }
   }
 
@@ -115,10 +116,17 @@ export class DiaryScene extends Phaser.Scene {
     }
   }
 
-  private close(): void {
+  private complete(): void {
     this.soundManager?.playSelect();
+    this.diaryData.run.diaryRead = true;
     this.scene.stop();
     this.diaryData.onComplete();
+  }
+
+  private cancel(): void {
+    this.soundManager?.playSelect();
+    this.scene.stop();
+    this.diaryData.onCancel?.();
   }
 
   private createInputHandlers(): void {

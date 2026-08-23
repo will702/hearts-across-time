@@ -1,3 +1,6 @@
+import type { EndingKey } from '../systems/SaveSystem';
+import { LORE_LINES, type LoreId } from './lore';
+
 export type Expression = 'neutral' | 'smile' | 'sad' | 'shock' | 'angry' | 'mad' | 'warm' | 'happy' | 'closed';
 export type CharacterId = 'narrator' | 'elena' | 'muda' | 'dewasa' | 'buron' | 'tua';
 
@@ -49,7 +52,7 @@ export type StoryVortexOp = {
 
 export type StoryEndingOp = {
   t: 'ending';
-  kind: 'loop' | 'true';
+  kind: EndingKey;
 };
 
 export type StoryOp =
@@ -72,6 +75,7 @@ export type NarrativeState = {
   roseRepaired?: boolean;
   gemAligned?: boolean;
   photoRepaired?: boolean;
+  diaryRead?: boolean;
   challenges?: Partial<Record<string, string | boolean | null>>;
   inventory?: Record<string, number>;
 };
@@ -143,7 +147,16 @@ export function getArthurDiary(state: NarrativeState): DiaryData {
 
 export type StoryNodeResolver = StoryOp[] | ((state: NarrativeState) => StoryOp[]);
 
+function loreNode(id: LoreId): StoryOp[] {
+  return LORE_LINES[id].map(text => say('narrator', text));
+}
+
 export const STORY_NODES: Record<string, StoryNodeResolver> = {
+  lore_crate: loreNode('lore_crate'),
+  lore_flare: loreNode('lore_flare'),
+  lore_photo: loreNode('lore_photo'),
+  lore_tape: loreNode('lore_tape'),
+  lore_clip: loreNode('lore_clip'),
   prologue: [
     say('narrator', 'Tahun 2088. Virus Crimson menyapu 99% populasi bumi.'),
     say('narrator', 'Arthur—kekasihku—menghembuskan napas terakhir di pelukanku pagi ini.'),
@@ -440,7 +453,7 @@ export const STORY_NODES: Record<string, StoryNodeResolver> = {
         say('tua', 'Aku... tidak pernah sempat menyelesaikan penawar itu...', 'sad'),
         say('elena', 'Tidak... jika tidak ada penawar, lalu bagaimana dengan 2088?!', 'shock'),
         say('narrator', '[ TIMELINE COLLAPSE: Masa depan musnah tanpa penawar. ]'),
-        { t: 'ending', kind: 'loop' },
+        { t: 'ending', kind: 'A1' },
       ];
     } else if (state.routeB2 === 'A2') {
       ops = [
@@ -466,7 +479,7 @@ export const STORY_NODES: Record<string, StoryNodeResolver> = {
         say('tua', 'Data yang kusebarkan ke publik justru disempurnakan oleh korporasi gelap menjadi racun pemusnah massal...', 'sad'),
         say('tua', 'Bukan perang yang membunuh masa depanmu... tapi kelalaianku.', 'sad'),
         say('narrator', '[ CORRUPTED TIMELINE: Virus 2088 justru tercipta lebih awal. ]'),
-        { t: 'ending', kind: 'loop' },
+        { t: 'ending', kind: 'B1' },
       ];
     } else if (state.routeB2 === 'B2') {
       if (state.logic > state.empathy) {
@@ -475,7 +488,7 @@ export const STORY_NODES: Record<string, StoryNodeResolver> = {
           say('tua', 'Tapi sepanjang hidupku, kau hanya memandangku sebagai pion alat laboratorium. Aku mengunci katupnya dengan DNA-ku sendiri.', 'mad'),
           say('tua', 'Masa depanmu yang dingin tidak layak untuk diselamatkan.', 'mad'),
           say('narrator', '[ TRAGIC FAILURE: Kebencian mengunci pintu keselamatan. ]'),
-          { t: 'ending', kind: 'loop' },
+          { t: 'ending', kind: 'B2lock' },
         ];
       } else {
         ops = [
@@ -529,7 +542,7 @@ export const STORY_NODES: Record<string, StoryNodeResolver> = {
   r3f: [
     say('tua', 'Kalau aku tidak bisa memilikimu, tak seorang pun di masa depan yang boleh hidup!', 'mad'),
     say('narrator', '[ TIMELINE COLLAPSE: Formula hancur oleh dendam. ]'),
-    { t: 'ending', kind: 'loop' },
+    { t: 'ending', kind: 'rebut' },
   ],
   paradox: [
     say('elena', 'Aku tidak bisa meninggalkanmu sendirian di era ini, Arthur! Masuklah ke kapsul bersamaku!', 'shock'),
@@ -537,7 +550,7 @@ export const STORY_NODES: Record<string, StoryNodeResolver> = {
     { t: 'fx', kind: 'boom' },
     say('elena', 'Mesin waktunya... menolak dua anomali biologis sekaligus?!', 'shock'),
     say('tua', 'Kita... terjebak dalam paradoks waktu selamanya...', 'sad'),
-    { t: 'ending', kind: 'loop' },
+    { t: 'ending', kind: 'paradox' },
   ],
   true_end: [
     say('elena', 'Arthur... terima kasih untuk seluruh hidup yang kau korbankan demi masa depanku.', 'sad'),

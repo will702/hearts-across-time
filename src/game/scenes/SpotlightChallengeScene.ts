@@ -55,7 +55,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.createBackground();
     this.createChooseUI();
     this.createInputHandlers();
-    this.createDustParticles();
+    if (!this.registry.get('reduceMotion')) this.createDustParticles();
   }
 
   update(_time: number, delta: number): void {
@@ -80,7 +80,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     }
 
     if (this.stage === 'play') {
-      const spd = this.assisted ? 145 : 190;
+      const spd = this.assisted ? 220 : 190;
       let dir = this.touchMove;
       if (this.keys) {
         if (this.keys.left.isDown || this.keys.a.isDown) dir -= 1;
@@ -101,7 +101,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
 
       const beamSpeed = this.assisted ? 0.62 : 0.95;
       const t = this.time.now / 1000;
-      this.beamWidth = this.assisted ? 145 : 110;
+      this.beamWidth = this.assisted ? 80 : 110;
       // Sinusoidal sweep with ease near edges
       this.beamX = 190 + ((Math.sin(t * beamSpeed) + 1) / 2) * 575;
 
@@ -129,6 +129,18 @@ export class SpotlightChallengeScene extends Phaser.Scene {
         this.onFinish();
       }
     }
+  }
+
+  snapshot(): Record<string, unknown> {
+    return {
+      minigame: 'spotlight',
+      stage: this.stage,
+      playerX: this.playerX,
+      beamX: this.beamX,
+      covers: COVERS,
+      misses: this.misses,
+      assisted: this.assisted,
+    };
   }
 
   private createBackground(): void {

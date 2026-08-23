@@ -2,10 +2,12 @@ import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState } from '../systems/SaveSystem';
+import { era1968Title } from '../world/era1968';
 
 export type VortexSceneData = {
   to: '1944' | '1968' | '1999' | '2088';
   rewind?: boolean;
+  intro?: boolean;
   run: RunState;
 };
 
@@ -28,7 +30,7 @@ export class VortexScene extends Phaser.Scene {
   }
 
   create(data: VortexSceneData): void {
-    this.vortexData = data;
+    this.vortexData = { ...data, intro: data.intro ?? true };
     this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'vortex');
     this.elapsed = 0;
@@ -36,6 +38,23 @@ export class VortexScene extends Phaser.Scene {
     this.soundManager?.playVortex(Boolean(data.rewind));
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x030206, 1);
+    if (this.textures.exists('time-vortex')) {
+      const art = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'time-vortex')
+        .setDisplaySize(GAME_WIDTH + 80, GAME_HEIGHT + 45)
+        .setAlpha(0.46);
+      if (!this.registry.get('reduceMotion')) {
+        this.tweens.add({
+          targets: art,
+          angle: { from: -1.5, to: 1.5 },
+          scaleX: art.scaleX * 1.025,
+          scaleY: art.scaleY * 1.025,
+          duration: 1600,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.inOut',
+        });
+      }
+    }
     this.tunnelGraphics = this.add.graphics();
 
     const title = data.rewind ? 'MEMUTAR KEMBALI PUSARAN WAKTU…' : 'MELOMPAT MELEWATI DIMENSI WAKTU…';
@@ -48,7 +67,7 @@ export class VortexScene extends Phaser.Scene {
       strokeThickness: 4,
     }).setOrigin(0.5);
 
-    const caption = ERA_CAPTIONS[data.to] || '';
+    const caption = data.to === '1968' ? era1968Title(data.run.routeB1) : (ERA_CAPTIONS[data.to] || '');
     this.captionText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 15, caption, {
       color: '#fff',
       fontFamily: 'Poppins, sans-serif',
@@ -60,7 +79,7 @@ export class VortexScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    this.elapsed += delta / 1000;
+    if (!this.registry.get('reduceMotion')) this.elapsed += delta / 1000;
     this.drawTunnel();
   }
 
@@ -83,13 +102,15 @@ export class VortexScene extends Phaser.Scene {
 
   private finish(): void {
     const to = this.vortexData.to;
+    const intro = Boolean(this.vortexData.intro);
 
     if (to === '1944') {
-      this.scene.start('Era1944Scene', { run: this.vortexData.run });
+      if (this.vortexData.rewind) this.vortexData.run.diaryRead = false;
+      this.scene.start('Era1944Scene', { run: this.vortexData.run, intro });
     } else if (to === '1968') {
-      this.scene.start('Era1968Scene', { run: this.vortexData.run });
+      this.scene.start('Era1968Scene', { run: this.vortexData.run, intro });
     } else if (to === '1999') {
-      this.scene.start('Era1999Scene', { run: this.vortexData.run });
+      this.scene.start('Era1999Scene', { run: this.vortexData.run, intro });
     } else {
       this.scene.start('TitleScene');
     }

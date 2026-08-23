@@ -115,6 +115,19 @@ export class CryoBalanceScene extends Phaser.Scene {
     }
   }
 
+  snapshot(): Record<string, unknown> {
+    return {
+      minigame: 'cryo',
+      stage: this.stage,
+      step: this.step,
+      vital: this.vit,
+      serum: this.ser,
+      targets: { vital: this.targetVit, serum: this.targetSer },
+      misses: this.misses,
+      assisted: this.assisted,
+    };
+  }
+
   private createBackground(): void {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040810, 0.95);
     this.add.text(GAME_WIDTH / 2, 38, 'STABILISASI KAPSUL KRIOGENIK 1999', {
@@ -210,7 +223,7 @@ export class CryoBalanceScene extends Phaser.Scene {
     this.gaugeGraphics.strokeLineShape(new Phaser.Geom.Line(targetX1, y1 - 28, targetX1, y1 + 28));
 
     // ECG wave line
-    const t = this.time.now / 1000;
+    const t = this.registry.get('reduceMotion') ? 0 : this.time.now / 1000;
     this.gaugeGraphics.lineStyle(1.5, 0xf43f5e, 0.7);
     this.gaugeGraphics.beginPath();
     for (let x = trackL; x <= trackR; x += 4) {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { archiveEchoTrails } from '../systems/LoopEchoTrail';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 export type GlitchSceneData = {
@@ -43,6 +44,7 @@ export class GlitchScene extends Phaser.Scene {
     const caseTitle = CASE_FILES[routeB2] || 'BERKAS KASUS — TIMELINE RUNTUH';
     const hint = getLoopHint(routeB2);
 
+    archiveEchoTrails(data.run);
     data.run.loop += 1;
     data.run.empathy = 0;
     data.run.logic = 0;

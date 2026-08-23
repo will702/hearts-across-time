@@ -1,31 +1,25 @@
-import {cpSync, statSync} from 'node:fs';
-import {resolve} from 'node:path';
+import {cpSync,mkdirSync} from 'node:fs';
+import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {defineConfig} from 'vitest/config';
+import {STATIC_ASSETS} from './src/game/assetManifest.ts';
 
 const root=fileURLToPath(new URL('.',import.meta.url));
 const output=resolve(root,'dist');
-const legacyDirs=['core','data','game','render','ui'];
-
-function copyLegacyRuntime(){
-  cpSync(resolve(root,'assets'),resolve(output,'assets'),{recursive:true});
-  cpSync(resolve(root,'vendor'),resolve(output,'vendor'),{recursive:true});
-  for(const dir of legacyDirs)cpSync(resolve(root,'src',dir),resolve(output,'src',dir),{
-    recursive:true,
-    filter:path=>statSync(path).isDirectory()||path.endsWith('.js')
-  });
+function copyNativeAssets(){
+  for(const asset of STATIC_ASSETS){
+    const destination=resolve(output,asset);
+    mkdirSync(dirname(destination),{recursive:true});
+    cpSync(resolve(root,asset),destination);
+  }
 }
 
 export default defineConfig({
   root,
+  base:'./',
   test:{include:['tests/unit/**/*.test.ts']},
   build:{
-    rollupOptions:{
-      input:{
-        index:resolve(root,'index.html'),
-        legacy:resolve(root,'legacy.html')
-      }
-    }
+    rollupOptions:{input:resolve(root,'index.html')}
   },
-  plugins:[{name:'copy-legacy-runtime',closeBundle:copyLegacyRuntime}]
+  plugins:[{name:'copy-native-assets',closeBundle:copyNativeAssets}]
 });

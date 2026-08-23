@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { closestPolylineProgress, pointInPolygon } from '../minigames/math';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 export type PhotoPuzzleData = {
@@ -17,9 +18,17 @@ type Piece = {
   homeY: number;
   placed: boolean;
   graphics?: Phaser.GameObjects.Graphics;
+  maskGraphics?: Phaser.GameObjects.Graphics;
+  image?: Phaser.GameObjects.Image;
 };
 
 const PHOTO_TARGET = { x: 270, y: 110, w: 420, h: 280 };
+
+const PHOTO_SEAMS: [number, number][][] = [
+  [[210, 0], [205, 18], [214, 34], [202, 52], [216, 70], [207, 88], [219, 107], [204, 126], [212, 140]],
+  [[0, 140], [24, 136], [45, 146], [68, 137], [91, 147], [115, 135], [139, 145], [164, 137], [187, 148], [212, 140], [235, 147], [258, 136], [282, 146], [305, 137], [330, 149], [353, 139], [378, 147], [399, 136], [420, 140]],
+  [[212, 140], [204, 160], [217, 180], [205, 201], [218, 222], [207, 242], [215, 261], [210, 280]],
+];
 
 const PHOTO_PIECES_DEF: { poly: [number, number][]; home: [number, number] }[] = [
   {
@@ -49,6 +58,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
   private draggingIndex = -1;
   private dragOffset = { x: 0, y: 0 };
   private glueLines = [false, false, false];
+  private glueTrace = [0, 0, 0];
   private glueSel = 0;
 
   private feedbackText?: Phaser.GameObjects.Text;
@@ -69,6 +79,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     this.selectedPiece = 0;
     this.draggingIndex = -1;
     this.glueLines = [false, false, false];
+    this.glueTrace = [0, 0, 0];
     this.glueSel = 0;
 
     this.createBackground();
@@ -123,12 +134,29 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     }
   }
 
-  private createBackground(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0a0807, 0.95);
+  snapshot(): Record<string, unknown> {
+    return {
+      minigame: 'photo',
+      stage: this.stage,
+      target: PHOTO_TARGET,
+      pieces: this.pieces.map(piece => ({ poly: piece.poly, ox: piece.ox, oy: piece.oy, placed: piece.placed })),
+      selectedPiece: this.selectedPiece,
+      glueLines: [...this.glueLines],
+      glueTrace: [...this.glueTrace],
+      glueSelected: this.glueSel,
+    };
+  }
 
-    this.add.text(GAME_WIDTH / 2, 38, 'REKATKAN FOTO ELENA & ARTHUR 1999', {
-      color: '#f6d57b', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
-      stroke: '#281408', strokeThickness: 5,
+  private createBackground(): void {
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x04060a, 0.9);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 836, 482, 0xf3eada, 0.98)
+      .setStrokeStyle(3, 0x6a4930);
+
+    this.add.text(GAME_WIDTH / 2, 58, 'KENANGAN YANG TEROBEK', {
+      color: '#94342e', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 88, '1999 • SUSUN EMPAT BAGIAN FOTO ELENA DAN ARTHUR', {
+      color: '#5a4a3c', fontFamily: 'Poppins, sans-serif', fontSize: '12px', letterSpacing: 1,
     }).setOrigin(0.5);
 
     this.add.rectangle(
@@ -136,9 +164,9 @@ export class PhotoPuzzleScene extends Phaser.Scene {
       PHOTO_TARGET.y + PHOTO_TARGET.h / 2,
       PHOTO_TARGET.w + 14,
       PHOTO_TARGET.h + 14,
-      0x1c1612,
-      0.9,
-    ).setStrokeStyle(2, 0xd4a373);
+      0xe5d6bf,
+      0.55,
+    ).setStrokeStyle(2, 0x6a4930, 0.5);
 
     if (this.textures.exists('elena-arthur-photo')) {
       this.photoImage = this.add.image(
@@ -151,7 +179,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     this.seamGraphics = this.add.graphics();
 
     this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, 'RAPIKAN EMPAT ROBEKAN FOTO (ANGKA 1-4 & ARAH + SPACE)', {
-      color: '#faedcd', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+      color: '#2b211a', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
 
     this.add.text(GAME_WIDTH / 2, 478, 'PERIKSA ROBEKAN / REKATKAN GARIS (SPACE / ENTER)', {
@@ -168,6 +196,12 @@ export class PhotoPuzzleScene extends Phaser.Scene {
   private initPieces(): void {
     this.pieces = PHOTO_PIECES_DEF.map((def) => {
       const g = this.add.graphics();
+      const maskGraphics = this.make.graphics({ x: 0, y: 0 });
+      const image = this.textures.exists('elena-arthur-photo')
+        ? this.add.image(PHOTO_TARGET.x + PHOTO_TARGET.w / 2, PHOTO_TARGET.y + PHOTO_TARGET.h / 2, 'elena-arthur-photo')
+          .setDisplaySize(PHOTO_TARGET.w, PHOTO_TARGET.h)
+        : undefined;
+      if (image) image.setMask(maskGraphics.createGeometryMask());
       return {
         poly: def.poly,
         ox: def.home[0],
@@ -176,6 +210,8 @@ export class PhotoPuzzleScene extends Phaser.Scene {
         homeY: def.home[1],
         placed: false,
         graphics: g,
+        maskGraphics,
+        image,
       };
     });
   }
@@ -189,7 +225,22 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     const posX = PHOTO_TARGET.x + p.ox;
     const posY = PHOTO_TARGET.y + p.oy;
 
-    p.graphics.fillStyle(p.placed ? 0xd4a373 : (isSelected ? 0xe9d8a6 : 0xbb9457), p.placed ? 0.92 : 0.78);
+    if (p.image && p.maskGraphics) {
+      p.image
+        .setPosition(PHOTO_TARGET.x + PHOTO_TARGET.w / 2 + p.ox, PHOTO_TARGET.y + PHOTO_TARGET.h / 2 + p.oy)
+        .setAlpha(p.placed ? 1 : (isSelected ? 0.98 : 0.82));
+      p.maskGraphics.clear().fillStyle(0xffffff).beginPath();
+      p.poly.forEach((pt, i) => {
+        if (i === 0) p.maskGraphics!.moveTo(posX + pt[0], posY + pt[1]);
+        else p.maskGraphics!.lineTo(posX + pt[0], posY + pt[1]);
+      });
+      p.maskGraphics.closePath().fill();
+    }
+
+    p.graphics.fillStyle(
+      p.image ? (isSelected ? 0xffffff : 0xd4a373) : (p.placed ? 0xd4a373 : (isSelected ? 0xe9d8a6 : 0xbb9457)),
+      p.image ? (isSelected ? 0.09 : 0.035) : (p.placed ? 0.92 : 0.78),
+    );
     p.graphics.beginPath();
     p.poly.forEach((pt, i) => {
       const x = posX + pt[0];
@@ -237,6 +288,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
   }
 
   private emitPieceSparks(idx: number): void {
+    if (this.registry.get('reduceMotion')) return;
     const p = this.pieces[idx];
     if (!p) return;
     const cx = PHOTO_TARGET.x + (p.poly[0][0] + p.poly[1][0]) / 2;
@@ -272,25 +324,23 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     if (!this.seamGraphics) return;
     this.seamGraphics.clear();
 
-    const midX = PHOTO_TARGET.x + 210;
-    const midY = PHOTO_TARGET.y + 140;
-
-    const seams = [
-      { x1: midX, y1: PHOTO_TARGET.y, x2: midX, y2: midY },
-      { x1: PHOTO_TARGET.x, y1: midY, x2: PHOTO_TARGET.x + PHOTO_TARGET.w, y2: midY },
-      { x1: midX, y1: midY, x2: midX, y2: PHOTO_TARGET.y + PHOTO_TARGET.h },
-    ];
-
-    seams.forEach((s, idx) => {
+    PHOTO_SEAMS.forEach((seam, idx) => {
       const isGlued = this.glueLines[idx];
       const isSel = idx === this.glueSel;
 
       this.seamGraphics!.lineStyle(
         isGlued ? 5 : (isSel ? 5 : 3),
-        isGlued ? 0xf59e0b : (isSel ? 0x60a5fa : 0xf87171),
+        isGlued ? 0xc89b4a : (isSel ? 0x94342e : 0x2b211a),
         0.95,
       );
-      this.seamGraphics!.strokeLineShape(new Phaser.Geom.Line(s.x1, s.y1, s.x2, s.y2));
+      this.seamGraphics!.beginPath();
+      seam.forEach(([x, y], pointIndex) => {
+        const px = PHOTO_TARGET.x + x;
+        const py = PHOTO_TARGET.y + y;
+        if (pointIndex === 0) this.seamGraphics!.moveTo(px, py);
+        else this.seamGraphics!.lineTo(px, py);
+      });
+      this.seamGraphics!.strokePath();
     });
   }
 
@@ -336,7 +386,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
           if (p.placed) continue;
           const lx = pointer.x - (PHOTO_TARGET.x + p.ox);
           const ly = pointer.y - (PHOTO_TARGET.y + p.oy);
-          if (this.pointInPoly(p.poly, lx, ly)) {
+          if (pointInPolygon(p.poly, lx, ly)) {
             this.draggingIndex = i;
             this.selectedPiece = i;
             this.dragOffset = { x: pointer.x - p.ox, y: pointer.y - p.oy };
@@ -346,7 +396,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
           }
         }
       } else if (this.stage === 'glue') {
-        this.glueCurrentLine();
+        this.traceGlueAt(pointer.x, pointer.y);
       }
     });
 
@@ -356,6 +406,8 @@ export class PhotoPuzzleScene extends Phaser.Scene {
         p.ox = pointer.x - this.dragOffset.x;
         p.oy = pointer.y - this.dragOffset.y;
         this.refreshPiece(this.draggingIndex);
+      } else if (this.stage === 'glue' && pointer.isDown) {
+        this.traceGlueAt(pointer.x, pointer.y);
       }
     });
 
@@ -385,16 +437,25 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     }) as Record<string, Phaser.Input.Keyboard.Key>;
   }
 
-  private pointInPoly(poly: [number, number][], x: number, y: number): boolean {
-    let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const xi = poly[i][0];
-      const yi = poly[i][1];
-      const xj = poly[j][0];
-      const yj = poly[j][1];
-      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-      if (intersect) inside = !inside;
-    }
-    return inside;
+  private traceGlueAt(x: number, y: number): void {
+    let hit = -1;
+    let best = { distance: Infinity, progress: 0 };
+    PHOTO_SEAMS.forEach((seam, index) => {
+      if (this.glueLines[index]) return;
+      const candidate = closestPolylineProgress(seam, x - PHOTO_TARGET.x, y - PHOTO_TARGET.y);
+      if (candidate.distance < best.distance) {
+        hit = index;
+        best = candidate;
+      }
+    });
+    if (hit < 0 || best.distance > 28) return;
+
+    const bit = 1 << Phaser.Math.Clamp(Math.floor(best.progress * 10), 0, 9);
+    this.glueTrace[hit] |= bit;
+    this.glueSel = hit;
+    const covered = this.glueTrace[hit].toString(2).replaceAll('0', '').length;
+    this.feedbackText?.setText(`GARIS ${hit + 1} DILEM ${covered * 10}%`).setColor('#f6d57b');
+    this.drawSeams();
+    if (covered >= 6) this.glueCurrentLine();
   }
 }

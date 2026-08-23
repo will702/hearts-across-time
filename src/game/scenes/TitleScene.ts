@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
-import type { StoryRunner } from '../narrative/StoryRunner';
-import type { RunState, SaveSystem } from '../systems/SaveSystem';
+import { allEndingsUnlocked, type RunState, type SaveSystem } from '../systems/SaveSystem';
 
 type MenuItem = {
   label: string;
@@ -11,13 +11,19 @@ type MenuItem = {
 
 export class TitleScene extends Phaser.Scene {
   private save!: SaveSystem;
-  private runner!: StoryRunner;
   private items: MenuItem[] = [];
   private buttons: Phaser.GameObjects.Text[] = [];
+  private menuPlate?: Phaser.GameObjects.Image;
   private selected = 0;
   private confirmPanel?: Phaser.GameObjects.Container;
+  private confirmYes?: Phaser.GameObjects.Text;
+  private confirmNo?: Phaser.GameObjects.Text;
+  private confirmChoice: 'yes' | 'no' = 'no';
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private enter?: Phaser.Input.Keyboard.Key;
+  private escape?: Phaser.Input.Keyboard.Key;
+  private yesKey?: Phaser.Input.Keyboard.Key;
+  private noKey?: Phaser.Input.Keyboard.Key;
 
   constructor() {
     super('TitleScene');
@@ -25,19 +31,37 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     this.save = this.registry.get('saveSystem') as SaveSystem;
-    this.runner = this.registry.get('storyRunner') as StoryRunner;
     this.registry.set('nativeState', 'title');
+
+    const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
+    soundManager?.setAmbience('title');
+
     this.drawCover();
     this.createMenu();
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.enter = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    this.escape = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.yesKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Y);
+    this.noKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.N);
   }
 
   update(): void {
-    if (this.confirmPanel || !this.cursors || !this.enter) return;
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) this.moveSelection(-1);
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) this.moveSelection(1);
+    if (this.confirmPanel) {
+      this.updateConfirmation();
+      return;
+    }
+    if (!this.cursors || !this.enter) return;
+    const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) {
+      this.moveSelection(-1);
+      soundManager?.playSelect();
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) {
+      this.moveSelection(1);
+      soundManager?.playSelect();
+    }
     if (Phaser.Input.Keyboard.JustDown(this.enter) || Phaser.Input.Keyboard.JustDown(this.cursors.space)) {
+      soundManager?.playConfirm();
       this.activate(this.selected);
     }
   }
@@ -46,15 +70,25 @@ export class TitleScene extends Phaser.Scene {
     return {
       titleInteractive: true,
       continueEnabled: Boolean(this.save.data.game),
+      confirmation: this.confirmPanel ? this.confirmChoice : null,
       menu: this.items.map((item) => ({ label: item.label, disabled: Boolean(item.disabled?.()) })),
     };
   }
 
   private drawCover(): void {
-    const background = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'title-bg-color')
+    const coverKey = this.textures.exists('title-cover') ? 'title-cover' : 'title-bg-color';
+    const background = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, coverKey)
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
     if (!this.registry.get('reduceMotion')) {
-      this.tweens.add({ targets: background, scaleX: 1.025, scaleY: 1.025, duration: 7000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      this.tweens.add({
+        targets: background,
+        scaleX: background.scaleX * 1.025,
+        scaleY: background.scaleY * 1.025,
+        duration: 7000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut',
+      });
     }
     this.add.rectangle(GAME_WIDTH / 2, 106, GAME_WIDTH, 212, 0x02050d, 0.54);
     this.add.rectangle(GAME_WIDTH / 2, 442, GAME_WIDTH, 196, 0x010207, 0.82);
@@ -72,8 +106,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private isBonusUnlocked(): boolean {
-    const endings = this.save.data.endings || {};
-    return Boolean(endings['true'] || Object.keys(endings).length >= 6);
+    return allEndingsUnlocked(this.save.data.endings || {});
   }
 
   private createMenu(): void {
@@ -92,6 +125,11 @@ export class TitleScene extends Phaser.Scene {
     ];
 
     if (!this.save.data.game) this.selected = 1;
+    if (this.textures.exists('title-plate')) {
+      this.menuPlate = this.add.image(GAME_WIDTH / 2, 308, 'title-plate')
+        .setDisplaySize(370, 54)
+        .setAlpha(0.82);
+    }
     this.buttons = this.items.map((item, index) => {
       const button = this.add.text(GAME_WIDTH / 2, 308 + index * 48, item.label, {
         backgroundColor: '#080a12dd', color: '#fffdf2', fontFamily: 'Cinzel, serif',
@@ -123,12 +161,13 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private refreshMenu(): void {
+    this.menuPlate?.setY(308 + this.selected * 48);
     this.buttons.forEach((button, index) => {
       const disabled = Boolean(this.items[index]?.disabled?.());
       const selected = index === this.selected && !disabled;
       button.setStyle({
-        backgroundColor: selected ? '#d3a848ee' : '#080a12dd',
-        color: disabled ? '#f5f0e855' : '#fffdf2',
+        backgroundColor: selected && this.menuPlate ? '#00000000' : (selected ? '#d3a848ee' : '#080a12dd'),
+        color: disabled ? '#f5f0e855' : (selected && this.menuPlate ? '#281508' : '#fffdf2'),
       });
       button.setText(`${selected ? '▶ ' : ''}${this.items[index]?.label ?? ''}`);
     });
@@ -158,16 +197,66 @@ export class TitleScene extends Phaser.Scene {
     const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, 'TIMPA AUTOSAVE SIKLUS AKTIF?', {
       color: '#7a2925', fontFamily: 'Cinzel, serif', fontSize: '20px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const yes = this.confirmButton(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 + 38, 'YA, MULAI BARU', () => {
-      this.confirmPanel?.destroy();
-      this.confirmPanel = undefined;
-      this.scene.start('PrologueScene');
-    });
-    const no = this.confirmButton(GAME_WIDTH / 2 + 120, GAME_HEIGHT / 2 + 38, 'BATAL', () => {
-      this.confirmPanel?.destroy();
-      this.confirmPanel = undefined;
-    });
+    const yes = this.confirmButton(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 + 38, 'YA, MULAI BARU', () => this.closeConfirmation(true));
+    const no = this.confirmButton(GAME_WIDTH / 2 + 120, GAME_HEIGHT / 2 + 38, 'BATAL', () => this.closeConfirmation(false));
+    yes.on('pointerover', () => { this.confirmChoice = 'yes'; this.refreshConfirmation(); });
+    no.on('pointerover', () => { this.confirmChoice = 'no'; this.refreshConfirmation(); });
+    this.confirmChoice = 'no';
+    this.confirmYes = yes;
+    this.confirmNo = no;
     this.confirmPanel = this.add.container(0, 0, [shade, paper, title, yes, no]);
+    this.refreshConfirmation();
+  }
+
+  private updateConfirmation(): void {
+    if (!this.cursors || !this.enter) return;
+    const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) {
+      this.confirmChoice = 'yes';
+      soundManager?.playSelect();
+      this.refreshConfirmation();
+      return;
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) {
+      this.confirmChoice = 'no';
+      soundManager?.playSelect();
+      this.refreshConfirmation();
+      return;
+    }
+    if (this.yesKey && Phaser.Input.Keyboard.JustDown(this.yesKey)) {
+      soundManager?.playConfirm();
+      this.closeConfirmation(true);
+      return;
+    }
+    if ((this.noKey && Phaser.Input.Keyboard.JustDown(this.noKey))
+      || (this.escape && Phaser.Input.Keyboard.JustDown(this.escape))) {
+      soundManager?.playSelect();
+      this.closeConfirmation(false);
+      return;
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.enter)) {
+      soundManager?.playConfirm();
+      this.closeConfirmation(this.confirmChoice === 'yes');
+    }
+  }
+
+  private refreshConfirmation(): void {
+    this.confirmYes?.setStyle({
+      backgroundColor: this.confirmChoice === 'yes' ? '#d3a848' : '#94342e',
+      color: '#fff8ea',
+    });
+    this.confirmNo?.setStyle({
+      backgroundColor: this.confirmChoice === 'no' ? '#d3a848' : '#94342e',
+      color: '#fff8ea',
+    });
+  }
+
+  private closeConfirmation(startNewCycle: boolean): void {
+    this.confirmPanel?.destroy();
+    this.confirmPanel = undefined;
+    this.confirmYes = undefined;
+    this.confirmNo = undefined;
+    if (startNewCycle) this.scene.start('PrologueScene');
   }
 
   private confirmButton(x: number, y: number, label: string, action: () => void): Phaser.GameObjects.Text {
@@ -178,7 +267,6 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private start1944(run: RunState, playerX?: number): void {
-    if (!this.runner.transition('title', '1944', run)) return;
     this.scene.start('Era1944Scene', { run, playerX });
   }
 }

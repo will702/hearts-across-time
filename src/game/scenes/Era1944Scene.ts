@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { Player } from '../entities/Player';
-import type { StoryRunner } from '../narrative/StoryRunner';
+import { LORE_COMPLETION_TEXT, isLoreId, recordLoreInspection } from '../narrative/lore';
 import { InputSystem } from '../systems/InputSystem';
 import { InteractionSystem } from '../systems/InteractionSystem';
+import { LoopEchoTrail } from '../systems/LoopEchoTrail';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 import { SurfaceSystem } from '../systems/SurfaceSystem';
 import { ERA_1944 } from '../world/era1944';
@@ -10,8 +12,9 @@ import { WorldFactory } from '../world/WorldFactory';
 import type { WorldObject } from '../world/WorldObject';
 import type { WorldAction, WorldState } from '../world/worldTypes';
 import type { UIScene } from './UIScene';
+import { playArrivalSequence } from './playArrivalSequence';
 
-type EraData = { run: RunState; playerX?: number };
+type EraData = { run: RunState; playerX?: number; intro?: boolean };
 
 const WATCH_BLOCKER_X = 398;
 const WATCH_RESUME_X = 478;
@@ -20,7 +23,7 @@ const AUTOSAVE_MS = 750;
 export class Era1944Scene extends Phaser.Scene {
   private run!: RunState;
   private save!: SaveSystem;
-  private runner!: StoryRunner;
+  private soundManager?: SoundManager;
   private player!: Player;
   private controls!: InputSystem;
   private surfaces!: SurfaceSystem;
@@ -32,6 +35,8 @@ export class Era1944Scene extends Phaser.Scene {
   private autosaveElapsed = 0;
   private lookAhead = 0;
   private touchControls = false;
+  private echo?: LoopEchoTrail;
+  private arrivalActive = false;
 
   constructor() {
     super('Era1944Scene');
@@ -40,8 +45,12 @@ export class Era1944Scene extends Phaser.Scene {
   create(data: EraData): void {
     this.run = data.run;
     this.save = this.registry.get('saveSystem') as SaveSystem;
-    this.runner = this.registry.get('storyRunner') as StoryRunner;
     this.registry.set('nativeState', 'era1944');
+    this.registry.set('runLoop', this.run.loop);
+
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
+    this.soundManager?.setAmbience('1944');
+
     this.touchControls = this.sys.game.device.input.touch
       || new URLSearchParams(location.search).get('touch') === '1';
 
@@ -52,10 +61,12 @@ export class Era1944Scene extends Phaser.Scene {
     this.surfaces = new SurfaceSystem(this);
     const spawnX = this.validSpawnX(data.playerX);
     this.player = new Player(this, spawnX, ERA_1944.spawn.y, {
+      loop: this.run.loop,
       reduceMotion: Boolean(this.registry.get('reduceMotion')),
       surfaceAt: (x, y) => this.surfaces.materialAt(x, y, ERA_1944.defaultSurface),
       onStep: (surface) => this.playFootstep(surface),
     });
+    this.echo = new LoopEchoTrail(this, this.run, '1944', ERA_1944.groundY);
     this.worldFactory = new WorldFactory(this);
     this.objects = this.worldFactory.createAll(ERA_1944.objects, this.worldState());
     this.surfaces.load(ERA_1944, this.player, this.objects);
@@ -64,17 +75,54 @@ export class Era1944Scene extends Phaser.Scene {
 
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
-    this.scene.launch('UIScene', { input: this.controls, eraTitle: 'BABAK 1 — 1944' });
+    this.scene.launch('UIScene', { input: this.controls, eraTitle: 'BABAK 1 — 1944', run: this.run });
     this.ui = this.scene.get('UIScene') as UIScene;
     this.lastSavedX = spawnX;
     this.save.saveCycle('1944', this.run, spawnX);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    if (data.intro) this.startEraIntro();
+  }
+
+  private startEraIntro(): void {
+    this.arrivalActive = true;
+    this.registry.set('nativeState', 'arrival1944');
+    this.controls.setEnabled(false);
+    this.player.arcadeBody.setVelocityX(0);
+    this.ui.setModal(true);
+    playArrivalSequence(this, {
+      caption: '1944 — GARIS DEPAN',
+      duration: 3250,
+      startZoom: 3.25,
+      startFocusX: 210,
+      endFocusX: 575,
+      groundY: ERA_1944.groundY,
+      onComplete: () => this.launchEntryDialogue(),
+    });
+  }
+
+  private launchEntryDialogue(): void {
+    this.arrivalActive = false;
+    this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
+    this.cameras.main.setDeadzone(250, 150);
+    this.ui.setModal(false);
+    this.scene.launch('DialogueScene', {
+      nodeId: 'war_intro',
+      run: this.run,
+      onComplete: () => {
+        this.scene.resume();
+        this.controls.setEnabled(true);
+        this.registry.set('nativeState', 'era1944');
+      },
+    });
+    this.scene.pause();
   }
 
   update(_time: number, delta: number): void {
     const input = this.controls.read();
     this.player.updatePlayer(input, delta);
+    if (this.arrivalActive) return;
+    this.echo?.update(this.player.x, delta);
     const body = this.player.arcadeBody;
     const action = this.interactions.update(
       this.worldState(),
@@ -118,6 +166,8 @@ export class Era1944Scene extends Phaser.Scene {
         ? { id: active.id, prompt: active.prompt?.[this.touchControls ? 'touch' : 'keyboard'] ?? '' }
         : null,
       touchControls: this.touchControls,
+      arrivalActive: this.arrivalActive,
+      echo: this.echo?.snapshot(),
       run: {
         watchRepaired: this.run.watchRepaired,
         challenge1944: this.run.challenges['1944'],
@@ -197,19 +247,44 @@ export class Era1944Scene extends Phaser.Scene {
       return;
     }
     if (action.type === 'lore') {
-      this.save.save({
-        ...this.save.data,
-        inspected: { ...this.save.data.inspected, [action.id]: 1 },
-      });
-      this.worldFactory.refresh(this.objects, this.worldState());
-      this.ui.showToast(action.id === 'lore_crate'
-        ? 'Jejak ditemukan: peti obat dan ampul tanpa label.'
-        : 'Jejak ditemukan: sisa suar masih menyimpan panas.');
+      this.openLore(action.id);
       return;
     }
     if (action.type === 'dialog') {
       this.openArthurDialogue();
     }
+  }
+
+  private openLore(id: string): void {
+    if (!isLoreId(id)) return;
+    const discovery = recordLoreInspection(
+      this.save.data.inspected,
+      id,
+      Boolean(this.save.data.loreToastDone),
+    );
+    this.save.save({
+      ...this.save.data,
+      inspected: discovery.inspected,
+      loreToastDone: Boolean(this.save.data.loreToastDone) || discovery.completedNow,
+    });
+    this.worldFactory.refresh(this.objects, this.worldState());
+    this.controls.setEnabled(false);
+    this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
+    this.ui.setPrompt('');
+    this.scene.launch('DialogueScene', {
+      nodeId: id,
+      run: this.run,
+      onComplete: () => {
+        this.scene.resume();
+        this.controls.setEnabled(true);
+        this.registry.set('nativeState', 'era1944');
+        if (discovery.completedNow) {
+          this.soundManager?.playChime();
+          this.ui.showToast(LORE_COMPLETION_TEXT, 4200);
+        }
+      },
+    });
+    this.scene.pause();
   }
 
   private openWatchRepair(): void {
@@ -226,7 +301,7 @@ export class Era1944Scene extends Phaser.Scene {
         this.lastSavedX = WATCH_RESUME_X;
         this.worldFactory.refresh(this.objects, this.worldState());
         this.registry.set('nativeState', 'era1944');
-        this.ui.showToast('Arloji Arthur kembali berdetak. Jalan terbuka.');
+        this.ui.showToast('DITAMBAHKAN KE TAS — ◷ ARLOJI ARTHUR. Jalan terbuka.', 3000);
       },
     });
     this.scene.pause();
@@ -271,14 +346,7 @@ export class Era1944Scene extends Phaser.Scene {
   }
 
   private playFootstep(surface: string): void {
-    const key = surface === 'metal'
-      ? 'step-metal'
-      : Math.floor(this.player.x / 30) % 2 ? 'step-mud-1' : 'step-mud-0';
-    if (!this.cache.audio.exists(key)) return;
-    const options = this.registry.get('options') as Record<string, unknown> | undefined;
-    const value = Number(options?.volSfx ?? options?.vol ?? 0.9);
-    const volume = Phaser.Math.Clamp(Number.isFinite(value) ? value : 0.9, 0, 1) ** 2.2 * 0.34;
-    this.sound.play(key, { volume, rate: 0.96 + (Math.floor(this.player.x) % 5) * 0.02 });
+    this.soundManager?.playFootstep(surface, this.player.x);
   }
 
   private shutdown(): void {
@@ -292,5 +360,6 @@ export class Era1944Scene extends Phaser.Scene {
     this.worldFactory?.destroy(this.objects);
     this.objects = [];
     this.player?.destroy();
+    this.echo?.destroy();
   }
 }

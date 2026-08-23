@@ -1,6 +1,14 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { pointInPolygon } from '../minigames/math';
+import {
+  randomRoseHomes,
+  ROSE_PIECES_DEF,
+  ROSE_SOURCE_CROP,
+  ROSE_SOURCE_FRAME,
+  ROSE_TARGET,
+} from '../minigames/roseLayout';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 export type RosePuzzleData = {
@@ -17,20 +25,10 @@ type Piece = {
   homeY: number;
   placed: boolean;
   graphics?: Phaser.GameObjects.Graphics;
+  maskGraphics?: Phaser.GameObjects.Graphics;
+  image?: Phaser.GameObjects.Image;
+  label?: Phaser.GameObjects.Text;
 };
-
-const ROSE_TARGET = { x: 355, y: 148, w: 250, h: 214 };
-
-const ROSE_PIECES_DEF: { poly: [number, number][]; defaultHome: [number, number] }[] = [
-  { poly: [[0, 0], [82, 0], [108, 48], [55, 73], [0, 54]], defaultHome: [-245, 15] },
-  { poly: [[82, 0], [168, 0], [183, 72], [126, 108], [108, 48]], defaultHome: [-225, 115] },
-  { poly: [[168, 0], [250, 0], [250, 66], [183, 72]], defaultHome: [210, 5] },
-  { poly: [[250, 66], [250, 150], [178, 144], [112, 169], [126, 108], [183, 72]], defaultHome: [230, -20] },
-  { poly: [[250, 150], [250, 214], [162, 214], [112, 169], [178, 144]], defaultHome: [210, 20] },
-  { poly: [[162, 214], [72, 214], [58, 132], [126, 108], [112, 169]], defaultHome: [-240, 40] },
-  { poly: [[72, 214], [0, 214], [0, 145], [58, 132]], defaultHome: [-250, -30] },
-  { poly: [[0, 145], [0, 54], [55, 73], [108, 48], [126, 108], [58, 132]], defaultHome: [-220, -5] },
-];
 
 export class RosePuzzleScene extends Phaser.Scene {
   private puzzleData!: RosePuzzleData;
@@ -40,8 +38,8 @@ export class RosePuzzleScene extends Phaser.Scene {
   private draggingIndex = -1;
   private dragOffset = { x: 0, y: 0 };
   private feedbackText?: Phaser.GameObjects.Text;
-  private roseImage?: Phaser.GameObjects.Image;
   private complete = false;
+  private roseFrame?: string;
 
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
 
@@ -55,6 +53,7 @@ export class RosePuzzleScene extends Phaser.Scene {
     this.registry.set('nativeState', 'rosepuzzle');
     this.complete = false;
     this.draggingIndex = -1;
+    this.roseFrame = this.ensureRoseSourceFrame();
 
     this.createBackground();
     this.initPieces();
@@ -96,11 +95,25 @@ export class RosePuzzleScene extends Phaser.Scene {
     }
   }
 
+  snapshot(): Record<string, unknown> {
+    return {
+      minigame: 'rose',
+      target: ROSE_TARGET,
+      pieces: this.pieces.map(piece => ({ poly: piece.poly, ox: piece.ox, oy: piece.oy, placed: piece.placed })),
+      selectedPiece: this.selectedPiece,
+      complete: this.complete,
+    };
+  }
+
   private createBackground(): void {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0c0807, 0.95);
-    if (this.textures.exists('rose-bottle-broken')) {
-      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'rose-bottle-broken')
-        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.18);
+    if (this.roseFrame) {
+      this.add.image(
+        ROSE_TARGET.x + ROSE_TARGET.w / 2,
+        ROSE_TARGET.y + ROSE_TARGET.h / 2,
+        'rose-bottle-broken',
+        this.roseFrame,
+      ).setDisplaySize(ROSE_TARGET.w, ROSE_TARGET.h).setAlpha(0.14).setDepth(1);
     }
 
     this.add.text(GAME_WIDTH / 2, 38, 'SUSUN KEMBALI BOTOL MAWAR ABADI', {
@@ -108,7 +121,6 @@ export class RosePuzzleScene extends Phaser.Scene {
       stroke: '#280c0c', strokeThickness: 5,
     }).setOrigin(0.5);
 
-    // Bottle Frame Silhouette
     this.add.rectangle(
       ROSE_TARGET.x + ROSE_TARGET.w / 2,
       ROSE_TARGET.y + ROSE_TARGET.h / 2,
@@ -116,7 +128,7 @@ export class RosePuzzleScene extends Phaser.Scene {
       ROSE_TARGET.h + 14,
       0x180f0c,
       0.85,
-    ).setStrokeStyle(2, 0xd97706);
+    ).setStrokeStyle(2, 0xd97706).setDepth(0);
 
     this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, 'PILIH PECAHAN (1-8) & GESER KE POSISI BOTOL (SPACE UNTUK KUNCI)', {
       color: '#cbd5e1', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
@@ -130,16 +142,38 @@ export class RosePuzzleScene extends Phaser.Scene {
   }
 
   private initPieces(): void {
-    this.pieces = ROSE_PIECES_DEF.map((def) => {
-      const g = this.add.graphics();
+    const homes = randomRoseHomes();
+    this.pieces = ROSE_PIECES_DEF.map((def, index) => {
+      const g = this.add.graphics().setDepth(4);
+      const maskGraphics = this.make.graphics({ x: 0, y: 0 });
+      const image = this.roseFrame
+        ? this.add.image(
+          ROSE_TARGET.x + ROSE_TARGET.w / 2,
+          ROSE_TARGET.y + ROSE_TARGET.h / 2,
+          'rose-bottle-broken',
+          this.roseFrame,
+        ).setDisplaySize(ROSE_TARGET.w, ROSE_TARGET.h).setDepth(3)
+        : undefined;
+      if (image) image.setMask(maskGraphics.createGeometryMask());
+      const label = this.add.text(0, 0, String(index + 1), {
+        color: '#fff7ed',
+        backgroundColor: '#3f1d1dcc',
+        fontFamily: 'Poppins, sans-serif',
+        fontSize: '11px',
+        fontStyle: 'bold',
+        padding: { x: 4, y: 2 },
+      }).setOrigin(0.5).setDepth(5);
       return {
-        poly: def.poly,
-        ox: def.defaultHome[0],
-        oy: def.defaultHome[1],
-        homeX: def.defaultHome[0],
-        homeY: def.defaultHome[1],
+        poly: def.poly.map(([x, y]) => [x, y] as [number, number]),
+        ox: homes[index][0],
+        oy: homes[index][1],
+        homeX: homes[index][0],
+        homeY: homes[index][1],
         placed: false,
         graphics: g,
+        maskGraphics,
+        image,
+        label,
       };
     });
   }
@@ -153,8 +187,31 @@ export class RosePuzzleScene extends Phaser.Scene {
     const posX = ROSE_TARGET.x + p.ox;
     const posY = ROSE_TARGET.y + p.oy;
 
-    // Crystalline faceted styling
-    p.graphics.fillStyle(p.placed ? 0x22c55e : (isSelected ? 0xf87171 : 0xef4444), p.placed ? 0.85 : 0.7);
+    if (p.image && p.maskGraphics) {
+      p.image
+        .setPosition(ROSE_TARGET.x + ROSE_TARGET.w / 2 + p.ox, ROSE_TARGET.y + ROSE_TARGET.h / 2 + p.oy)
+        .setAlpha(p.placed ? 1 : (isSelected ? 0.98 : 0.84));
+      p.maskGraphics.clear().fillStyle(0xffffff).beginPath();
+      p.poly.forEach((pt, i) => {
+        if (i === 0) p.maskGraphics!.moveTo(posX + pt[0], posY + pt[1]);
+        else p.maskGraphics!.lineTo(posX + pt[0], posY + pt[1]);
+      });
+      p.maskGraphics.closePath().fill();
+    }
+
+    if (p.label) {
+      const minX = Math.min(...p.poly.map(([x]) => x));
+      const minY = Math.min(...p.poly.map(([, y]) => y));
+      p.label
+        .setPosition(posX + minX + 15, posY + minY + 15)
+        .setVisible(!p.placed)
+        .setAlpha(isSelected ? 1 : 0.78);
+    }
+
+    p.graphics.fillStyle(
+      p.image ? (isSelected ? 0xffffff : 0xfda4af) : (p.placed ? 0x22c55e : (isSelected ? 0xf87171 : 0xef4444)),
+      p.image ? (isSelected ? 0.1 : 0.04) : (p.placed ? 0.85 : 0.7),
+    );
     p.graphics.beginPath();
     p.poly.forEach((pt, i) => {
       const x = posX + pt[0];
@@ -165,7 +222,6 @@ export class RosePuzzleScene extends Phaser.Scene {
     p.graphics.closePath();
     p.graphics.fill();
 
-    // Border highlights
     p.graphics.lineStyle(2, p.placed ? 0x86efac : (isSelected ? 0xffffff : 0xfca5a5), 0.95);
     p.graphics.stroke();
   }
@@ -203,6 +259,7 @@ export class RosePuzzleScene extends Phaser.Scene {
   }
 
   private emitPieceSparks(idx: number): void {
+    if (this.registry.get('reduceMotion')) return;
     const p = this.pieces[idx];
     if (!p) return;
     const cx = ROSE_TARGET.x + (p.poly[0][0] + p.poly[1][0]) / 2;
@@ -248,7 +305,7 @@ export class RosePuzzleScene extends Phaser.Scene {
         if (p.placed) continue;
         const lx = pointer.x - (ROSE_TARGET.x + p.ox);
         const ly = pointer.y - (ROSE_TARGET.y + p.oy);
-        if (this.pointInPoly(p.poly, lx, ly)) {
+        if (pointInPolygon(p.poly, lx, ly)) {
           this.draggingIndex = i;
           this.selectedPiece = i;
           this.dragOffset = { x: pointer.x - p.ox, y: pointer.y - p.oy };
@@ -298,16 +355,25 @@ export class RosePuzzleScene extends Phaser.Scene {
     }) as Record<string, Phaser.Input.Keyboard.Key>;
   }
 
-  private pointInPoly(poly: [number, number][], x: number, y: number): boolean {
-    let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const xi = poly[i][0];
-      const yi = poly[i][1];
-      const xj = poly[j][0];
-      const yj = poly[j][1];
-      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-      if (intersect) inside = !inside;
+  private ensureRoseSourceFrame(): string | undefined {
+    if (!this.textures.exists('rose-bottle-broken')) return undefined;
+    const texture = this.textures.get('rose-bottle-broken');
+    if (!texture.has(ROSE_SOURCE_FRAME)) {
+      const base = texture.get('__BASE');
+      const cropRight = ROSE_SOURCE_CROP.x + ROSE_SOURCE_CROP.w;
+      const cropBottom = ROSE_SOURCE_CROP.y + ROSE_SOURCE_CROP.h;
+      if (cropRight <= base.width && cropBottom <= base.height) {
+        texture.add(
+          ROSE_SOURCE_FRAME,
+          0,
+          ROSE_SOURCE_CROP.x,
+          ROSE_SOURCE_CROP.y,
+          ROSE_SOURCE_CROP.w,
+          ROSE_SOURCE_CROP.h,
+        );
+      }
     }
-    return inside;
+    return texture.has(ROSE_SOURCE_FRAME) ? ROSE_SOURCE_FRAME : undefined;
   }
+
 }

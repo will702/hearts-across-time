@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { CharacterId, Expression, StoryChoiceOption, StoryOp, StorySayOp } from '../narrative/storyScript';
 import { STORY_NODES } from '../narrative/storyScript';
+import type { GameOptions } from '../options';
+import { shouldAutoAdvanceSeenDialogue } from '../systems/replayRules';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 export type DialogueSceneData = {
@@ -26,19 +29,20 @@ const CHARACTER_NAMES: Record<CharacterId, string> = {
 
 const EXPR_FRAMES: Record<Expression, number> = {
   neutral: 0,
-  smile: 1,
-  sad: 2,
-  shock: 3,
-  angry: 4,
-  mad: 5,
-  warm: 6,
-  happy: 7,
-  closed: 0,
+  smile: 4,
+  sad: 8,
+  shock: 12,
+  angry: 16,
+  mad: 20,
+  warm: 24,
+  happy: 28,
+  closed: 4,
 };
 
 export class DialogueScene extends Phaser.Scene {
   private dataPayload!: DialogueSceneData;
   private save!: SaveSystem;
+  private soundManager?: SoundManager;
   private ops: StoryOp[] = [];
   private opIndex = 0;
   private currentSay: StorySayOp | null = null;
@@ -48,8 +52,13 @@ export class DialogueScene extends Phaser.Scene {
   private displayedText = '';
   private fullText = '';
   private charProgress = 0;
+  private lastBeepChar = 0;
   private typingComplete = false;
   private fastForward = false;
+  private touchFastForward = false;
+  private nodeWasSeen = false;
+  private fastForwardElapsed = 0;
+  private appliedTextScale = 0;
 
   private boxContainer?: Phaser.GameObjects.Container;
   private nameText?: Phaser.GameObjects.Text;
@@ -57,6 +66,7 @@ export class DialogueScene extends Phaser.Scene {
   private promptIndicator?: Phaser.GameObjects.Text;
   private choiceContainer?: Phaser.GameObjects.Container;
   private choiceButtons: Phaser.GameObjects.Container[] = [];
+  private fastForwardButton?: Phaser.GameObjects.Text;
 
   private elenaAvatar?: Phaser.GameObjects.Sprite;
   private arthurAvatar?: Phaser.GameObjects.Sprite;
@@ -73,7 +83,11 @@ export class DialogueScene extends Phaser.Scene {
 
   create(data: DialogueSceneData): void {
     this.dataPayload = data;
+    this.touchFastForward = false;
+    this.fastForward = false;
+    this.fastForwardElapsed = 0;
     this.save = this.registry.get('saveSystem') as SaveSystem;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'dialogue');
 
     this.createUI();
@@ -83,25 +97,45 @@ export class DialogueScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.backlogOpen) return;
-
+    this.applyTextScale();
     if (this.keys) {
-      if (Phaser.Input.Keyboard.JustDown(this.keys.tab) || Phaser.Input.Keyboard.JustDown(this.keys.b)) {
+      const backlogKey = Phaser.Input.Keyboard.JustDown(this.keys.tab)
+        || Phaser.Input.Keyboard.JustDown(this.keys.b)
+        || (this.backlogOpen && Phaser.Input.Keyboard.JustDown(this.keys.esc));
+      if (backlogKey) {
         this.toggleBacklog();
         return;
       }
-      this.fastForward = Boolean(this.keys.ctrl.isDown || this.keys.f.isDown);
+      this.fastForward = this.touchFastForward || this.keys.ctrl.isDown || this.keys.f.isDown;
+    } else {
+      this.fastForward = this.touchFastForward;
     }
+    if (this.backlogOpen) return;
+
+    if (this.currentSay && shouldAutoAdvanceSeenDialogue(this.nodeWasSeen, this.fastForward)) {
+      if (!this.typingComplete) this.revealCurrentLine();
+      this.fastForwardElapsed += delta;
+      if (this.fastForwardElapsed >= 70) {
+        this.fastForwardElapsed = 0;
+        this.advanceDialogue();
+      }
+      return;
+    }
+    this.fastForwardElapsed = 0;
 
     if (this.currentSay && !this.typingComplete) {
-      const options = (this.registry.get('options') as Record<string, unknown> | undefined) || {};
-      const spdMultiplier = typeof options.textSpd === 'number' ? options.textSpd : 1.0;
+      const options = this.registry.get('options') as GameOptions | undefined;
+      const spdMultiplier = options?.textSpd ?? 1;
       const speed = (this.fastForward ? 160 : 42) * spdMultiplier;
 
       this.charProgress += (speed * delta) / 1000;
       const charsToShow = Math.min(this.fullText.length, Math.floor(this.charProgress));
       this.displayedText = this.fullText.substring(0, charsToShow);
       this.dialogText?.setText(this.displayedText);
+      if (Math.floor(charsToShow / 3) > Math.floor(this.lastBeepChar / 3)) {
+        this.soundManager?.playTypewriterBeep();
+      }
+      this.lastBeepChar = charsToShow;
 
       if (charsToShow >= this.fullText.length) {
         this.typingComplete = true;
@@ -137,7 +171,9 @@ export class DialogueScene extends Phaser.Scene {
       return;
     }
 
+    this.nodeWasSeen = Boolean(this.save.data.seen[nodeId]);
     this.save.data.seen[nodeId] = 1;
+    this.save.save(this.save.data);
     this.ops = typeof nodeDef === 'function' ? nodeDef(this.dataPayload.run) : nodeDef;
     this.opIndex = 0;
     this.step();
@@ -168,6 +204,9 @@ export class DialogueScene extends Phaser.Scene {
         continue;
       }
       if (op.t === 'fx') {
+        if (op.kind === 'boom') this.soundManager?.playBoom();
+        if (op.kind === 'chime') this.soundManager?.playChime();
+        if (op.kind === 'flash') this.soundManager?.playFlash();
         if (op.kind === 'boom' && !this.registry.get('reduceMotion')) {
           this.cameras.main.shake(400, 0.015);
         }
@@ -191,10 +230,13 @@ export class DialogueScene extends Phaser.Scene {
     this.fullText = op.text;
     this.displayedText = '';
     this.charProgress = 0;
+    this.lastBeepChar = 0;
     this.typingComplete = false;
+    this.fastForwardElapsed = 0;
 
     this.choiceContainer?.setVisible(false);
     this.boxContainer?.setVisible(true);
+    this.fastForwardButton?.setVisible(this.nodeWasSeen);
     this.promptIndicator?.setVisible(false);
 
     const name = CHARACTER_NAMES[op.who] || op.who.toUpperCase();
@@ -231,9 +273,14 @@ export class DialogueScene extends Phaser.Scene {
   private showChoice(opts: StoryChoiceOption[]): void {
     this.currentSay = null;
     this.currentChoices = opts;
+    this.touchFastForward = false;
+    this.fastForward = false;
     this.selectedChoice = 0;
+    this.soundManager?.duckMusic(0.5, 0.4);
+    this.soundManager?.playSelect();
 
     this.boxContainer?.setVisible(false);
+    this.fastForwardButton?.setVisible(false);
     this.choiceContainer?.removeAll(true);
     this.choiceButtons = [];
 
@@ -255,8 +302,11 @@ export class DialogueScene extends Phaser.Scene {
       }).setOrigin(0, 0.5);
 
       bg.on('pointerover', () => {
-        this.selectedChoice = idx;
-        this.refreshChoiceStyles();
+        if (this.selectedChoice !== idx) {
+          this.selectedChoice = idx;
+          this.soundManager?.playSelect();
+          this.refreshChoiceStyles();
+        }
       });
       bg.on('pointerup', () => this.selectChoice(idx));
 
@@ -271,6 +321,7 @@ export class DialogueScene extends Phaser.Scene {
   private moveChoiceSelection(delta: number): void {
     if (!this.currentChoices) return;
     this.selectedChoice = Phaser.Math.Wrap(this.selectedChoice + delta, 0, this.currentChoices.length);
+    this.soundManager?.playSelect();
     this.refreshChoiceStyles();
   }
 
@@ -287,6 +338,9 @@ export class DialogueScene extends Phaser.Scene {
   private selectChoice(idx: number): void {
     if (!this.currentChoices || !this.currentChoices[idx]) return;
     const opt = this.currentChoices[idx];
+    this.soundManager?.playConfirm();
+    this.soundManager?.duckMusic(0.85, 0.3);
+
     if (opt.fx) {
       opt.fx(this.dataPayload.run);
     }
@@ -299,17 +353,24 @@ export class DialogueScene extends Phaser.Scene {
 
   private advanceDialogue(): void {
     if (!this.typingComplete) {
-      this.typingComplete = true;
-      this.displayedText = this.fullText;
-      this.dialogText?.setText(this.displayedText);
-      this.promptIndicator?.setVisible(true);
+      this.revealCurrentLine();
       return;
     }
+    this.soundManager?.playPaperFlip();
     this.currentSay = null;
     this.step();
   }
 
+  private revealCurrentLine(): void {
+    this.typingComplete = true;
+    this.charProgress = this.fullText.length;
+    this.displayedText = this.fullText;
+    this.dialogText?.setText(this.displayedText);
+    this.promptIndicator?.setVisible(true);
+  }
+
   private createUI(): void {
+    const scale = (this.registry.get('options') as GameOptions | undefined)?.textScale ?? 1;
     this.boxContainer = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT - 90);
     const boxBg = this.add.rectangle(0, 0, 840, 130, 0x0c0a08, 0.92)
       .setStrokeStyle(3, 0x6a4930)
@@ -319,14 +380,14 @@ export class DialogueScene extends Phaser.Scene {
     this.nameText = this.add.text(-400, -52, '', {
       color: '#f6d57b',
       fontFamily: 'Cinzel, serif',
-      fontSize: '17px',
+      fontSize: `${Math.round(17 * scale)}px`,
       fontStyle: 'bold',
     });
 
     this.dialogText = this.add.text(-400, -22, '', {
       color: '#fffbf0',
       fontFamily: 'Patrick Hand, sans-serif',
-      fontSize: '20px',
+      fontSize: `${Math.round(20 * scale)}px`,
       wordWrap: { width: 800 },
     });
 
@@ -337,7 +398,19 @@ export class DialogueScene extends Phaser.Scene {
 
     this.boxContainer.add([boxBg, this.nameText, this.dialogText, this.promptIndicator]);
 
+    this.fastForwardButton = this.add.text(18, GAME_HEIGHT - 31, '⏩', {
+      backgroundColor: '#16120edd',
+      color: '#f6d57b',
+      fontFamily: 'Poppins, sans-serif',
+      fontSize: '17px',
+      padding: { x: 9, y: 5 },
+    }).setInteractive({ useHandCursor: true }).setVisible(false);
+    this.fastForwardButton.on('pointerdown', () => { this.touchFastForward = true; });
+    this.fastForwardButton.on('pointerup', () => { this.touchFastForward = false; });
+    this.fastForwardButton.on('pointerout', () => { this.touchFastForward = false; });
+
     this.choiceContainer = this.add.container(0, 0);
+    this.appliedTextScale = scale;
 
     if (this.textures.exists('elena')) {
       this.elenaAvatar = this.add.sprite(90, GAME_HEIGHT - 210, 'elena', 0)
@@ -347,6 +420,15 @@ export class DialogueScene extends Phaser.Scene {
       this.arthurAvatar = this.add.sprite(GAME_WIDTH - 90, GAME_HEIGHT - 210, 'arthur-muda', 0)
         .setScale(0.85).setOrigin(0.5, 0.5).setFlipX(true).setVisible(false);
     }
+  }
+
+  private applyTextScale(): void {
+    const scale = (this.registry.get('options') as GameOptions | undefined)?.textScale ?? 1;
+    if (scale === this.appliedTextScale) return;
+    this.appliedTextScale = scale;
+    this.nameText?.setFontSize(Math.round(17 * scale));
+    this.dialogText?.setFontSize(Math.round(20 * scale));
+    this.choiceButtons.forEach(button => (button.getAt(1) as Phaser.GameObjects.Text).setFontSize(Math.round(18 * scale)));
   }
 
   private createInputHandlers(): void {

@@ -1,92 +1,88 @@
 # Peta modul `src/`
 
-_Referensi singkat untuk migrasi strangler Phaser-native Hearts Across Time._
+_Referensi singkat untuk runtime produksi Phaser-native Hearts Across Time._
 
 ---
 
-## 📦 Dua runtime yang sengaja hidup berdampingan
+## 📦 Satu runtime produksi
 
-`index.html` adalah entry produksi Phaser-native. Vite memuat `src/main.ts`, lalu
-TypeScript/ESM membuat `Phaser.Game` dan scene native.
+`index.html` adalah satu-satunya entry produksi. Vite memuat `src/main.ts`, lalu
+TypeScript/ESM membuat `Phaser.Game` dan mendaftarkan seluruh scene dari
+`game/config.ts`.
 
-`legacy.html` mempertahankan game lengkap sebelum migrasi. Halaman ini masih memuat
-classic-script `.js` berurutan dan menjadi owner narasi 1968/1999, dialog bercabang,
-mini-game yang belum dipindah, loop, ending, serta bonus. Jangan mengubah urutan script
-di `legacy.html` tanpa menelusuri semua global yang diproduksi dan dikonsumsi.
+Seluruh perjalanan 1944/1968/1999, dialog dan rute, mini-game, loop, enam ending,
+true ending, serta bonus 2088 berjalan di scene TypeScript. `legacy.html` dan
+classic-script `.js` tetap tersedia sebagai referensi/parity regression, tetapi tidak
+diimpor oleh runtime native dan tidak disalin ke `dist/`.
 
-Sumber kebenaran berlaku per wilayah:
+Sumber kebenaran produksi:
 
-- Vertical slice native: `src/main.ts` dan file `.ts` di `src/game/`.
-- Konten yang belum dimigrasikan: `legacy.html` dan file `.js` lama.
-- Narasi/GDD: `FIRST_IDEA.md`, `DIALOG.md`, lalu implementasi aktif di
-  `src/data/story.js` sampai runner naratif native benar-benar menggantikannya.
+- Runtime dan scene: `main.ts` serta file `.ts` di `game/`.
+- Narasi aktif: `game/narrative/storyScript.ts`, dicocokkan dengan `FIRST_IDEA.md`
+  dan `DIALOG.md`.
+- Referensi historis: `legacy.html`, `src/core/`, `src/data/`, file
+  `src/game/*.js`, `src/render/`, dan `src/ui/`.
 
 ## 🎬 Scene Phaser-native
 
-| Scene | Tanggung jawab |
-| --- | --- |
-| `BootScene` | Memuat dan menormalisasi save, membuat `StoryRunner`, serta membaca opsi `reduceMotion` |
-| `PreloadScene` | Memuat aset native melalui Phaser Loader dan membuat fallback minimum |
-| `IntroScene` | Memutar atau melewati intro dengan Game Object Phaser |
-| `TitleScene` | Menu keyboard/touch, continue, siklus baru, replay intro, dan akses cerita legacy |
-| `Era1944Scene` | Traversal 1944: world, pemain, kamera, arloji, lore, autosave, dan handoff lampu sorot |
-| `UIScene` | HUD, prompt, kontrol sentuh, toast, dan pause overlay |
-| `WatchRepairScene` | Mini-game perbaikan arloji dengan keyboard/touch dan assist tiga miss |
+| Kelompok | Scene | Tanggung jawab |
+| --- | --- | --- |
+| Fondasi | `BootScene`, `PreloadScene` | Membuat service, menormalisasi save/opsi, memuat aset, dan menyediakan fallback |
+| Presentasi | `IntroScene`, `TitleScene`, `PrologueScene` | Intro, sampul/menu/Continue, dan pembuka cerita |
+| UI/narasi | `UIScene`, `DialogueScene` | HUD, touch, pause, dialog, pilihan, backlog, dan interpretasi operasi cerita |
+| Era | `Era1944Scene`, `Era1968Scene`, `Era1999Scene` | World, pemain, kamera, interaksi, autosave, dan transisi naratif tiap era |
+| Mini-game 1944 | `WatchRepairScene`, `SpotlightChallengeScene` | Perbaikan arloji dan tantangan lampu sorot |
+| Mini-game 1968 | `RosePuzzleScene`, `SignalTuneScene`, `DiaryScene` | Botol mawar, penyetelan sinyal, dan buku harian |
+| Mini-game 1999 | `GemAlignScene`, `PhotoPuzzleScene`, `CryoBalanceScene` | Permata air, foto, dan stabilisasi krio |
+| Transisi/hasil | `VortexScene`, `GlitchScene`, `PuzzleAwardScene`, `EndCardScene` | Lompatan era, reset loop, enam pecahan ending, dan true ending |
+| Bonus | `Bonus2088Scene` | Epilog kota pulih dan lima simpul kenangan |
 
-Belum native: tantangan lampu sorot dan dialog lanjutan 1944, era 1968, era 1999,
-dialog/rute lengkap, mini-game selain arloji, loop/ending, dan bonus. Semua tetap dapat
-dijalankan melalui `legacy.html?continue=1` atau tombol cerita lengkap.
+`game/config.ts` adalah satu-satunya daftar scene produksi. Tambahkan scene di sana
+hanya setelah lifecycle, input, pause, save/resume, fallback, reduced motion, dan QA-nya
+lengkap.
 
-## 🧩 Modul native
+## 🧩 Modul TypeScript
 
 | Lokasi | Owner |
 | --- | --- |
-| `main.ts` | Bootstrap `Phaser.Game` dan snapshot debug `window.__HAT.snapshot()` |
+| `main.ts` | Bootstrap `Phaser.Game` dan snapshot `window.__HAT.snapshot()` |
 | `game/config.ts` | Ukuran 960×540, Scale FIT, Arcade Physics, dan daftar scene |
-| `game/entities/Player.ts` | Sprite Elena, body kaki 24×12, gerak, animasi, dan langkah |
+| `game/entities/Player.ts` | Sprite Elena, body kaki, gerak, animasi, shadow, dan langkah |
 | `game/systems/InputSystem.ts` | Intent keyboard dan touch per frame |
 | `game/systems/SurfaceSystem.ts` | Static Arcade surfaces dan collider |
-| `game/systems/InteractionSystem.ts` | Proximity, prompt, dan action object tanpa mutasi cerita |
-| `game/systems/SaveSystem.ts` | Trust boundary `hat_save`, migrasi `saveVersion`, dan autosave siklus |
-| `game/world/` | Definisi data 1944, Game Object dunia, dan pembuatan object |
-| `game/narrative/` | Guard transisi native dan metadata batas legacy; bukan salinan dialog |
-| `game/legacy/LegacyStateAdapter.ts` | Continue save 1968/1999 melalui runtime legacy |
+| `game/systems/InteractionSystem.ts` | Proximity, prompt, dan action object tanpa mengambil alih cerita |
+| `game/systems/SaveSystem.ts` | Trust boundary `hat_save`, `saveVersion: 2`, normalisasi, dan autosave |
+| `game/world/` | Definisi data 1944/1968/1999, Game Object dunia, dan factory |
+| `game/narrative/storyScript.ts` | Dialog, pilihan, rute, operasi walk/vortex, dan enam ending |
+| `game/minigames/` | Aturan matematis/bonus murni untuk unit test |
+| `game/audio/SoundManager.ts` | Musik, ambience, SFX, mute, dan ducking |
 
-State native yang dibagi antar-scene disimpan di registry Phaser: `saveSystem`,
-`storyRunner`, `reduceMotion`, `loadErrors`, dan `nativeState`. State satu siklus memakai
-`RunState`; mutasi gameplay tetap dilakukan scene/system pemilik, bukan renderer.
-
-## 🧱 Runtime legacy
-
-Classic-script lama tetap berada di `src/core/`, `src/data/`, `src/game/*.js`,
-`src/render/`, dan `src/ui/`. Kontrak utamanya tidak berubah:
-
-- `src/data/story.js` tetap owner dialog dan percabangan yang belum native.
-- `src/game/flow.js` tetap owner state machine, mini-game, loop, dan ending legacy.
-- `src/render/screens.js` tetap renderer Canvas 2D legacy melalui `POST_RENDER`.
-- `src/game/main.js` tetap bootstrap halaman `legacy.html`.
-
-Kode native tidak mengimpor global legacy. Integrasi hanya lewat data save yang
-dinormalisasi dan navigasi eksplisit.
+Service/opsi lintas scene disimpan di registry Phaser: `saveSystem`,
+`soundManager`, `options`, `reduceMotion`, `loadErrors`, dan `nativeState`.
+State satu siklus memakai `RunState`; scene gameplay tetap owner mutasinya.
 
 ## 🛠️ Lokasi perubahan umum
 
 | Perubahan | Mulai dari |
 | --- | --- |
-| Gerak/fisika 1944 | `game/entities/Player.ts`, `game/systems/SurfaceSystem.ts`, `game/world/era1944.ts` |
-| Object/interaksi 1944 | `game/world/era1944.ts`, `game/world/WorldObject.ts`, `game/systems/InteractionSystem.ts` |
-| HUD/touch/pause native | `game/scenes/UIScene.ts`, lalu `game/systems/InputSystem.ts` |
-| Arloji native | `game/scenes/WatchRepairScene.ts` dan field terkait di `SaveSystem.ts` |
-| Save/migrasi | `game/systems/SaveSystem.ts`; pertahankan kompatibilitas `hat_save` legacy |
-| Dialog/rute/ending yang belum native | File `.js` legacy; cocokkan `FIRST_IDEA.md` dan `DIALOG.md` |
-| Memigrasikan tantangan lampu sorot | Tambah scene/aturan native lengkap, lalu pindahkan handoff ke dialog Arthur |
+| Gerak/fisika era | `game/entities/Player.ts`, `game/systems/SurfaceSystem.ts`, dan definisi `game/world/era*.ts` |
+| Object/interaksi | Definisi era, `game/world/WorldObject.ts`, lalu `game/systems/InteractionSystem.ts` |
+| HUD/touch/pause | `game/scenes/UIScene.ts`, lalu `game/systems/InputSystem.ts` |
+| Dialog/rute/ending | `game/narrative/storyScript.ts` dan `game/scenes/DialogueScene.ts` |
+| Mini-game | Scene pemilik dan aturan murni di `game/minigames/` bila dapat dipisahkan |
+| Save/migrasi | `game/systems/SaveSystem.ts`; pertahankan key `hat_save` dan kompatibilitas versi |
+| Audio | `game/audio/SoundManager.ts`; scene hanya meminta ambience/music/SFX semantik |
+| Loader/fallback | `game/scenes/PreloadScene.ts` |
+| Loop/pecahan/akhir | `GlitchScene`, `PuzzleAwardScene`, `EndCardScene`, dan `TitleScene` |
+| Bonus 2088 | `Bonus2088Scene.ts` dan `game/minigames/bonusRules.ts` |
 
-Batas migrasi saat ini terjadi ketika pemain mengaktifkan lampu sorot. Native menyimpan
-era 1944 dan `playerX`, lalu membuka `legacy.html?continue=1`; `src/game/main.js`
-memulihkan run dan posisi itu sebelum `startWalk()`. Batas berikutnya yang dapat
-dieksekusi adalah memindahkan tantangan lampu sorot secara utuh, lalu melakukan handoff
-di dialog Arthur. Sampai itu lengkap, pertahankan redirect agar cerita tetap dapat
-diselesaikan.
+## 🧱 Referensi classic-script
+
+Runtime lama dipertahankan untuk membandingkan aturan/presentasi melalui
+`npm run qa:legacy`. Ia bukan fallback produksi, bukan target Continue, dan tidak
+boleh menerima fitur baru kecuali tugas secara eksplisit menargetkan parity regression.
+Jika referensi dan TypeScript berbeda, source TypeScript menentukan perilaku produk;
+gunakan GDD/dialog untuk menilai ketidaksesuaian naratif.
 
 Rincian runtime ada di `../docs/ARCHITECTURE.md`; resep perubahan ada di
 `../docs/AGENT_WORKFLOWS.md`.

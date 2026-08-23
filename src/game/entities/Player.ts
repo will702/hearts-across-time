@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 
 import type { InputSnapshot } from '../systems/InputSystem';
+import { shouldRun } from '../systems/replayRules';
 import type { SurfaceMaterial } from '../world/worldTypes';
 
 const WALK_SPEED = 150;
@@ -11,6 +12,7 @@ const STEP_DISTANCE = 30;
 const WALK_ANIMATION = 'elena-walk-neutral';
 
 export interface PlayerOptions {
+  loop?: number;
   reduceMotion?: boolean;
   onStep?: (material: SurfaceMaterial) => void;
   surfaceAt?: (x: number, y: number) => SurfaceMaterial;
@@ -21,6 +23,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   private reduceMotion: boolean;
   private readonly hasWalkSheet: boolean;
+  private readonly loop: number;
   private stepDistance = 0;
   private groundY: number;
   private readonly onStep?: PlayerOptions['onStep'];
@@ -31,6 +34,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, hasWalkSheet ? 'elena' : 'elena-fallback', 0);
 
     this.hasWalkSheet = hasWalkSheet;
+    this.loop = Math.max(0, Math.floor(options.loop ?? 0));
     this.reduceMotion = Boolean(options.reduceMotion);
     this.onStep = options.onStep;
     this.surfaceAt = options.surfaceAt;
@@ -64,11 +68,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   updatePlayer(input: InputSnapshot, deltaMs: number): void {
+    this.reduceMotion = Boolean(this.scene.registry.get('reduceMotion'));
     const body = this.arcadeBody;
     const dt = Math.min(Math.max(deltaMs / 1000, 0), 0.05);
     const blocked = (input.move < 0 && body.blocked.left) || (input.move > 0 && body.blocked.right);
     const move = blocked ? 0 : input.move;
-    const maxSpeed = input.sprint ? RUN_SPEED : WALK_SPEED;
+    const maxSpeed = shouldRun(this.loop, input.sprint) ? RUN_SPEED : WALK_SPEED;
 
     body.setMaxVelocity(maxSpeed, 600);
     if (move) {

@@ -1,5 +1,15 @@
 import type { WorldDefinition } from './worldTypes';
 
+export function era1968Title(routeB1: string): string {
+  return routeB1 === 'B'
+    ? 'BABAK 2 — LABORATORIUM MILITER, 1968'
+    : 'BABAK 2 — BUNKER BAWAH TANAH, 1968';
+}
+
+export function era1968ArthurAsset(routeB1: string): 'arthur-buron' | 'arthur-dewasa' {
+  return routeB1 === 'B' ? 'arthur-dewasa' : 'arthur-buron';
+}
+
 export const ERA_1968 = {
   id: '1968',
   width: 1200,
@@ -85,6 +95,42 @@ export const ERA_1968 = {
       completed: () => false,
       surface: 'metal',
       saveKey: 'save.inspected.diary',
+    },
+    {
+      id: 'lore_photo',
+      type: 'lore',
+      position: { x: 560, y: 444 },
+      visual: { asset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
+      depth: 441,
+      sensor: {
+        radius: 48,
+        bounds: { x: 530, y: 394, width: 60, height: 100 },
+      },
+      action: { type: 'lore', id: 'lore_photo' },
+      prompt: { keyboard: 'SPACE — PERIKSA FOTO SOBEK', touch: '▼ PERIKSA FOTO SOBEK' },
+      priority: 60,
+      enabled: () => true,
+      completed: state => Boolean(state.inspected.lore_photo),
+      surface: 'metal',
+      saveKey: 'save.inspected.lore_photo',
+    },
+    {
+      id: 'lore_tape',
+      type: 'lore',
+      position: { x: 805, y: 444 },
+      visual: { asset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
+      depth: 441,
+      sensor: {
+        radius: 48,
+        bounds: { x: 775, y: 394, width: 60, height: 100 },
+      },
+      action: { type: 'lore', id: 'lore_tape' },
+      prompt: { keyboard: 'SPACE — PERIKSA PITA АРТУР-1', touch: '▼ PERIKSA PITA АРТУР-1' },
+      priority: 60,
+      enabled: () => true,
+      completed: state => Boolean(state.inspected.lore_tape),
+      surface: 'metal',
+      saveKey: 'save.inspected.lore_tape',
     },
     {
       id: 'arthur',

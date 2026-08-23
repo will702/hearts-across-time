@@ -1,11 +1,10 @@
 # ⏳ Hearts Across Time — Break The Loop
 
-> 2D Side-Scroller Narrative Puzzle / Psychological Time-Loop • Phaser 4 + TypeScript/Vite + runtime legacy Canvas
-> Dibangun untuk **COMPFEST Indie Game Jam** — implementasi penuh dari *Game Design Document* `FIRST_IDEA.md` (sebelumnya `FIKS IDE.md`).
+> 2D Side-Scroller Narrative Puzzle / Psychological Time-Loop • Phaser 4 + TypeScript/Vite
+> Dibangun untuk **COMPFEST Indie Game Jam** dari *Game Design Document*
+> `FIRST_IDEA.md` (sebelumnya `FIKS IDE.md`).
 
-## ▶ Cara Menjalankan
-
-Install dependency lalu jalankan entry Phaser-native melalui Vite:
+## ▶ Cara menjalankan
 
 ```sh
 npm install
@@ -13,7 +12,7 @@ npm run dev
 # buka http://127.0.0.1:8777/
 ```
 
-Perintah pengembangan dan verifikasi utama:
+Gate pengembangan utama:
 
 ```sh
 npm run typecheck
@@ -25,329 +24,158 @@ npm run qa:visual
 npm run qa
 ```
 
-`npm run build` menghasilkan `dist/`. Zip isi folder tersebut untuk deploy HTML5
-960×540; hasil build memuat entry native dan `legacy.html` beserta aset/runtime lama
-yang masih diperlukan.
+`npm run build` menghasilkan aplikasi HTML5 960×540 di `dist/`. Zip **isi**
+folder tersebut untuk deploy itch.io. Build hanya berisi `index.html`, bundle
+Phaser-native, dan `assets/`.
 
-## 🚧 Status migrasi strangler
+## 🏗️ Arsitektur produksi
 
-`index.html` adalah runtime utama Phaser-native. Scene yang sudah native: Boot,
-Preload, Intro, Title, traversal 1944 sampai batas tantangan lampu sorot,
-UI/pause/touch, dan mini-game perbaikan arloji. Scene memakai Phaser Game Object,
-Arcade Physics, kamera, input, loader, dan save TypeScript; tidak menggunakan renderer
-Canvas lama pada `POST_RENDER`.
+`index.html` adalah satu-satunya entry produksi. Vite memuat `src/main.ts`, lalu
+`src/game/config.ts` mendaftarkan seluruh scene TypeScript/Phaser:
 
-Saat pemain mengaktifkan lampu sorot, native menyimpan era 1944 dan `playerX`, lalu
-membuka `legacy.html?continue=1`. Runtime lama memulihkan save tersebut dan memulai
-`startWalk()` pada era/posisi yang sama, sehingga tantangan lampu sorot dan cerita
-setelahnya tetap dapat dimainkan. Runtime legacy juga mempertahankan era 1968/1999,
-dialog dan rute lengkap, mini-game lain, loop, ending, serta bonus. Sampai slice
-berikutnya lengkap, keberadaan legacy adalah bagian dari perilaku produksi, bukan
-snapshot historis.
+- fondasi: Boot, Preload, Intro, Title, Prologue, UI, dan Dialogue;
+- traversal: 1944, 1968, dan 1999;
+- mini-game: arloji, lampu sorot, botol mawar, sinyal, buku harian, permata, foto,
+  dan krio;
+- transisi/hasil: vortex, glitch loop, enam pecahan ending, true ending, dan bonus
+  2088.
+
+Semua sprite, latar, physics, kamera, input, dialog, UI, audio, save, loop, ending, dan
+bonus dimiliki runtime native. `legacy.html` serta classic-script lama dipertahankan
+sebagai referensi/parity regression melalui `npm run qa:legacy`; keduanya bukan
+fallback produksi dan tidak termasuk `dist/`.
 
 ## 🎮 Kontrol
 
 | Aksi | Keyboard | Sentuh |
-|---|---|---|
-| Menu sampul | `↑ ↓` + `Enter` | ketuk menu |
-| Gameplay terakhir (legacy) | `← →` / `A D`, `↓` / `S` / `Enter` untuk menyalakan simpul waktu | tombol ◀ ▶ dan ketuk `AKTIFKAN` |
-| Tutorial pembuka (legacy) | `← →` ganti halaman, `Enter` lanjut, `Esc` lewati | ketuk tombol |
-| Bergerak | `← →` atau `A D` (lari native: `Shift`) | tombol ◀ ▶; tombol ≫ hanya legacy |
-| Interaksi / mulai tantangan | `↓`, `S`, atau `Enter` | ketuk penanda |
-| Perbaiki arloji di Babak 1 | `← →` putar roda, `Space` / `Enter` kunci | ketuk lingkaran, lalu area bawah |
-| Susun botol mawar di Babak 2 (legacy) | seret kepingan; atau `1–4`, `← ↑ ↓ →`, lalu `Space` | seret dan lepaskan kepingan pada bayangan botol |
-| Periksa dan baca buku harian Arthur (legacy) | `Space` (juga `↓` / `S` saat membuka) | ketuk penanda buku |
-| Mini-game selain arloji (legacy) | `← →` untuk memilih/menyetel, `Enter` / `Space` untuk mengunci | ketuk pilihan/jalur, lalu area bawah untuk mengunci |
-| Lanjut dialog (legacy) | `Enter` / `Space` / klik | ketuk layar |
-| Pilih opsi (legacy) | `↑ ↓` + `Enter`, atau tombol `1` / `2` / `3` | ketuk opsi |
-| Periksa titik lore (`✦` berdenyut) | `↓` atau `S` saat berdiri dekat | ketuk penanda |
-| Backlog dialog (legacy) | `Tab` / `B` (gulir: `↑ ↓`) | — |
-| Jeda | `Esc` / `P` (native); `Esc` (legacy) | ikon ⏸ pojok kanan atas |
-| Bisu-suara (legacy) | `M` | ikon 🔊 pojok kanan atas |
+| --- | --- | --- |
+| Menu sampul | `↑ ↓` + `Enter`/`Space` | ketuk menu |
+| Bergerak | `← →` atau `A D`; tahan `Shift` untuk lari | tombol ◀ ▶ |
+| Interaksi | `↓`, `S`, `Space`, atau `Enter` | tombol aksi |
+| Dialog | `Enter`/`Space`; `Ctrl`/`F` mempercepat ketik | ketuk panel |
+| Pilihan dialog | `↑ ↓`/`W S` + `Enter`, atau `1–3` | ketuk opsi |
+| Backlog dialog | `Tab`/`B`; `Esc` menutup | ketuk tombol backlog/tutup |
+| Arloji | `← →`/`A D`, lalu `Space`/`Enter` | putar/ketuk kontrol |
+| Lampu sorot, sinyal, krio | `← →`/`A D`, lalu `Space`/`Enter` | ketuk pilihan dan aksi |
+| Botol mawar dan foto | `1–4`, arah/WASD, lalu `Space`/`Enter` | seret kepingan |
+| Permata air | arah/WASD, `Space`/`Enter`; `R` reset | seret dan konfirmasi |
+| Buku harian | `← →`/`A D`, `Space`/`Enter`; `Esc` tutup | tombol halaman |
+| Jeda | `Esc`/`P`; saat jeda `R` ulang siklus, `M` menu | ikon jeda |
+| Bisu suara | — | ikon suara |
 
-Kontrol gerak, arloji, touch, dan pause 1944 tersedia pada entry native. Baris untuk
-1968/1999, dialog lengkap, ending, dan bonus berlaku pada `legacy.html` sampai scene
-tersebut dimigrasikan.
+Gameplay bonus 2088 memakai kontrol gerak/interaksi yang sama; lima simpul kenangan
+memiliki kontrol pointer yang ditampilkan pada modal masing-masing.
 
-Mulai dari loop ke-2 Elena **berlari otomatis** — `Shift`/`≫` berbalik fungsi jadi jalan pelan, agar pengulangan siklus tidak repot. Layar judul menampilkan penghitung **⏳ ENDING TERUNGKAP n/6** (5 rute gagal + true ending) yang tersimpan lintas sesi. Setiap ending berbeda menghadiahkan satu **Pecahan Waktu**; enam pecahan menyusun kota 2088 yang pulih dan membuka tombol **GAMEPLAY TERAKHIR** di menu utama. Mengulang ending yang sama tetap menampilkan koleksi, tetapi tidak menggandakan pecahan.
+## ✅ Implementasi gameplay dan GDD
 
-## ✅ Implementasi vs GDD
+| Fitur | Implementasi |
+| --- | --- |
+| Kepribadian tersembunyi | Pilihan dan tiga tantangan memberi Empati/Logika tanpa menampilkan angka saat bermain |
+| Tiga era wajib | 1944 lampu sorot, 1968 penyetelan sinyal, 1999 stabilisasi krio; assist setelah tiga miss |
+| Puzzle barang lintas waktu | Arloji, mawar, permata air, dan foto menjadi gate serta inventory satu siklus |
+| Percabangan rute | Pilihan 1944 dan 1968 menghasilkan cabang akhir di 1999 |
+| Loop | Ending gagal memberi pecahan, menaikkan loop, mereset state siklus, lalu kembali ke 1944 |
+| Enam ending | `A1`, `B1`, `B2lock`, `rebut`, `paradox`, dan `true` tersimpan lintas sesi |
+| True ending | Rute dan item yang benar memutus loop serta membuka end card |
+| Bonus 2088 | Keenam pecahan membuka epilog kota pulih dengan lima simpul mini-game |
+| Dialog | `storyScript.ts` memuat operasi say/choice/goto/walk/item/fx/vortex/ending; `DialogueScene` menafsirkannya |
+| Save/Continue | `SaveSystem` menormalisasi `hat_save` v2 dan memulihkan langsung ke era 1944/1968/1999 |
 
-Tabel ini mencatat kemampuan game secara keseluruhan pada gabungan runtime native dan
-legacy; bukan klaim bahwa seluruh fitur di bawah sudah dipindahkan ke scene native.
+Sumber kebenaran cerita adalah `FIRST_IDEA.md`, `DIALOG.md`, dan implementasi aktif
+`src/game/narrative/storyScript.ts`.
 
-| Fitur GDD | Status |
-|---|---|
-| Sistem Kepribadian tersembunyi (Empati vs Logika) | ✔ Dialog dan tiga pendekatan gameplay bersama-sama menentukan Arthur Hangat / Sinis |
-| Tantangan era wajib dan ramah gagal | ✔ Lampu sorot 1944, penyetelan sinyal 1968, stabilisasi krio 1999; assist otomatis setelah 3 miss |
-| Temukan dan perbaiki arloji saat berjalan | ✔ Arloji berada langsung di parit 1944; tiga roda waktu harus diselaraskan sebelum benda masuk ke tas |
-| Susun kembali botol mawar saat berjalan | ✔ Botol pecah berada di awal Babak 2; empat kepingan kaca harus disatukan sebelum botol mawar abadi masuk ke tas |
-| Percabangan pohon waktu 2 → 4 → 8 | ✔ Rute 1A/1B × 2A1/2A2/2B1/2B2 → 4 kasus akhir + sub-kondisi |
-| Looping System (`loop_count++`) | ✔ Layar glitch RGB-strip + "⟲ LOOP n", reset ke Babak 1, HUD penghitung loop |
-| True Ending (Empati tinggi → B → B2 → Ikhlas) | ✔ Termasuk rahasia: statistik *hidden affinity* terungkap di kartu ending |
-| Tas barang lintas babak + ramuan akhir | ✔ Arloji rusak, bunga abadi, permata air, dan foto Arthur tersimpan sepanjang siklus; arloji membuka keputusan True Ending |
-| Koleksi enam pecahan ending + babak bonus | ✔ Hadiah unik di setiap ending, puzzle permanen 3×2, menu terkunci sampai lengkap, lalu epilog eksplorasi kota pulih |
-| Skrip Yarn Spinner | ✔ Seluruh dialog dimigrasi verbatim (node `prologue … true_end`) |
-| Asset manifest (sprite, parallax, ilustrasi, font, audio) | ✔ Aset opsional dimuat dari `assets/`; jalur prosedural/senyap tetap menangani file yang absen |
-| Balon kata 7-Days style | ✔ Bubble putih + ekor + chip nama (Elena merah rose / Arthur slate) |
+## 🎨 Aset dan fallback
 
-## 🎨 Catatan Aset
+Aset produksi dimuat melalui `PreloadScene` dan dipakai sebagai Phaser Game Object.
+Aset yang membawa informasi gameplay memiliki fallback texture/prosedural; aset
+dekoratif boleh gagal tanpa memblokir boot.
 
-Rincian aset lengkap di bawah tetap menjadi kontrak runtime legacy. Vertical slice
-native memuat subset yang dipakainya melalui `PreloadScene` dan menyediakan fallback
-minimum untuk elemen gameplay wajib.
+Gaya visual tetap watercolor-storybook: garis pensil grafit, wash cat air muted,
+lapisan horizontal seamless, dan jangkar karakter tengah-bawah.
 
-Seluruh karakter & latar **sudah berupa PNG lukis asli** di `assets/` (gaya watercolor-storybook mengikuti
-referensi: garis pensil grafit sketsa + wash cat air, palet muted). Digenerate dengan
-`google/gemini-3.1-flash-image-preview` via OpenRouter, lalu diproses offline (chroma-key magenta w/
-hue estimation + flood-fill, re-anchor kaki bottom-center, seamless tiling cross-fade) lewat skrip yang
-disertakan: `scripts/gen_image.py`, `scripts/gen_exprs.py`, `scripts/gen_bgs.py`,
-`scripts/build_sheets.py`, `scripts/compose_all.py` (butuh `OPENROUTER_API_KEY` di `.env` + `.venv` berisi
-`requests pillow numpy` untuk regenerasi). Sejak pass 010, `seam_blend` di `build_sheets.py` menutup
-junction tile secara eksak (kolom 0 == kolom w-1 + ramp koreksi 24px); PNG final era lama yang masih
-berseam dapat dirapikan tanpa regenerasi lewat `scripts/fix_bg_seams.py` (cetak seamdiff sebelum/sesudah,
-`--qc` untuk pasangan tile). Backend alternatif: `scripts/gen_image_ds.py` memakai
-Alibaba Cloud Model Studio/DashScope (WanX t2i async; butuh `DASHSCOPE_API_KEY` di `.env`) — gaya
-WanX cenderung lebih tajam/kartun dari wash cat air gemini, jadi hanya dipakai bila jalur gemini tak tersedia. Fallback prosedural tetap utuh — hapus PNG mana pun dan game
-otomatis menggambarnya lagi lewat kode. Font UI **Patrick Hand**, judul **Cinzel**, dan metadata **Poppins**
-(SIL OFL) ikut di-bundle di `assets/fonts/` dan dimuat via `FontFace`; saat dibuka langsung lewat `file://` font diblokir CORS browser →
-otomatis fallback ke Trebuchet tanpa error.
+### Kontrak sprite dan latar
 
-- Elena — rambut ash-blonde belah tengah, jas lab putih di atas gaun dusty-rose, boot kulit pucat strap gelap;
-  4 frame jalan asli (sel F1–F3) + 7 variasi ekspresi
-- Arthur muda (seragam medis + helm + vial hijau), dewasa (jas lab + kacamata), buron (jaket coklat + satchel),
-  tua (kardigan + tongkat) — masing-masing 8 baris ekspresi konsisten satu pose
-- 11 latar parallax lukis: puing 2088 (far/mid/near), parit 1944 (far/mid), bunker 1968A (far/mid),
-  lab 1968B (far/mid), ruang kriogenik 1999 (far/mid). Kapsul 1999 tetap **prosedural-animasi** (gelembung,
-  cairan, label ARTHUR PROJECT) — keputusan sengaja agar centerpiece tetap hidup
+- Sheet karakter: `assets/<id>_sheet.png`, grid 4 kolom × 8 baris, sel 150×210.
+- Kolom: F0 idle; F1–F3 siklus jalan.
+- Baris: `neutral`, `smile`, `sad`, `shock`, `angry`, `mad`, `warm`,
+  `happy`.
+- Strip prop: `assets/prop_*.png`, tiga frame 200×200.
+- Latar era: `assets/bg<era>_<layer>.png`; layer far/mid/foreground memakai scroll
+  factor berbeda dan world bounds Phaser.
+- Judul produksi memakai `title_cover_figJma.png` sebagai ilustrasi dan merender teks
+  tepat **HEARTS ACROSS TIME / BREAK THE LOOP** melalui Phaser; raster wordmark lama
+  bukan sumber teks produksi.
 
-Sprite & latar masih bisa di-tweak: regenerasi sel lewat skrip di atas, atau tweak konstanta `PAL`
-untuk fallback prosedural.
+Karakter utama: Elena serta Arthur muda/dewasa/buron/tua. Aset tambahan mencakup
+foreground, pose momen kunci, portrait, ilustrasi prolog/lab, vortex waktu, prop
+animasi, puzzle, dan kota epilog.
 
-**Frame bicara & potret dialog (opsional, pass 013):** sheet karakter mendukung **6 kolom** — kolom
-F4/F5 = mulut tertutup/terbuka yang otomatis dianimasikan selama baris dialog diketik (`drawCharSheet`,
-nonaktif saat `reduceMotion`; sheet 4-kolom lama tetap valid tanpa flap). Potret bust
-`assets/portrait_*.png` muncul di tepi bawah saat pembicara aktif (`drawPortrait`) — file absen =
-skip senyap. Spesifikasi lengkap generasi via agy/codex + komposisi offline: `plans/013-asset-spec-handoff.md`.
+### Pipeline aset
 
-**Asset-rich pass (v4)** menambah, lewat pipeline yang sama (`scripts/gen_props.py` →
-`scripts/build_props.py`, `scripts/gen_extra.py` → `scripts/build_extra.py`):
+Skrip `scripts/gen_image.py`, `gen_exprs.py`, `gen_bgs.py`,
+`build_sheets.py`, `compose_all.py`, `gen_props.py`, dan `build_props.py`
+menyiapkan aset watercolor. `scripts/fix_bg_seams.py` mengukur dan merapikan seam
+tanpa regenerasi. Bahan mentah masuk ke `assets/gen/` dan tidak di-commit.
 
-- **11 strip properti animasi** 3-frame (`assets/prop_*.png`): bendera lusuh & lentera (1944), tong api &
-  poster robek (2088), bohlam bergoyang & radio (1968A), beacon & uap pipa (1968B), CRT osiloskop (1999),
-  suar sinyal (1944, menandai titik lore), ventilasi embun beku (1999)
-- **5 lapisan foreground lukis** `assets/bg<era>_fg.png` (okluder dekat kamera parallax ×1.18, diturunkan
-  lewat `yOff` per era agar badan pemain tetap terbaca; absen → tetap `fgSilhouette` prosedural)
-- **5 pose momen kunci** `assets/pose_*.png`: Elena menggenggam tangan (respons empati `c1e`/`c2e`),
-  Elena berlutut memeluk vial (`true_end` & kartu akhir), Arthur tua meraih kapsul (`n_b3` cabang hangat),
-  Arthur muda menyodorkan vial (`r1b`), Elena teguhkan hati (`n_b1` saat ekspresi marah, loop ≥3) — pose
-  kini **fade-in 250ms** (bukan pop) antar node, dengan filter ekspresi opsional per node
-- **Audio CC0** di `assets/audio/` (lihat kredit di bagian Musik & Audio) — langkah kaki per-permukaan,
-  rustle kertas dialog, loop ambience per era (hujan / angin / bara / dengung mesin)
-- **Puzzle dan kota epilog**: `assets/bonus_puzzle_board.jpg` menjadi papan pecahan, sedangkan
-  `assets/bonus_city_complete.jpg` menjadi gambar lengkap sekaligus latar side-scroll gameplay terakhir.
+Generator memerlukan credential lokal di `.env`; jangan membaca, menjalankan
+regenerasi, atau mengganti aset tanpa permintaan eksplisit.
 
-## 🖼 Memakai Aset PNG Buatan Sendiri (opsional, tanpa pindah engine)
+Font **Cinzel**, **Poppins**, dan **Patrick Hand** (SIL OFL) dibundle di
+`assets/fonts/`.
 
-Runtime legacy punya **lapisan aset bawaan**: letakkan PNG di folder `assets/` dan
-manifest lama otomatis memakainya. File yang tidak ada memakai fallback prosedural
-legacy. Pada runtime native, daftarkan key di `PreloadScene` dan pertahankan fallback
-minimum bila aset tersebut membawa informasi atau input wajib.
+## 🎵 Musik dan audio
 
-### Sprite karakter — `assets/<id>_sheet.png`
+`SoundManager` memiliki musik WebAudio prosedural, bus master/SFX/ambience/music,
+ducking dialog, mute, dan ambience per era. Sampel CC0 di `assets/audio/` menambah
+langkah kaki, hujan, angin, api, dengung mesin, dan SFX UI; file yang absen tidak
+memblokir gameplay.
 
-Grid **4 kolom × 8 baris**, sel 150×210 px (konfigurasi di `ASSET_MANIFEST`):
+Kredit CC0:
 
-| | Kolom | Isi |
-|---|---|---|
-| **Kolom** | F0 | idle (berdiri) |
-| | F1–F3 | siklus jalan (diputar otomatis mengikuti fase langkah) |
-| **Baris** | r0–r7 | `neutral, smile, sad, shock, angry, mad, warm, happy` (urutan `EXPR_ROWS`) |
+- *Kenney RPG Audio* — Kenney.nl
+- *AMB Rain Loop 1* — Kresiek The Furry
+- *wind1* — Luke.RUSTLTD
+- *Fireplace Sound loop* — PagDev
+- *Generator loop* — YCbCr
+- sumber distribusi: OpenGameArt.org
 
-Jangkar: **tengah-bawah** (kaki menyentuh tepi bawah sel). Tinggi tampil di layar
-diatur lewat `h` (default 112 px) — art boleh resolusi berapa pun, otomatis diskalakan.
-ID sheet: `elena`, `arthur_muda`, `arthur_dewasa`, `arthur_buron`, `arthur_tua`.
-Template berukuran siap-pakai tersedia: `assets/*_TEMPLATE.png` (ada manekin panduan
-proporsi chibi + label baris/kolom). Pixel art? tambah `pixel:true` di manifest agar
-nearest-neighbor (tanpa blur).
+## 🛠️ Struktur kode
 
-### Latar parallax — `assets/bg<era>_<layer>.png`
-
-| Era | far | mid | near |
-|---|---|---|---|
-| 2088 | `bg2088_far` (.1) | — | `bg2088_near` (.85) |
-| 1944 | `bg1944_far` (.14) | `bg1944_mid` (.45) | — (tanah prosedural) |
-| 1968 bunker (rute A) | `bg1968A_far` (.2) | `bg1968A_mid` (.5) | — |
-| 1968 lab (rute B) | `bg1968B_far` (.2) | `bg1968B_mid` (.5) | — |
-| 1999 | `bg1999_far` (.12) | `bg1999_mid` (.45) | — |
-
-Aturan gambar: **tile horizontal seamless** (lebar bebas, saran 960–1920 px),
-jangkar bawah, angka kurung = faktor parallax. Langit & grading tetap prosedural.
-
-### Deploy itch.io
-
-Jalankan `npm run build`, lalu zip **isi** `dist/`. `index.html` adalah entry native;
-`legacy.html` wajib ikut karena masih menjalankan bagian cerita yang belum dimigrasikan.
-File historis `legacy-canvas.html` dan `phaser-demo.html` tetap tidak digunakan.
-
-## ⚙️ Arsitektur Phaser modular
-
-`index.html` memuat `src/main.ts` melalui Vite. Phaser v4.2.1 memiliki lifecycle,
-display list, Arcade Physics, input, kamera, loader, pause, dan scaling untuk scene yang
-sudah native. `src/game/systems/SaveSystem.ts` menormalisasi save lama ke
-`saveVersion: 2`. `Era1944Scene` memakai `LEGACY_ENTRY_PATH` untuk handoff pada lampu
-sorot, sedangkan `LegacyStateAdapter` menangani Continue untuk save era 1968/1999.
-
-Renderer Canvas 2D pada `POST_RENDER` hanya hidup di halaman legacy. Classic-script
-lama tetap menjadi sumber kebenaran untuk konten yang belum native dan tidak diimpor
-ke bundle TypeScript.
-
-Kode dipisah berdasarkan tanggung jawab:
-
-- `src/main.ts` + `src/game/**/*.ts` — bootstrap, scene, entity, system, world, save,
-  guard narasi, dan seam legacy untuk vertical slice native.
-- `src/core/`, `src/data/`, `src/game/*.js`, `src/render/`, `src/ui/` — runtime lengkap
-  yang belum dimigrasikan dan dimuat hanya oleh `legacy.html`.
-
-Rincian kontrak modul ada di `src/README.md`, arsitektur runtime di
-`docs/ARCHITECTURE.md`, dan resep perubahan agen di `docs/AGENT_WORKFLOWS.md`.
-Batas migrasi berikutnya adalah tantangan lampu sorot 1944. Implementasikan tantangan
-native lengkap—assist, save/resume, pause, keyboard/touch, reduced motion, dan QA—lalu
-geser handoff ke dialog Arthur. Era 1968 baru menjadi slice era berikutnya setelah sisa
-alur 1944 memiliki owner native atau batas legacy yang eksplisit.
-
-## 🎵 Musik & Audio (v2 — Leitmotif System)
-
-Seluruh musik dibangkitkan **real-time via WebAudio sequencer** (lookahead scheduling, tanpa file audio).
-Satu **leitmotif "Tema Elena"** (A minor, kotak musik) dipakai berulang dengan aransemen berbeda per era —
-teknik *leitmotif* klasik film: pemain mengenali melodi yang sama yang berubah nasib seiring cerita:
-
-| Scene | Lagu | Karakter
-|---|---|---|
-| Title / 2088 / Prolog | `theme` | Kotak musik lembut, pad Am–G–Am–E–F–C–E–Am
-| 1944 Parit | `war` | Drone A rendah + stab tritone Eb, bel disonan — ketegangan perang
-| 1968 | `spy` | Pulse bass 8th-note + hi-hat noise + frasa motif — nuansa Perang Dingin
-| 1999 Kapsul | `cryo` | Bel FM arpeggio Am9/Fmaj9/Cmaj9 berkilau + reverb dingin
-| True Ending | `end` | **Motif yang sama → resolusi C mayor**, pad hangat, bel oktaf — katarsis |
-
-Arsitektur audio: bus `Master → limiter(kompressor) → out` dengan sub-bus **SFX / Ambience / Musik**;
-musik lewat *feedback-delay* + *convolution reverb* (impulse noise buatan). Musnahnya timeline (glitch)
-mem-fade musik ke 0, dan musik **duck otomatis ±6 dB saat teks dialog sedang mengetik** lalu naik lagi.
-
-**Lapisan audio eksternal CC0** (dimuat malas setelah gesture pertama; file absen → senyap, fallback
-prosedural tetap bunyi): loop ambience per era (`AMB_LAYER`) — gerimis+angin 1944, angin+bara 2088,
-dengung mesin 1968/1999 — plus langkah kaki Kenney yang difilter per permukaan (lumpur/beton/metal) dan
-rustle kertas saat panel dialog muncul. Kredit: *Kenney RPG Audio* (Kenney.nl, CC0); *AMB Rain Loop 1*
-(Kresiek The Furry, CC0); *wind1* (Luke.RUSTLTD, CC0); *Fireplace Sound loop* (PagDev, CC0);
-*Generator loop* (YCbCr, CC0) — semua dari OpenGameArt.org.
-
-## ✨ Efek Visual (v2 — Juice Pass)
-
-**Intro sinematik:** `assets/intro.mp4` diputar sebelum sampul dengan suara setelah pemain menekan **Putar Intro** (kebijakan autoplay browser), dapat dilewati, dan dapat dibuka lagi lewat **Putar Ulang Intro**. Bila video gagal dimuat, sequence parallax Figma 8,4 detik tetap menjadi fallback sebelum cover interaktif. Siklus Baru meminta konfirmasi bila autosave aktif. Peta waktu prosedural menautkan 1944–2088 dan menampilkan ending yang ditemukan sebagai segel tanpa membocorkan yang belum ditemukan. `reduceMotion` hanya menonaktifkan animasi Canvas, bukan video prarender.
-
-Sebelum prolog 2088, **tutorial pembuka tiga halaman** menjelaskan tujuan menyelamatkan masa depan, kontrol gerak/interaksi/dialog, serta sistem pilihan tersembunyi dan pengulangan waktu. Panel memakai gaya kertas–tinta yang sama dengan tantangan dan dapat dinavigasi lewat keyboard, mouse, atau sentuhan.
-
-Saat traversal 1944 pertama, petunjuk gerak, lari, interaksi, kontrol tantangan, dan pilihan dialog muncul hanya ketika relevan lalu disimpan sebagai selesai. Setiap era memiliki mini-game wajib dengan dua pendekatan naratif tanpa label statistik. Penyelesaian memberi tepat satu poin tersembunyi Empati atau Logika; miss tidak memberi poin dan tidak mereset timeline. Setelah tiga miss, tempo melambat dan jendela target melebar. Hasil ketiga tantangan ikut autosave **Lanjutkan** dan direset bersama afinitas ketika loop gagal.
-
-- **Karakter**: bayangan lembut di kaki, siklus kaki elips ayun/tumpu (kaki tumpu menapak, kaki ayun melengkung), fisika rambut & ayunan gaun dengan follow-through tertinggal dari langkah, condong saat berjalan + pitch badan saat akselerasi,
-  kilau rambut ala anime, air mata (ekspresi sedih) & butir keringat (kaget)
-- **Partikel**: fade + gravitasi + shrink; **debu terbang setiap langkah kaki**, bara api berkedip 1944, abu 2088,
-  motes biru 1999, jejak energi di pusaran waktu
-- **1944**: lampu sorot penjaga menyapu langit, kabut tanah melayang, kilat meriam → gradasi cakrawala oranye
-- **1968 lab**: strip neon langit-langit + kerucut cahaya berkedip; mainframe berkedip tetap
-- **1999**: *god rays* berayun dari langit-langit, lantai reflektif dingin, gelembung & es kapsul
-- **2088**: matahari Crimson dengan kabut radial, api jauh berkedip antar bangunan
-- **Vortex**: latar ruang-waktu watercolor `time_vortex.png`, angka tahun **RGB-split** makin lebar, dan partikel streaks; PNG absen → pusaran prosedural
-- **Glitch**: sobekan strip + *ghosting* duplikat layar (screen blend)
-- **UI**: panel pilihan *pop-in* spring (ease-out-back), prolog 2088 memakai `bgnarator.png` dengan zoom-parallax sinematik, cross-fade ekspresi `elenadialog1.png` / `elenadialog2sedih.png`, serta vignette merah berdenyut sinkron detak jantung,
-  kamera "bernafas" halus saat berjalan
-- **Intro 1944**: empat beat kamera Figma bergerak dari detail puing menuju ledakan utama, lalu menahan Elena setengah badan dan monolog sebelum kontrol berjalan aktif
-- **Intro 1968**: slow-pan empat beat pada `backgroundbawahtanah.jpg`, kemudian Elena sedih muncul di tengah sebelum adegan bunker/lab dimulai
-- **Intro laboratorium 1968 (rute B)**: empat framing kamera pada `labotariummiliter.jpg`, kemudian Elena bersemangat menyampaikan monolog tiga beat sebelum gameplay laboratorium
-- **Intro laboratorium akhir 1999**: storyboard kamera Figma bergerak slow-motion dari detail ruang menuju wide shot `Labotariumakhir.jpg`, lalu Elena sedih seukuran narator awal menyampaikan monolog tiga beat sebelum Babak 3
-- **Layar judul Figma**: ilustrasi kosmik tanpa teks `title_cover_figJma.png`, satu wordmark resmi `llJUDULL.png`, plakat START, serta footer ringkas untuk progres ending, autosave, dan kontrol menu
-
-**v3 — Tampilan Valiant Hearts (komik perang):**
-
-- Tipografi tulisan tangan: font **Patrick Hand** (SIL OFL) di-bundle lokal (`assets/fonts/patrick-hand(-ext).woff2`,
-  2 subset unicode-range via `FontFace`) — fallback mulus ke Trebuchet bila game dibuka lewat `file://` (CORS memblokir font lokal)
-- Kit **kertas & tinta** (`PAPER` + `sketchRR`): balon kata, strip narator, panel pilihan, jeda, backlog — semua panel
-  kertas krem bertekstur serat dengan goresan tinta ganda bergoyang alami (jitter deterministik); pilihan aktif diberi
-  goresan spidol merah; chip nama jadi cap tinta miring
-- **Kotak caption komik** untuk judul babak (kiri atas, aksen tinta merah) menggantikan pita gelap
-- **Siluet latar depan** `fgSilhouette` (parallax ×1.18): bibir tanah tak rata + kawat berduri & tunggul 1944, lempeng
-  beton & rebar 2088, rantai bunker 1968A, pipa & kabel 1968B, pilar silo 1999
-- **Kabut antar-lapisan** (`hazeBand`) untuk perspektif udara di tiap era
-- Grading v3 "cetakan buku harian perang": serat kertas multiply + lift krem overlay + vignette + sudut gelap panel cetak
-- Bingkai ganda sampul komik pada layar judul & endcard; palet chip/tag UI dilembutkan; langit 1944 mendung-oker
-
-**v4 — Asset-rich & alive (properti/cuaca/pose/napas):**
-
-- 9 **properti animasi** 3-frame gaya cat air per era (bendera, lentera, tong api, poster, bohlam, radio,
-  beacon, uap pipa, CRT) — frame deterministik dari `T` (`reduceMotion` → frame 0)
-- **Gerimis parit 1944** prosedural (streak miring + riak pecah di tanah), terkait loop audio hujan
-- **Tarikan napas idle** ±1px pada karakter sheet saat diam (beda fase Elena/Arthur)
-- **Pose momen kunci** menggantikan sheet pada node tertentu (genggam tangan empati, berlutut true_end,
-  Arthur meraih kapsul) — fallback mulus ke sheet standar
-- Lapisan **foreground lukis** (`bgLayerImg` ×1.18) menggantikan siluet prosedural bila file tersedia
-
-**008 — Skill-audit pass (story × gameplay × aset):**
-
-- **Titik selidik (lore hotspots)**: 5 penanda `✦` berdenyut di adegan jalan (2×1944, 2×1968, 1×1999) —
-  `↓`/`S` atau ketuk → strip narator lore 2 baris (pakai kit kertas yang sama); tersimpan permanen di save
-- **Gema loop lintas era**: déjà-vu bertingkat kini juga di pembuka 1968 (3 tingkat) & 1999 (2 tingkat);
-  layar glitch menampilkan **berkas kasus** + petunjuk naratif tanpa membocorkan statistik kepribadian
-- **Fix logika kepribadian**: empati/logika & rute **direset tiap loop** — sebelumnya bocor antar-loop
-  (true ending bisa digrinding); kini tiap siklus menentukan Arthur-nya sendiri
-- **Pilihan kepribadian tersembunyi**: opsi dialog tidak menampilkan label atau angka empati/logika;
-  Babak 2 menambah satu pilihan sikap khusus di bunker dan laboratorium sebelum keputusan rute akhir
-- **Buku harian wajib Babak 2**: Elena tertahan sebelum Arthur sampai pemain memeriksa seluruh halaman;
-  isi bercabang menurut rute, sikap Babak 1, dan loop, lalu menjadi pertanyaan sikap baru di Babak 3
-- **Puzzle botol mawar Babak 2**: sebelum penyetelan sinyal, Elena menemukan botol pecah berisi mawar;
-  pemain wajib menyatukan empat kepingan bergambar yang benar-benar membentuk ilustrasi utuh sebelum perjalanan terbuka
-- **Dua puzzle kenangan Babak 3**: Elena lebih dahulu memutar permata air sampai bentuknya menyatu dengan bayangan,
-  lalu menyusun empat robekan foto Elena–Arthur dan mengelem tiga sambungannya sebelum dapat menemui Arthur
-- **Penyerahan foto pada True Ending**: foto yang diperbaiki tidak hanya menjadi ikon tas; Elena memberikannya kepada
-  Arthur sebagai kenangan terakhir mereka sebelum kembali ke 2088
-- **Pacing level**: segmen jalan dibedakan per era (`ERA_CONF`: 1944 1450px · 1968 1200px · 1999 1100px)
-- **Kamera look-ahead** 22% kecepatan (di atas exp-smoothing) + bob halus indikator `▼ ENTER`
-- **Mixer persepsi**: slider volume kini lewat kurva `v^2.2` (dB-feel) untuk MASTER/MUSIK/EFEK+ambience
-
-## 🛠 Struktur Kode Modular
-
-```
-index.html       — entry Phaser-native Vite/TypeScript
-legacy.html      — entry classic-script untuk cerita yang belum dimigrasikan
-src/main.ts      — bootstrap Phaser-native dan snapshot debug
-src/game/**/*.ts — scene, entity, system, world, save, narasi, dan seam legacy
-src/**/*.js      — runtime legacy Canvas lengkap
+```text
+index.html                       — entry produksi Vite/Phaser
+src/main.ts                      — bootstrap dan snapshot debug
+src/game/config.ts               — konfigurasi serta registry scene
+src/game/scenes/*.ts             — seluruh gameplay, dialog, mini-game, loop, ending, bonus
+src/game/world/*.ts              — definisi dunia tiga era dan factory
+src/game/systems/*.ts            — input, interaksi, surface, save
+src/game/narrative/storyScript.ts — operasi narasi/rute produksi
+src/game/minigames/*.ts          — aturan murni yang dapat diuji
+src/game/audio/SoundManager.ts   — musik, ambience, dan SFX
+legacy.html + src/**/*.js        — referensi/parity regression, bukan build produksi
 ```
 
-Modul native memakai ESM. Hanya `legacy.html` yang bergantung pada urutan global
-classic-script. Lihat `src/README.md` untuk owner dan dependency setiap runtime.
+Rincian owner ada di `src/README.md`, kontrak runtime di
+`docs/ARCHITECTURE.md`, dan resep perubahan di `docs/AGENT_WORKFLOWS.md`.
 
 ## 🧪 QA otomatis
 
-Install sekali dengan `npm install`, lalu gunakan `npm run typecheck`, `npm run lint`,
-`npm run test:unit`, dan `npm run build` sebagai gate statis/unit/build. Gunakan
-`npm run qa:smoke` untuk cek cepat, `npm run qa:visual` untuk frame deterministik, atau
-`npm run qa` untuk suite Playwright penuh. Artefak lokal berada di `qa/artifacts/` dan
-tidak di-commit.
+`npm run qa` menjalankan suite Playwright produksi dari `tests/e2e/`.
+`npm run qa:smoke` memilih checkpoint cepat, sedangkan `npm run qa:visual`
+menyediakan frame deterministik untuk review AI vision. `npm run qa:legacy`
+menjalankan suite parity terpisah terhadap runtime referensi.
 
-Suite menjalankan Chromium, sedangkan agen memakai Chrome DevTools dan AI vision untuk
-diagnosis serta review frame perubahan. `window.__HAT.snapshot()` memberi state native
-serializable; `?qa=1` melewati intro dan `?physicsDebug=1` menampilkan body Arcade.
+`window.__HAT.snapshot()` memberi state serializable; `?qa=1` melewati intro dan
+`?physicsDebug=1` menampilkan body Arcade. Artefak lokal berada di
+`qa/artifacts/` dan tidak di-commit.
 
-## Riwayat QA
+Gate lengkap sebelum release:
 
-Catatan berikut adalah hasil pass historis, bukan jaminan checkout saat ini. Nama skrip lama dapat berbeda dari suite yang sekarang di-versioning; hasil terbaru ditentukan oleh `npm run qa` dan artefak CI.
+```sh
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run build
+npm run qa
+```
 
-- Rute golden penuh: Prologue → Empati×2 → 1B → 2B2 → Ikhlas → **True Ending** (0 error)
-- Rute gagal: Logika×2 → 1A → 2A1 → TIMELINE COLLAPSE → **glitch loop** → kembali ke 1944 dengan intro loop
-- Pass 011: rute golden, failA, dan dialog campuran melewati tiga mini-game lewat kontrol nyata; cover first/return/replay/continue/confirm, assist 3-miss, touch, `reduceMotion`, dan zero 404/error diverifikasi oleh `qa/pass011.cjs`
-- Verifikasi audio: AnalyserNode memastikan musik benar2 bersuara, scheduler 5 lagu maju, ducking bus bekerja
-- Verifikasi aset: dummy spritesheet PNG dimuat & digambar (jalur `drawCharSheet`), fallback prosedural saat file hilang
-- Verifikasi desain: GIF diekstrak (2 frame unik), palet diukur per-piksel (rambut `#D8CCA8`, gaun `#C28279`, boot `#F1E6DC`+strap `#44240A`, skin `#F0E4D8`), sprite baru diverifikasi cocok (median boot `#F0E4D4` exact) + QA vision fitur lengkap tanpa artefak
-- QA visual per-scene via AI vision: karakter, bubble, kapsul, glitch, endcard — semua lolos
-
-*"Sampai bertemu di masa depan."*
+*“Sampai bertemu di masa depan.”*

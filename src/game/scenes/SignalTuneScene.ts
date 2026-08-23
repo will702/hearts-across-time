@@ -103,6 +103,18 @@ export class SignalTuneScene extends Phaser.Scene {
     }
   }
 
+  snapshot(): Record<string, unknown> {
+    return {
+      minigame: 'signal',
+      stage: this.stage,
+      band: this.band,
+      cursor: this.cursor,
+      target: TARGETS[this.band] ?? null,
+      misses: this.misses,
+      assisted: this.assisted,
+    };
+  }
+
   private createBackground(): void {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050a12, 0.95);
     this.add.text(GAME_WIDTH / 2, 38, 'PENYETELAN GELOMBANG RADIO 1968', {
@@ -225,7 +237,7 @@ export class SignalTuneScene extends Phaser.Scene {
     this.waveGraphics.strokeLineShape(new Phaser.Geom.Line(targetX, trackY - 85, targetX, trackY + 85));
 
     // Dynamic Multi-Harmonic Oscilloscope Sine Wave
-    const t = this.time.now / 1000;
+    const t = this.registry.get('reduceMotion') ? 0 : this.time.now / 1000;
     this.waveGraphics.lineStyle(2.5, snr > 0.7 ? 0x4ade80 : 0x38bdf8, 0.95);
     this.waveGraphics.beginPath();
 

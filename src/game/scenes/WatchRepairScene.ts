@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { normalizedAngleDistance } from '../minigames/math';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 import type { UIScene } from './UIScene';
 
@@ -88,7 +89,17 @@ export class WatchRepairScene extends Phaser.Scene {
   }
 
   snapshot(): Record<string, unknown> {
-    return { watchRepair: { ring: this.ring, angles: this.angles, locked: this.locked, assisted: this.assisted } };
+    return {
+      watchRepair: {
+        ring: this.ring,
+        angles: this.angles,
+        targets: this.targets,
+        locked: this.locked,
+        misses: this.misses,
+        assisted: this.assisted,
+        complete: this.complete,
+      },
+    };
   }
 
   private createRing(radius: number, index: number): void {
@@ -198,7 +209,7 @@ export class WatchRepairScene extends Phaser.Scene {
     if (this.complete) return;
     const angle = this.angles[this.ring];
     const target = this.targets[this.ring];
-    const distance = Math.min(Math.abs(angle - target), 1 - Math.abs(angle - target));
+    const distance = normalizedAngleDistance(angle, target);
     const tolerance = this.assisted ? 0.12 : 0.065;
 
     if (distance <= tolerance) {
@@ -242,7 +253,7 @@ export class WatchRepairScene extends Phaser.Scene {
     });
 
     if (this.ring < 3) {
-      const dist = Math.min(Math.abs(this.angles[this.ring] - this.targets[this.ring]), 1 - Math.abs(this.angles[this.ring] - this.targets[this.ring]));
+      const dist = normalizedAngleDistance(this.angles[this.ring], this.targets[this.ring]);
       const proximity = Math.max(0, 1 - dist / 0.25);
       const marker = this.targetMarkers[this.ring];
       if (marker) {
@@ -258,6 +269,7 @@ export class WatchRepairScene extends Phaser.Scene {
   }
 
   private emitSparks(ringIdx: number): void {
+    if (this.registry.get('reduceMotion')) return;
     const radius = RADII[ringIdx];
     const target = this.targets[ringIdx] * Math.PI * 2;
     const sx = GAME_WIDTH / 2 + Math.sin(target) * radius;

@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { getArthurDiary, getStoryOps, type NarrativeState } from '../../src/game/narrative/storyScript';
+import {
+  getArthurDiary,
+  getStoryOps,
+  type NarrativeState,
+  type StoryEndingOp,
+} from '../../src/game/narrative/storyScript';
+
+const baseState = (overrides: Partial<NarrativeState> = {}): NarrativeState => ({
+  empathy: 0,
+  logic: 0,
+  routeB1: '',
+  routeB2: '',
+  loop: 0,
+  ...overrides,
+});
+
+function endingFor(nodeId: string, state = baseState()): StoryEndingOp['kind'] | undefined {
+  return getStoryOps(nodeId, state)?.find((op): op is StoryEndingOp => op.t === 'ending')?.kind;
+}
 
 describe('storyScript narrative engine', () => {
   it('returns all dialogue nodes correctly', () => {
@@ -37,5 +55,14 @@ describe('storyScript narrative engine', () => {
     const loopDiary = getArthurDiary(loopRun);
     expect(loopDiary.nostalgia).toBe(true);
     expect(loopDiary.pages[2]).toContain('Elena');
+  });
+
+  it('emits the exact collectible key for every ending path', () => {
+    expect(endingFor('n_b3_final', baseState({ routeB2: 'A1' }))).toBe('A1');
+    expect(endingFor('n_b3_final', baseState({ routeB2: 'B1' }))).toBe('B1');
+    expect(endingFor('n_b3_final', baseState({ routeB2: 'B2', logic: 1 }))).toBe('B2lock');
+    expect(endingFor('r3f')).toBe('rebut');
+    expect(endingFor('paradox')).toBe('paradox');
+    expect(endingFor('true_end')).toBe('true');
   });
 });

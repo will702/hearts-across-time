@@ -1,112 +1,134 @@
 # Arsitektur Hearts Across Time
 
-_Kontrak runtime strangler Phaser 4.2.1 berdasarkan source saat ini._
+_Kontrak runtime produksi Phaser 4.2.1 berdasarkan source saat ini._
 
 ---
 
 ## 🏗️ Runtime tingkat tinggi
 
-Game memiliki dua entry yang sengaja dipertahankan selama migrasi:
+Game memiliki satu entry produksi:
 
-- `index.html` adalah runtime utama Phaser-native berbasis TypeScript/ESM dan Vite.
-- `legacy.html` adalah runtime Canvas/classic-script lengkap untuk cerita yang belum
-  dipindahkan.
+- `index.html` memuat `src/main.ts` melalui Vite.
+- `src/main.ts` membuat `Phaser.Game` dari konfigurasi tunggal di
+  `src/game/config.ts`.
+- Seluruh era, dialog, mini-game, loop, enam ending, dan bonus berjalan di scene
+  TypeScript/Phaser.
+- `legacy.html` dan classic-script lama hanya referensi/parity regression dan tidak
+  termasuk build `dist/`.
 
 ```mermaid
 flowchart LR
-    index[index.html] --> vite[src/main.ts]
-    vite --> game[Phaser.Game]
-    game --> native[Boot / Preload / Intro / Title / 1944 / UI / Watch]
-    native --> save[(hat_save v2)]
-    native -->|saveCycle + ?continue=1| seam[Batas legacy]
-    seam --> legacy[legacy.html]
-    legacy --> save
+    index[index.html] --> main[src/main.ts]
+    main --> config[game/config.ts]
+    config --> game[Phaser.Game 960x540]
+    game --> foundation[Boot / Preload / Intro / Title / Prologue / UI]
+    game --> eras[1944 / 1968 / 1999]
+    game --> narrative[Dialogue + storyScript]
+    game --> puzzles[Mini-game tiap era]
+    game --> outcomes[Vortex / Glitch / Award / EndCard / Bonus 2088]
+    foundation --> services[SaveSystem + SoundManager]
+    eras --> services
+    narrative --> services
+    puzzles --> services
+    outcomes --> services
+    services --> storage[(hat_save v2)]
 
-    classDef nativeStyle fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
-    classDef legacyStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
-    class game,native,save nativeStyle
-    class seam,legacy legacyStyle
+    classDef entry fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a5f
+    classDef domain fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    classDef state fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    class index,main,config entry
+    class game,foundation,eras,narrative,puzzles,outcomes,services domain
+    class storage state
 ```
 
-Runtime native tidak memanggil renderer Canvas lama pada `POST_RENDER`. Background,
-sprite, world object, UI, dan mini-game arloji adalah Phaser Game Object. `POST_RENDER`
-tetap ada hanya di halaman legacy.
+Background, sprite, world object, UI, dialog, dan mini-game adalah Phaser Game Object.
+Arcade Physics memiliki fixed step 60 FPS; Scale FIT menjaga kanvas logis 960×540 pada
+viewport berbeda. Runtime produksi tidak bergantung pada `POST_RENDER` atau global
+classic-script.
 
-## 🎬 Status migrasi scene
+## 🎬 Scene produksi
 
-| Wilayah | Runtime saat ini | Status |
-| --- | --- | --- |
-| Boot dan normalisasi save | `BootScene` | Native |
-| Loader aset | `PreloadScene` | Native |
-| Intro video | `IntroScene` | Native |
-| Sampul/menu | `TitleScene` | Native |
-| Traversal 1944 sampai lampu sorot | `Era1944Scene` | Native |
-| HUD, prompt, touch, pause | `UIScene` | Native |
-| Perbaikan arloji | `WatchRepairScene` | Native |
-| Tantangan lampu sorot dan lanjutan 1944 | `legacy.html?continue=1` | Belum dimigrasikan |
-| Era 1968 dan 1999 | `legacy.html` | Belum dimigrasikan |
-| Dialog/rute lengkap | `legacy.html` | Belum dimigrasikan |
-| Mini-game selain arloji | `legacy.html` | Belum dimigrasikan |
-| Loop, ending, dan bonus | `legacy.html` | Belum dimigrasikan |
+| Wilayah | Scene |
+| --- | --- |
+| Bootstrap dan loader | `BootScene`, `PreloadScene` |
+| Intro, sampul, prolog | `IntroScene`, `TitleScene`, `PrologueScene` |
+| Traversal era | `Era1944Scene`, `Era1968Scene`, `Era1999Scene` |
+| UI dan dialog | `UIScene`, `DialogueScene` |
+| 1944 | `WatchRepairScene`, `SpotlightChallengeScene` |
+| 1968 | `RosePuzzleScene`, `SignalTuneScene`, `DiaryScene` |
+| 1999 | `GemAlignScene`, `PhotoPuzzleScene`, `CryoBalanceScene` |
+| Transisi dan hasil | `VortexScene`, `GlitchScene`, `PuzzleAwardScene`, `EndCardScene` |
+| Epilog | `Bonus2088Scene` |
 
-Tombol **Kisah Lengkap / Era Legacy** di title memberi jalur eksplisit ke runtime lama.
-Continue untuk save era 1968/1999 masuk melalui `LegacyStateAdapter`. Handoff traversal
-1944 memakai `LEGACY_ENTRY_PATH` setelah menyimpan era dan posisi pemain.
+Daftar di `game/config.ts` adalah sumber kebenaran registrasi dan urutan bootstrap.
+Scene dapat meluncurkan scene modal seperti UI, dialog, atau mini-game, tetapi scene era
+tetap owner state dunia, reward, autosave, dan transisi.
 
-## 🔗 Dependency native
+## 🔗 Dependency TypeScript
 
 ```mermaid
 flowchart TB
     main[src/main.ts] --> config[game/config.ts]
     config --> scenes[game/scenes]
-    scenes --> save[SaveSystem]
-    scenes --> story[StoryRunner]
-    scenes --> player[Player]
+    scenes --> save[systems/SaveSystem]
+    scenes --> sound[audio/SoundManager]
+    scenes --> script[narrative/storyScript]
+    scenes --> player[entities/Player]
     scenes --> systems[Input / Surface / Interaction]
-    scenes --> world[world/era1944 + WorldObject]
-    scenes --> boundary[LegacyStateAdapter / LEGACY_ENTRY_PATH]
-    boundary --> legacy[legacy.html]
+    scenes --> world[world/era1944 + era1968 + era1999]
+    scenes --> rules[minigames/math + bonusRules]
 
     classDef entry fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a5f
     classDef domain fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
-    classDef boundaryStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
     class main,config entry
-    class scenes,save,story,player,systems,world domain
-    class boundary,legacy boundaryStyle
+    class scenes,save,sound,script,player,systems,world,rules domain
 ```
 
-`game/config.ts` adalah satu-satunya tempat daftar scene dan konfigurasi Arcade
-Physics. `BootScene` membuat service berumur sepanjang game dan menyimpannya di
-registry Phaser. Scene lain mengambil service yang sama dari registry; tidak ada global
-classic-script yang diimpor ke runtime native.
+`BootScene` membuat `SaveSystem` dan `SoundManager`, membaca opsi, lalu menyimpan
+service dan `reduceMotion` di registry Phaser. Scene lain mengambil instance yang sama;
+tidak ada global gameplay di luar Phaser.
 
-## 🌍 Vertical slice 1944
+## 🌍 Gameplay tiga era
 
-`game/world/era1944.ts` adalah sumber geometri native untuk ukuran dunia, spawn,
-surface, arloji, lampu sorot, lore, dan Arthur. `WorldFactory` membuat Game Object dari
-data tersebut. `InteractionSystem` hanya menghasilkan object aktif, prompt, dan action;
-scene tetap owner mutasi run, save, mini-game, dan transisi.
+Definisi `game/world/era1944.ts`, `era1968.ts`, dan `era1999.ts` menyimpan ukuran
+dunia, spawn, surface, object, sensor, visual, condition, action, dan material.
+`WorldFactory` membuat Game Object/body dari data. `InteractionSystem` menghasilkan
+object aktif, prompt, dan action simbolik; scene era memutuskan mutasi run, reward,
+save, mini-game, dialog, serta perpindahan era.
 
-Elena adalah `Phaser.Physics.Arcade.Sprite` dengan body kaki 24×12. `Player` menangani
-akselerasi, drag, jalan/lari, arah sprite, animasi, langkah, dan penghentian pada body
-yang terblokir. `SurfaceSystem` membuat static body dan collider. Kamera Phaser mengikuti
-pemain dalam world bounds dan dapat memberi look-ahead berdasarkan kecepatan.
+`Player` adalah `Phaser.Physics.Arcade.Sprite` dengan body kaki. Ia menangani
+akselerasi, drag, arah, animasi, langkah, dan penghentian saat terblokir. Kamera Phaser
+mengikuti pemain dalam world bounds. `InputSystem` menyatukan keyboard dan intent
+sentuh, sedangkan `UIScene` memiliki HUD, prompt, kontrol sentuh, mute, dan pause.
 
-`InputSystem` menyatukan keyboard dan intent sentuh. `UIScene` menggambar HUD/prompt,
-memegang tombol sentuh, serta menjeda atau melanjutkan scene gameplay aktif. Motion
-dekoratif wajib menghormati nilai `reduceMotion` di registry tanpa menghapus informasi
-atau input.
+Alur wajib produksi:
 
-Gate arloji tidak boleh dilewati sebelum `run.watchRepaired`. Saat pemain berada di
-sensor arloji dan mengaktifkan interaksi, `Era1944Scene` membuka `WatchRepairScene`.
-Mini-game menyimpan target agar Continue stabil, mengaktifkan assist setelah tiga miss,
-lalu menyimpan item arloji dan posisi resume.
+1. 1944: perbaikan arloji → tantangan lampu sorot → dialog/rute Arthur.
+2. 1968: botol mawar → penyetelan sinyal → buku harian/dialog rute.
+3. 1999: penyelarasan permata → puzzle foto → stabilisasi krio → keputusan akhir.
+4. Ending gagal memberi pecahan melalui `PuzzleAwardScene`, lalu
+   `GlitchScene` menaikkan loop dan kembali ke 1944.
+5. True ending membuka `EndCardScene`. Keenam ending
+   (`A1`, `B1`, `B2lock`, `rebut`, `paradox`, `true`) membuka
+   `Bonus2088Scene`.
 
-Interaksi lore tetap native. Saat pemain mengaktifkan tantangan lampu sorot,
-`Era1944Scene` menyimpan `saveCycle('1944', run, playerX)` lalu membuka
-`/legacy.html?continue=1`. `src/game/main.js` memulihkan `SAVE.game.S`, era, dan
-`playerX`, kemudian memanggil `startWalk()`; tantangan lampu sorot serta cerita lanjutan
-1944 berjalan di runtime legacy dari posisi itu. Ini bukan lompatan langsung ke 1968.
+Assist mini-game, pause, keyboard/touch, fallback aset, dan reduced motion adalah bagian
+kontrak, bukan tambahan opsional.
+
+## 📖 Narasi dan rute
+
+`game/narrative/storyScript.ts` adalah implementasi narasi aktif. Ia mendefinisikan
+operasi `say`, `choice`, `goto`, `walk`, `item`, `fx`, `vortex`, dan
+`ending`, termasuk resolver yang bergantung pada `RunState`.
+
+`DialogueScene` menafsirkan operasi tersebut, menampilkan teks/pilihan/backlog,
+menjalankan efek pilihan, menyimpan progres yang relevan, dan mengembalikan hasil
+kepada scene pemilik. `VortexScene` menangani transisi era; `PuzzleAwardScene`,
+`GlitchScene`, dan `EndCardScene` menangani hasil rute.
+
+Perubahan cerita wajib mencocokkan `FIRST_IDEA.md`, `DIALOG.md`, dan node aktif di
+`storyScript.ts`. Jangan menaruh mutasi narasi di renderer atau menggandakan skrip
+cerita di file lain.
 
 ## 🧠 State ownership
 
@@ -114,74 +136,66 @@ Interaksi lore tetap native. Saat pemain mengaktifkan tantangan lampu sorot,
 | --- | --- | --- |
 | Lifecycle/display | Masing-masing Phaser Scene | Scene membuat dan menghancurkan Game Object miliknya |
 | Input frame | `InputSystem` | Membaca keyboard/touch menjadi intent; bukan owner cerita |
-| State satu siklus | `RunState` | Dimutasi scene/system gameplay pemilik lalu disimpan lewat `SaveSystem` |
-| Save permanen | `SaveSystem` | Satu trust boundary untuk parse, normalisasi, migrasi, dan persist `hat_save` |
-| Guard transisi | `StoryRunner` | Memastikan urutan title → 1944 → batas legacy |
+| State satu siklus | `RunState` | Dimutasi scene gameplay pemilik lalu disimpan lewat `SaveSystem` |
+| Save permanen | `SaveSystem` | Trust boundary parse, normalisasi, migrasi, dan persist `hat_save` |
+| Operasi narasi | `storyScript.ts` | Data/aturan dialog dan rute; dieksekusi `DialogueScene` |
+| Audio lintas scene | `SoundManager` | Musik, ambience, SFX, mute, ducking, dan shutdown |
 | State debug | Registry `nativeState` | Label observasi, bukan sumber kebenaran gameplay |
-| Narasi belum native | `src/data/story.js` + `src/game/flow.js` | Hanya aktif di `legacy.html` |
 
-Renderer tidak boleh menjadi owner mutasi gameplay. World object boleh menyajikan
-visual dan collision, tetapi reward, save, serta perpindahan scene tetap berada di scene
+Renderer tidak boleh menjadi owner mutasi gameplay. World object menyajikan visual,
+collision, dan action simbolik; reward, save, serta perpindahan scene berada di scene
 atau service domain.
 
-## 💾 Save dan kompatibilitas legacy
+## 💾 Save dan Continue
 
-Kedua runtime memakai key localStorage `hat_save`. Runtime native menulis
-`saveVersion: 2` dan mempertahankan field progres yang dikenali serta data JSON tambahan
-yang aman.
+Runtime produksi memakai localStorage key `hat_save` dengan `saveVersion: 2`.
+`SaveSystem` menerima JSON lama/tanpa versi secara defensif, menormalisasi era,
+route, challenge, inventory, target puzzle, ending, dan posisi pemain, lalu menyimpan
+bentuk canonical.
 
 ```mermaid
 flowchart LR
     storage[(hat_save lama atau v2)] --> parse[Parse defensif]
     parse --> normalize[normalizeSave + normalizeRun]
     normalize --> title[TitleScene]
-    title -->|baru / continue 1944| era1944[Era1944Scene]
+    title -->|baru| prologue[PrologueScene]
+    title -->|Continue 1944| era1944[Era1944Scene]
+    title -->|Continue 1968| era1968[Era1968Scene]
+    title -->|Continue 1999| era1999[Era1999Scene]
     era1944 --> autosave[saveCycle + playerX]
+    era1968 --> autosave
+    era1999 --> autosave
     autosave --> storage
-    era1944 -->|lampu sorot| handoff[saveCycle 1944 + playerX]
-    handoff --> legacyResume[legacy.html?continue=1]
-    legacyResume --> restoreLegacy[startWalk era dan playerX]
-    title -->|continue 1968/1999| adapter[LegacyStateAdapter]
-    adapter --> legacyResume
+    outcome[PuzzleAward / Glitch / EndCard] --> storage
 ```
 
-`SaveSystem` tidak mempercayai JSON localStorage. Map flag, route, challenge, angka,
-target arloji, era, dan posisi pemain dinormalisasi. Save tanpa versi dari runtime lama
-tetap dapat dimuat. Field sementara seperti sprite, body fisika, input, timer, dan
-Game Object tidak disimpan.
+Field sementara seperti sprite, body fisika, input, timer, audio node, dan Game Object
+tidak disimpan. Field baru wajib memiliki default aman, normalisasi, dan unit test.
+Jangan membuat key save paralel.
 
-Saat berpindah dari 1944, scene menyimpan `RunState` dan `playerX` yang valid sebelum
-navigasi. Untuk Continue 1968/1999, adapter menyimpan era/run sebelum membuka URL yang
-sama. Jangan membuat key save paralel: satu key bersama adalah seam strangler yang
-menjaga Continue dan progres ending tetap utuh.
+## 🧱 Runtime referensi
 
-## 🧱 Batas runtime legacy
+`legacy.html` dan classic-script di `src/core/`, `src/data/`, `src/game/*.js`,
+`src/render/`, serta `src/ui/` dipertahankan untuk inspeksi historis dan
+`npm run qa:legacy`. Runtime itu:
 
-`legacy.html` memuat Phaser vendored dan classic-script `.js` dalam urutan tetap.
-Di halaman itu:
+- bukan entry deploy;
+- bukan fallback Continue;
+- tidak diimpor bundle TypeScript;
+- tidak disalin oleh `npm run build`;
+- tidak menerima fitur produksi baru kecuali tugas secara eksplisit menargetkan parity.
 
-- `src/core/runtime.js` memiliki global state, input DOM, audio, dan save lama.
-- `src/data/story.js` memiliki node dialog dan cabang cerita.
-- `src/game/flow.js` memiliki state machine, mini-game, loop, dan ending.
-- `src/render/screens.js` menggambar Canvas 2D pada `POST_RENDER`.
-- `src/game/main.js` melakukan bootstrap lifecycle legacy.
+Perbedaan objektif dapat dibandingkan dengan GDD dan suite regression, tetapi perbaikan
+produk dilakukan pada owner TypeScript.
 
-Jangan memindahkan satu callback dialog atau satu branch ending saja ke native. Satu
-slice dianggap siap menggantikan legacy setelah world, input, interaksi, narasi,
-mini-game wajib, save/resume, keyboard/touch, fallback aset, dan QA untuk batas tersebut
-sudah tersedia bersama-sama.
+## 🔍 Observasi, QA, dan distribusi
 
-## 🔍 Observasi dan QA
-
-`window.__HAT.snapshot()` mengekspos snapshot serializable scene native aktif,
-renderer, `nativeState`, dan detail scene yang relevan. Ini adalah hook QA/debug, bukan
-API gameplay stabil. URL `?physicsDebug=1` mengaktifkan overlay Arcade Physics;
-`?qa=1` melewati intro untuk fixture Playwright.
-
-Perintah utama:
+`window.__HAT.snapshot()` mengekspos snapshot serializable scene aktif, renderer,
+`nativeState`, dan detail scene relevan. Ini hook QA/debug, bukan API gameplay.
+`?physicsDebug=1` mengaktifkan overlay Arcade Physics; `?qa=1` melewati intro untuk
+fixture Playwright.
 
 ```sh
-npm run dev
 npm run typecheck
 npm run lint
 npm run test:unit
@@ -189,16 +203,10 @@ npm run build
 npm run qa:smoke
 npm run qa:visual
 npm run qa
+npm run qa:legacy
 ```
 
-Build Vite menghasilkan `dist/` berisi entry native dan legacy, bundle TypeScript,
-aset, Phaser vendored, serta classic-script yang masih diperlukan `legacy.html`.
-
-## ➡️ Batas migrasi berikutnya
-
-Batas executable berikutnya adalah tantangan lampu sorot 1944. Implementasikan
-tantangan itu sebagai scene native lengkap—aturan, assist tiga miss, save/resume,
-pause, keyboard/touch, reduced motion, aset/fallback, unit test, dan E2E—lalu geser
-handoff ke dialog Arthur. Sesudah lanjutan 1944 memiliki batas yang sama jelasnya,
-`Era1968Scene` menjadi slice era berikutnya. Sampai kontrak tersebut terpenuhi,
-redirect ke `legacy.html?continue=1` tetap merupakan perilaku produksi yang benar.
+`npm run qa` menjalankan suite Playwright native di `tests/e2e/`.
+`npm run qa:legacy` menjalankan parity regression terpisah dari `qa/`.
+`npm run build` memakai `index.html` sebagai satu-satunya Rollup input dan menyalin
+`assets/`; hasil `dist/` berisi entry/bundle native dan aset produksi saja.

@@ -23,6 +23,7 @@ export interface RunState {
   roseRepaired: boolean;
   gemAligned: boolean;
   photoRepaired: boolean;
+  diaryRead: boolean;
 }
 
 export interface SavedRun {
@@ -144,6 +145,7 @@ export function defaultRun(): RunState {
     roseRepaired: false,
     gemAligned: false,
     photoRepaired: false,
+    diaryRead: false,
   };
 }
 
@@ -171,6 +173,7 @@ export function normalizeRun(value: unknown, era: EraId = '1944'): RunState {
     roseRepaired: flag(source.roseRepaired),
     gemAligned: flag(source.gemAligned),
     photoRepaired: flag(source.photoRepaired),
+    diaryRead: flag(source.diaryRead),
   };
 
   if (run.inventory.watch && !run.watchRepaired) {
@@ -197,6 +200,10 @@ function normalizeEndings(value: unknown): Partial<Record<EndingKey, 1>> {
   const endings: Partial<Record<EndingKey, 1>> = {};
   for (const key of ENDING_KEYS) if (flag(source[key])) endings[key] = 1;
   return endings;
+}
+
+export function allEndingsUnlocked(endings: Partial<Record<EndingKey, 1>>): boolean {
+  return ENDING_KEYS.every(key => endings[key] === 1);
 }
 
 export function normalizeSave(value: unknown): SaveData {
@@ -284,9 +291,10 @@ export class SaveSystem {
   }
 
   saveCycle(era: EraId, run: RunState, playerX?: number): SaveData {
+    const nextPlayerX = playerX ?? (this.current.game?.era === era ? this.current.game.playerX : undefined);
     return this.save({
       ...this.current,
-      game: { era, S: run, ...(playerX === undefined ? {} : { playerX }) },
+      game: { era, S: run, ...(nextPlayerX === undefined ? {} : { playerX: nextPlayerX }) },
     });
   }
 

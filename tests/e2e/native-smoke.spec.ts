@@ -11,6 +11,8 @@ type Snapshot = {
   };
   interaction?: { id?: string | null; prompt?: string } | null;
   touchControls?: boolean;
+  prologuePage?: number;
+  prologueStarted?: boolean;
 };
 
 type Diagnostics = {
@@ -66,13 +68,14 @@ async function openTitle(page: Page, path = '/?qa=1'): Promise<Diagnostics> {
   return diagnostics;
 }
 
-async function pressUntilState(page: Page, key: string, expected: string): Promise<void> {
-  await page.keyboard.down(key);
-  try {
-    await expect.poll(async () => (await snapshot(page)).state).toBe(expected);
-  } finally {
-    await page.keyboard.up(key);
+async function pressUntilState(page: Page, key: string, expected: string, timeout = 12_000): Promise<void> {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if ((await snapshot(page)).state === expected) return;
+    await page.keyboard.press(key);
+    await page.waitForTimeout(70);
   }
+  expect((await snapshot(page)).state).toBe(expected);
 }
 
 async function startNewCycle(page: Page): Promise<void> {
@@ -115,6 +118,29 @@ async function canvasPoint(page: Page, gameX: number, gameY: number): Promise<{ 
     x: bounds.x + gameX / GAME_WIDTH * bounds.width,
     y: bounds.y + gameY / GAME_HEIGHT * bounds.height,
   };
+}
+
+async function tapUntil(
+  page: Page,
+  gameX: number,
+  gameY: number,
+  condition: (state: Snapshot) => boolean,
+  description: string,
+): Promise<Snapshot> {
+  const deadline = Date.now() + 12_000;
+  while (Date.now() < deadline) {
+    const state = await snapshot(page);
+    if (condition(state)) return state;
+    const point = await canvasPoint(page, gameX, gameY);
+    await page.touchscreen.tap(point.x, point.y);
+    await page.waitForTimeout(90);
+  }
+  const state = await snapshot(page);
+  throw new Error(`${description}: ${JSON.stringify(state)}`);
+}
+
+async function tapUntilState(page: Page, gameX: number, gameY: number, expected: string): Promise<Snapshot> {
+  return tapUntil(page, gameX, gameY, state => state.state === expected, `State ${expected} tidak tercapai`);
 }
 
 async function holdTouchUntil(
@@ -227,7 +253,29 @@ test('@smoke pause dan resume mengembalikan traversal', async ({ page }) => {
   await openTitle(page);
   await startNewCycle(page);
   await pressUntilState(page, 'Escape', 'paused');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('hat_opts') ?? '{}').vol)).toBe(0.1);
   await pressUntilState(page, 'Escape', 'era1944');
+});
+
+test('@smoke menu jeda lalu Lanjutkan mereset state UI', async ({ page }) => {
+  await openTitle(page);
+  await startNewCycle(page);
+  await pressUntilState(page, 'Escape', 'paused');
+  await pressUntilState(page, 'm', 'title');
+  await page.keyboard.press('ArrowUp');
+  await page.waitForTimeout(100);
+  await pressUntilState(page, 'Enter', 'era1944');
+
+  const uiPauseState = await page.evaluate(() => {
+    const hat = (window as typeof window & {
+      __HAT?: { game: { scene: { getScene: (key: string) => unknown; isPaused: (key: string) => boolean } } };
+    }).__HAT;
+    const ui = hat?.game.scene.getScene('UIScene') as { isPaused?: () => boolean } | undefined;
+    return { manager: hat?.game.scene.isPaused('UIScene'), runtime: ui?.isPaused?.() };
+  });
+  expect(uiPauseState).toEqual({ manager: false, runtime: false });
 });
 
 test('@smoke save, reload, dan Lanjutkan memulihkan posisi valid', async ({ page }) => {
@@ -252,9 +300,11 @@ test('@smoke kontrol sentuh menyediakan gerak dan aksi setara', async ({ browser
   const page = await context.newPage();
   try {
     await openTitle(page);
-    const newCycle = await canvasPoint(page, 480, 356);
-    await page.touchscreen.tap(newCycle.x, newCycle.y);
-    await expect.poll(async () => (await snapshot(page)).state).toBe('era1944');
+    await tapUntilState(page, 480, 356, 'prologue');
+    await tapUntil(page, 680, 451, state => state.prologuePage === 1, 'Onboarding tidak mencapai halaman 2');
+    await tapUntil(page, 680, 451, state => state.prologuePage === 2, 'Onboarding tidak mencapai halaman 3');
+    await tapUntilState(page, 680, 451, 'dialogue');
+    await tapUntilState(page, 480, 472, 'era1944');
     expect((await snapshot(page)).touchControls).toBe(true);
 
     const cdp = await context.newCDPSession(page);

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ENDING_KEYS,
   SAVE_VERSION,
   SaveSystem,
+  allEndingsUnlocked,
   defaultRun,
   normalizeRun,
   normalizeSave,
@@ -49,6 +51,7 @@ describe('normalizeSave', () => {
           inventory: { watch: 1, date_menu: true },
           watchTargets: [0.2, 0.4, 0.8],
           watchRepaired: true,
+          diaryRead: true,
         },
       },
     });
@@ -74,6 +77,7 @@ describe('normalizeSave', () => {
         roseRepaired: false,
         gemAligned: false,
         photoRepaired: false,
+        diaryRead: true,
       },
     });
   });
@@ -137,6 +141,17 @@ describe('normalizeSave', () => {
     expect(save.unsafeExtra).toEqual({});
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
   });
+
+  it('normalizes diary completion as a strict per-run flag', () => {
+    expect(defaultRun().diaryRead).toBe(false);
+    expect(normalizeRun({ diaryRead: true }).diaryRead).toBe(true);
+    expect(normalizeRun({ diaryRead: 'yes' }).diaryRead).toBe(false);
+  });
+
+  it('unlocks the bonus only after all six known endings are awarded', () => {
+    expect(allEndingsUnlocked({ true: 1 })).toBe(false);
+    expect(allEndingsUnlocked(Object.fromEntries(ENDING_KEYS.map(key => [key, 1])))).toBe(true);
+  });
 });
 
 describe('SaveSystem', () => {
@@ -180,6 +195,12 @@ describe('SaveSystem', () => {
       playerX: 478,
       S: { ...defaultRun(), watchRepaired: true },
     });
+
+    system.saveCycle('1944', { ...run, logic: 1 });
+    expect(system.data.game?.playerX).toBe(478);
+
+    system.saveCycle('1968', run);
+    expect(system.data.game).not.toHaveProperty('playerX');
 
     system.clearCycle();
     expect(system.data.game).toBeNull();
