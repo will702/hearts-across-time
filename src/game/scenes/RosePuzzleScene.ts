@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -33,11 +34,13 @@ const ROSE_PIECES_DEF: { poly: [number, number][]; defaultHome: [number, number]
 
 export class RosePuzzleScene extends Phaser.Scene {
   private puzzleData!: RosePuzzleData;
+  private soundManager?: SoundManager;
   private pieces: Piece[] = [];
   private selectedPiece = 0;
   private draggingIndex = -1;
   private dragOffset = { x: 0, y: 0 };
   private feedbackText?: Phaser.GameObjects.Text;
+  private roseImage?: Phaser.GameObjects.Image;
   private complete = false;
 
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
@@ -48,6 +51,7 @@ export class RosePuzzleScene extends Phaser.Scene {
 
   create(data: RosePuzzleData): void {
     this.puzzleData = data;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'rosepuzzle');
     this.complete = false;
     this.draggingIndex = -1;
@@ -67,6 +71,7 @@ export class RosePuzzleScene extends Phaser.Scene {
         const key = this.keys[`key${i + 1}`];
         if (key && Phaser.Input.Keyboard.JustDown(key)) {
           this.selectedPiece = i;
+          this.soundManager?.playSelect();
           this.refreshAllPieces();
         }
       }
@@ -80,8 +85,8 @@ export class RosePuzzleScene extends Phaser.Scene {
 
       const p = this.pieces[this.selectedPiece];
       if (p && !p.placed && (dx !== 0 || dy !== 0)) {
-        p.ox += dx * dt * 175;
-        p.oy += dy * dt * 175;
+        p.ox += dx * dt * 180;
+        p.oy += dy * dt * 180;
         this.refreshPiece(this.selectedPiece);
       }
 
@@ -98,26 +103,28 @@ export class RosePuzzleScene extends Phaser.Scene {
         .setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.18);
     }
 
-    this.add.text(GAME_WIDTH / 2, 42, 'SUSUN KEMBALI BOTOL MAWAR', {
+    this.add.text(GAME_WIDTH / 2, 38, 'SUSUN KEMBALI BOTOL MAWAR ABADI', {
       color: '#f87171', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
+      stroke: '#280c0c', strokeThickness: 5,
     }).setOrigin(0.5);
 
+    // Bottle Frame Silhouette
     this.add.rectangle(
       ROSE_TARGET.x + ROSE_TARGET.w / 2,
       ROSE_TARGET.y + ROSE_TARGET.h / 2,
       ROSE_TARGET.w + 14,
       ROSE_TARGET.h + 14,
       0x180f0c,
-      0.8,
+      0.85,
     ).setStrokeStyle(2, 0xd97706);
 
-    this.feedbackText = this.add.text(GAME_WIDTH / 2, 430, 'PILIH PECAHAN (1-8) DAN GESER KE POSISI BOTOL (SPACE UNTUK KUNCI)', {
+    this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, 'PILIH PECAHAN (1-8) & GESER KE POSISI BOTOL (SPACE UNTUK KUNCI)', {
       color: '#cbd5e1', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 480, 'PASANG PECAHAN TERPILIH (SPACE / ENTER)', {
-      backgroundColor: '#94342edd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', padding: { x: 18, y: 8 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => {
+    this.add.text(GAME_WIDTH / 2, 478, 'PASANG PECAHAN TERPILIH (SPACE / ENTER)', {
+      backgroundColor: '#94342edd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', padding: { x: 20, y: 9 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
       this.trySnap(this.selectedPiece);
     });
   }
@@ -146,7 +153,8 @@ export class RosePuzzleScene extends Phaser.Scene {
     const posX = ROSE_TARGET.x + p.ox;
     const posY = ROSE_TARGET.y + p.oy;
 
-    p.graphics.fillStyle(p.placed ? 0x22c55e : (isSelected ? 0xf87171 : 0xef4444), p.placed ? 0.8 : 0.65);
+    // Crystalline faceted styling
+    p.graphics.fillStyle(p.placed ? 0x22c55e : (isSelected ? 0xf87171 : 0xef4444), p.placed ? 0.85 : 0.7);
     p.graphics.beginPath();
     p.poly.forEach((pt, i) => {
       const x = posX + pt[0];
@@ -157,6 +165,7 @@ export class RosePuzzleScene extends Phaser.Scene {
     p.graphics.closePath();
     p.graphics.fill();
 
+    // Border highlights
     p.graphics.lineStyle(2, p.placed ? 0x86efac : (isSelected ? 0xffffff : 0xfca5a5), 0.95);
     p.graphics.stroke();
   }
@@ -170,11 +179,13 @@ export class RosePuzzleScene extends Phaser.Scene {
     if (!p || p.placed) return;
 
     const dist = Math.hypot(p.ox, p.oy);
-    if (dist < 42) {
+    if (dist < 46) {
       p.ox = 0;
       p.oy = 0;
       p.placed = true;
       this.refreshPiece(idx);
+      this.soundManager?.playGlassClink();
+      this.emitPieceSparks(idx);
 
       const placedCount = this.pieces.filter(q => q.placed).length;
       this.feedbackText?.setText(`KEPINGAN ${placedCount} / ${this.pieces.length} TERPASANG`).setColor('#86efac');
@@ -186,7 +197,31 @@ export class RosePuzzleScene extends Phaser.Scene {
       p.ox = p.homeX;
       p.oy = p.homeY;
       this.refreshPiece(idx);
+      this.soundManager?.playErrorBuzz();
       this.feedbackText?.setText('TEPINYA BELUM MENYATU DENGAN PAS').setColor('#fca5a5');
+    }
+  }
+
+  private emitPieceSparks(idx: number): void {
+    const p = this.pieces[idx];
+    if (!p) return;
+    const cx = ROSE_TARGET.x + (p.poly[0][0] + p.poly[1][0]) / 2;
+    const cy = ROSE_TARGET.y + (p.poly[0][1] + p.poly[1][1]) / 2;
+
+    for (let i = 0; i < 12; i++) {
+      const spark = this.add.circle(cx, cy, Phaser.Math.Between(2, 4), 0xfca5a5);
+      const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      const speed = Phaser.Math.Between(35, 100);
+      this.tweens.add({
+        targets: spark,
+        x: cx + Math.cos(angle) * speed,
+        y: cy + Math.sin(angle) * speed,
+        alpha: 0,
+        scale: 0.2,
+        duration: 400,
+        ease: 'Cubic.easeOut',
+        onComplete: () => spark.destroy(),
+      });
     }
   }
 
@@ -196,9 +231,10 @@ export class RosePuzzleScene extends Phaser.Scene {
     this.puzzleData.run.inventory.flower = 1;
     this.puzzleData.save.saveCycle('1968', this.puzzleData.run);
 
+    this.soundManager?.playSuccessFanfare();
     this.feedbackText?.setText('BOTOL MAWAR ABADI BERHASIL DISUSUN! MASUK KE TAS.').setColor('#a3e635');
 
-    this.time.delayedCall(800, () => {
+    this.time.delayedCall(950, () => {
       this.scene.stop();
       this.puzzleData.onComplete();
     });
@@ -216,6 +252,7 @@ export class RosePuzzleScene extends Phaser.Scene {
           this.draggingIndex = i;
           this.selectedPiece = i;
           this.dragOffset = { x: pointer.x - p.ox, y: pointer.y - p.oy };
+          this.soundManager?.playSelect();
           this.refreshAllPieces();
           break;
         }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -12,6 +13,7 @@ const COVERS = [300, 480, 660];
 
 export class SpotlightChallengeScene extends Phaser.Scene {
   private challengeData!: SpotlightChallengeData;
+  private soundManager?: SoundManager;
   private stage: 'choose' | 'play' | 'success' = 'choose';
   private chosenApproach: 'empathy' | 'logic' = 'empathy';
   private selectedChoice = 0;
@@ -21,12 +23,18 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private beamWidth = 112;
   private misses = 0;
   private assisted = false;
+  private alertMeter = 0;
+  private lastFootstepX = 200;
+
   private feedbackText?: Phaser.GameObjects.Text;
+  private alertBarGraphics?: Phaser.GameObjects.Graphics;
   private playerSprite?: Phaser.GameObjects.Sprite;
   private beamGraphics?: Phaser.GameObjects.Graphics;
+  private dustParticles: { x: number; y: number; vx: number; vy: number; alpha: number; circle: Phaser.GameObjects.Arc }[] = [];
   private chooseContainer?: Phaser.GameObjects.Container;
 
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
+  private touchMove = 0;
 
   constructor() {
     super('SpotlightChallengeScene');
@@ -34,28 +42,35 @@ export class SpotlightChallengeScene extends Phaser.Scene {
 
   create(data: SpotlightChallengeData): void {
     this.challengeData = data;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'spotlight_challenge');
     this.stage = 'choose';
     this.selectedChoice = 0;
     this.playerX = 200;
     this.misses = 0;
     this.assisted = false;
+    this.alertMeter = 0;
+    this.lastFootstepX = 200;
 
     this.createBackground();
     this.createChooseUI();
     this.createInputHandlers();
+    this.createDustParticles();
   }
 
   update(_time: number, delta: number): void {
     const dt = delta / 1000;
+    this.updateDustParticles(dt);
 
     if (this.stage === 'choose') {
       if (this.keys) {
         if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.a)) {
           this.selectedChoice = 0;
+          this.soundManager?.playSelect();
           this.refreshChoiceUI();
         } else if (Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.d)) {
           this.selectedChoice = 1;
+          this.soundManager?.playSelect();
           this.refreshChoiceUI();
         } else if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
           this.startPlayStage();
@@ -65,32 +80,52 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     }
 
     if (this.stage === 'play') {
-      const spd = this.assisted ? 140 : 185;
-      let dir = 0;
+      const spd = this.assisted ? 145 : 190;
+      let dir = this.touchMove;
       if (this.keys) {
         if (this.keys.left.isDown || this.keys.a.isDown) dir -= 1;
         if (this.keys.right.isDown || this.keys.d.isDown) dir += 1;
       }
+      dir = Phaser.Math.Clamp(dir, -1, 1);
 
-      this.playerX = Phaser.Math.Clamp(this.playerX + dir * spd * dt, 190, 764);
+      this.playerX = Phaser.Math.Clamp(this.playerX + dir * spd * dt, 190, 765);
+      if (Math.abs(this.playerX - this.lastFootstepX) > 28) {
+        this.lastFootstepX = this.playerX;
+        this.soundManager?.playFootstep('metal', this.playerX);
+      }
+
       if (this.playerSprite) {
         this.playerSprite.setX(this.playerX);
         if (dir !== 0) this.playerSprite.setFlipX(dir < 0);
       }
 
-      const beamSpeed = this.assisted ? 0.6 : 0.92;
+      const beamSpeed = this.assisted ? 0.62 : 0.95;
       const t = this.time.now / 1000;
-      this.beamWidth = this.assisted ? 150 : 112;
-      this.beamX = 190 + ((Math.sin(t * beamSpeed) + 1) / 2) * 580;
+      this.beamWidth = this.assisted ? 145 : 110;
+      // Sinusoidal sweep with ease near edges
+      this.beamX = 190 + ((Math.sin(t * beamSpeed) + 1) / 2) * 575;
 
       this.drawBeam();
 
-      const inCover = COVERS.some(cx => Math.abs(this.playerX - cx) < 36);
+      const inCover = COVERS.some(cx => Math.abs(this.playerX - cx) < 38);
       const inBeam = Math.abs(this.playerX - this.beamX) < this.beamWidth / 2;
 
+      if (this.playerSprite) {
+        this.playerSprite.setTint(inCover ? 0x94a3b8 : (inBeam ? 0xfef08a : 0xffffff));
+      }
+
       if (inBeam && !inCover) {
-        this.onDetected();
-      } else if (this.playerX >= 758) {
+        this.alertMeter += dt * 3.2;
+        if (this.alertMeter >= 1.0) {
+          this.onDetected();
+        }
+      } else {
+        this.alertMeter = Math.max(0, this.alertMeter - dt * 2.0);
+      }
+
+      this.drawAlertBar();
+
+      if (this.playerX >= 758) {
         this.onFinish();
       }
     }
@@ -99,31 +134,94 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private createBackground(): void {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050403, 0.94);
     if (this.textures.exists('bg1944-mid')) {
-      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1944-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.2);
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1944-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.22);
     }
-    this.add.text(GAME_WIDTH / 2, 42, 'PENYEBERANGAN LAMPU SOROT', {
+    this.add.text(GAME_WIDTH / 2, 40, 'PENYEBERANGAN LAMPU SOROT', {
       color: '#f7d984', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
+      stroke: '#1a0f08', strokeThickness: 5,
     }).setOrigin(0.5);
 
+    // Ground Platform
     this.add.rectangle(GAME_WIDTH / 2, 385, 620, 8, 0x3d3025);
 
+    // Sandbag Cover Points
     COVERS.forEach(cx => {
-      this.add.rectangle(cx, 370, 70, 30, 0x5a4838).setStrokeStyle(2, 0x8a7058);
-      this.add.text(cx, 370, 'KARUNG', {
-        color: '#f5f0e8aa', fontFamily: 'Poppins, sans-serif', fontSize: '9px',
+      this.add.rectangle(cx, 370, 74, 30, 0x5a4838).setStrokeStyle(2, 0x8a7058);
+      this.add.text(cx, 370, '🛡️ PERLINDUNGAN', {
+        color: '#f5f0e8cc', fontFamily: 'Poppins, sans-serif', fontSize: '9px', fontStyle: 'bold',
       }).setOrigin(0.5);
     });
 
     this.beamGraphics = this.add.graphics();
+    this.alertBarGraphics = this.add.graphics();
 
     if (this.textures.exists('elena')) {
       this.playerSprite = this.add.sprite(this.playerX, 360, 'elena', 0)
         .setScale(0.85).setOrigin(0.5, 1).setVisible(false);
     }
 
-    this.feedbackText = this.add.text(GAME_WIDTH / 2, 450, '', {
-      color: '#f6d57b', fontFamily: 'Poppins, sans-serif', fontSize: '13px',
+    this.feedbackText = this.add.text(GAME_WIDTH / 2, 436, '', {
+      color: '#f6d57b', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
     }).setOrigin(0.5);
+
+    this.createTouchControls();
+  }
+
+  private createTouchControls(): void {
+    const leftBtn = this.add.rectangle(260, 485, 110, 44, 0x1f1712, 0.9)
+      .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true });
+    this.add.text(260, 485, '◀ LARI KIRI', {
+      color: '#fff8ea', fontFamily: 'Poppins, sans-serif', fontSize: '12px',
+    }).setOrigin(0.5);
+
+    const rightBtn = this.add.rectangle(700, 485, 110, 44, 0x1f1712, 0.9)
+      .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true });
+    this.add.text(700, 485, 'LARI KANAN ▶', {
+      color: '#fff8ea', fontFamily: 'Poppins, sans-serif', fontSize: '12px',
+    }).setOrigin(0.5);
+
+    leftBtn.on('pointerdown', () => { this.touchMove = -1; });
+    leftBtn.on('pointerup', () => { this.touchMove = 0; });
+    leftBtn.on('pointerout', () => { this.touchMove = 0; });
+
+    rightBtn.on('pointerdown', () => { this.touchMove = 1; });
+    rightBtn.on('pointerup', () => { this.touchMove = 0; });
+    rightBtn.on('pointerout', () => { this.touchMove = 0; });
+  }
+
+  private createDustParticles(): void {
+    for (let i = 0; i < 20; i++) {
+      const circle = this.add.arc(
+        Phaser.Math.Between(190, 770),
+        Phaser.Math.Between(120, 380),
+        Phaser.Math.Between(1, 3),
+        0, 360, false, 0xfff3b0, 0.5,
+      );
+      this.dustParticles.push({
+        x: circle.x,
+        y: circle.y,
+        vx: Phaser.Math.FloatBetween(-12, 12),
+        vy: Phaser.Math.FloatBetween(-8, 8),
+        alpha: Phaser.Math.FloatBetween(0.2, 0.6),
+        circle,
+      });
+    }
+  }
+
+  private updateDustParticles(dt: number): void {
+    this.dustParticles.forEach(p => {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.x < 190) p.x = 770;
+      if (p.x > 770) p.x = 190;
+      if (p.y < 110) p.y = 380;
+      if (p.y > 380) p.y = 110;
+      p.circle.setPosition(p.x, p.y);
+
+      // Light up dust when inside beam
+      const inBeam = Math.abs(p.x - this.beamX) < this.beamWidth / 2;
+      p.circle.setAlpha(inBeam ? p.alpha * 1.8 : p.alpha * 0.4);
+    });
   }
 
   private createChooseUI(): void {
@@ -151,8 +249,8 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       color: '#f5f0e8', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
     }).setOrigin(0.5);
 
-    btn1Bg.on('pointerup', () => { this.selectedChoice = 0; this.startPlayStage(); });
-    btn2Bg.on('pointerup', () => { this.selectedChoice = 1; this.startPlayStage(); });
+    btn1Bg.on('pointerup', () => { this.selectedChoice = 0; this.soundManager?.playConfirm(); this.startPlayStage(); });
+    btn2Bg.on('pointerup', () => { this.selectedChoice = 1; this.soundManager?.playConfirm(); this.startPlayStage(); });
 
     this.chooseContainer.add([sub, btn1Bg, btn1Title, btn1Desc, btn2Bg, btn2Title, btn2Desc]);
   }
@@ -182,6 +280,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.chooseContainer?.setVisible(false);
     this.playerSprite?.setVisible(true);
     this.feedbackText?.setText('LARI KE KANAN (◀ / ▶ ATAU A / D) • BERLINDUNG DI BALIK KARUNG PASIR');
+    this.soundManager?.playConfirm();
   }
 
   private drawBeam(): void {
@@ -189,12 +288,13 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.beamGraphics.clear();
 
     const topX = this.beamX;
-    const topY = 90;
+    const topY = 85;
     const botL = this.beamX - this.beamWidth / 2;
     const botR = this.beamX + this.beamWidth / 2;
     const botY = 385;
 
-    this.beamGraphics.fillStyle(0xffec99, 0.35);
+    // Volumetric Beam Inner Cone
+    this.beamGraphics.fillStyle(0xffec99, 0.38);
     this.beamGraphics.beginPath();
     this.beamGraphics.moveTo(topX, topY);
     this.beamGraphics.lineTo(botR, botY);
@@ -202,16 +302,42 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.beamGraphics.closePath();
     this.beamGraphics.fill();
 
-    this.beamGraphics.lineStyle(2, 0xfff4c2, 0.7);
+    // Beam Outer Border Lines
+    this.beamGraphics.lineStyle(2, 0xfff4c2, 0.8);
     this.beamGraphics.strokeLineShape(new Phaser.Geom.Line(topX, topY, botL, botY));
     this.beamGraphics.strokeLineShape(new Phaser.Geom.Line(topX, topY, botR, botY));
+
+    // Spotlight Source Emitter Lens
+    this.beamGraphics.fillStyle(0xfffbeb, 0.9);
+    this.beamGraphics.fillCircle(topX, topY, 10);
+  }
+
+  private drawAlertBar(): void {
+    if (!this.alertBarGraphics) return;
+    this.alertBarGraphics.clear();
+
+    if (this.alertMeter > 0.05) {
+      const px = this.playerX;
+      const py = 310;
+      const w = 48;
+      const h = 6;
+
+      this.alertBarGraphics.fillStyle(0x180f0c, 0.8);
+      this.alertBarGraphics.fillRect(px - w / 2, py, w, h);
+
+      const fillW = Phaser.Math.Clamp(w * this.alertMeter, 0, w);
+      this.alertBarGraphics.fillStyle(this.alertMeter > 0.7 ? 0xef4444 : 0xf59e0b, 1);
+      this.alertBarGraphics.fillRect(px - w / 2, py, fillW, h);
+    }
   }
 
   private onDetected(): void {
     this.misses += 1;
     if (this.misses >= 3) this.assisted = true;
+    this.alertMeter = 0;
     this.playerX = 200;
-    this.feedbackText?.setText(this.assisted ? 'TERDETEKSI — KEMBALI KE AWAL (BANTUAN AKTIF)' : 'TERDETEKSI — KEMBALI KE TITIK AWAL');
+    this.soundManager?.playErrorBuzz();
+    this.feedbackText?.setText(this.assisted ? 'TERDETEKSI LAMPU SOROT — BANTUAN AKTIF' : 'TERDETEKSI — KEMBALI KE TITIK AWAL').setColor('#ef4444');
     if (!this.registry.get('reduceMotion')) {
       this.cameras.main.shake(180, 0.008);
     }
@@ -223,10 +349,12 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.challengeData.run[this.chosenApproach] += 1;
     this.challengeData.save.saveCycle('1944', this.challengeData.run, 765);
 
-    this.feedbackText?.setText('PENYEBERANGAN BERHASIL! JALAN MENUJU ARTHUR TERBUKA.').setColor('#a3e635');
+    this.soundManager?.playSuccessFanfare();
+    this.feedbackText?.setText('PENYEBERANGAN BERHASIL! JALAN MENUJU ARTHUR TERBUKA.').setColor('#86efac');
     this.beamGraphics?.clear();
+    this.alertBarGraphics?.clear();
 
-    this.time.delayedCall(800, () => {
+    this.time.delayedCall(850, () => {
       this.scene.stop();
       this.challengeData.onComplete();
     });

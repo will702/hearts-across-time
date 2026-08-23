@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -16,6 +17,7 @@ function gemAngleDist(a: number, b: number): number {
 
 export class GemAlignScene extends Phaser.Scene {
   private gemData!: GemAlignData;
+  private soundManager?: SoundManager;
   private rx = 1.8;
   private ry = -2.2;
   private startRx = 1.8;
@@ -28,7 +30,9 @@ export class GemAlignScene extends Phaser.Scene {
 
   private gemGraphics?: Phaser.GameObjects.Graphics;
   private shadowGraphics?: Phaser.GameObjects.Graphics;
+  private causticsGraphics?: Phaser.GameObjects.Graphics;
   private feedbackText?: Phaser.GameObjects.Text;
+  private alignPercentText?: Phaser.GameObjects.Text;
 
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
 
@@ -38,6 +42,7 @@ export class GemAlignScene extends Phaser.Scene {
 
   create(data: GemAlignData): void {
     this.gemData = data;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'gemalign');
     this.complete = false;
     this.misses = 0;
@@ -67,7 +72,7 @@ export class GemAlignScene extends Phaser.Scene {
       if (this.keys.down.isDown || this.keys.s.isDown) dy += 1;
 
       if (dx !== 0 || dy !== 0) {
-        const speed = this.assisted ? 1.35 : 1.75;
+        const speed = this.assisted ? 1.45 : 1.85;
         this.ry += dx * dt * speed;
         this.rx += dy * dt * speed;
         this.drawGem();
@@ -82,34 +87,40 @@ export class GemAlignScene extends Phaser.Scene {
   }
 
   private createBackground(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050c18, 0.95);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x030914, 0.95);
     if (this.textures.exists('water-gem-art')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'water-gem-art')
-        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.2);
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.22);
     }
 
-    this.add.text(GAME_WIDTH / 2, 42, 'PENYELARASAN PERMATA AIR', {
+    this.add.text(GAME_WIDTH / 2, 38, 'PENYELARASAN PERMATA AIR 1999', {
       color: '#38bdf8', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
+      stroke: '#082f49', strokeThickness: 5,
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 75, 'Putar permata hingga pantulan cahaya cocok dengan siluet bayangannya', {
+    this.add.text(GAME_WIDTH / 2, 70, 'Putar kristal 3D hingga refraksi cahaya menyatu dengan pola bayangan dasarnya.', {
       color: '#e0f2fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
 
+    this.causticsGraphics = this.add.graphics();
     this.shadowGraphics = this.add.graphics();
     this.gemGraphics = this.add.graphics();
 
-    this.feedbackText = this.add.text(GAME_WIDTH / 2, 430, 'SERET DENGAN MOUSE / GUNAKAN PANAH + SPACE UNTUK MENYELARASKAN', {
+    this.alignPercentText = this.add.text(GAME_WIDTH / 2, 380, 'KESELARASAN: 0%', {
+      color: '#38bdf8', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, 'GESER DENGAN MOUSE/SENTUH / PANAH + SPACE UNTUK MENYELARASKAN', {
       color: '#7dd3fc', fontFamily: 'Poppins, sans-serif', fontSize: '13px',
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2 - 120, 480, 'RESET POSISI (R)', {
+    this.add.text(GAME_WIDTH / 2 - 130, 478, 'RESET POSISI (R)', {
       backgroundColor: '#0369a1dd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 16, y: 8 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => this.resetPosition());
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.resetPosition());
 
-    this.add.text(GAME_WIDTH / 2 + 120, 480, 'PERIKSA KESELARASAN', {
-      backgroundColor: '#0284c7dd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 16, y: 8 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => this.tryAlign());
+    this.add.text(GAME_WIDTH / 2 + 130, 478, 'KUNCI KESELARASAN (SPACE)', {
+      backgroundColor: '#0284c7dd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 18, y: 8 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.tryAlign());
   }
 
   private drawShadow(): void {
@@ -117,11 +128,11 @@ export class GemAlignScene extends Phaser.Scene {
     this.shadowGraphics.clear();
 
     const cx = GAME_WIDTH / 2;
-    const cy = 250;
-    const size = 110;
+    const cy = 236;
+    const size = 115;
 
-    this.shadowGraphics.fillStyle(0x082f49, 0.6);
-    this.shadowGraphics.lineStyle(3, 0x0284c7, 0.8);
+    this.shadowGraphics.fillStyle(0x06283d, 0.65);
+    this.shadowGraphics.lineStyle(3, 0x0284c7, 0.85);
 
     const cosX = Math.cos(GEM_TARGET.rx);
     const cosY = Math.cos(GEM_TARGET.ry);
@@ -148,11 +159,19 @@ export class GemAlignScene extends Phaser.Scene {
     this.gemGraphics.clear();
 
     const cx = GAME_WIDTH / 2;
-    const cy = 250;
-    const size = 110;
+    const cy = 236;
+    const size = 115;
 
     const cosX = Math.cos(this.rx);
     const cosY = Math.cos(this.ry);
+
+    const dx = gemAngleDist(this.rx, GEM_TARGET.rx);
+    const dy = gemAngleDist(this.ry, GEM_TARGET.ry);
+    const totalDist = Math.hypot(dx, dy);
+    const alignRatio = Math.max(0, 1 - totalDist / 2.8);
+
+    this.alignPercentText?.setText(`KESELARASAN: ${Math.round(alignRatio * 100)}%`)
+      .setColor(alignRatio > 0.85 ? '#86efac' : (alignRatio > 0.5 ? '#fde047' : '#38bdf8'));
 
     const points: [number, number][] = [
       [0, -size * cosX],
@@ -161,7 +180,8 @@ export class GemAlignScene extends Phaser.Scene {
       [-size * cosY, 0],
     ];
 
-    this.gemGraphics.fillStyle(0x38bdf8, 0.75);
+    // Crystal Facet Body
+    this.gemGraphics.fillStyle(0x38bdf8, 0.75 + alignRatio * 0.2);
     this.gemGraphics.beginPath();
     points.forEach((pt, i) => {
       if (i === 0) this.gemGraphics!.moveTo(cx + pt[0], cy + pt[1]);
@@ -170,10 +190,11 @@ export class GemAlignScene extends Phaser.Scene {
     this.gemGraphics.closePath();
     this.gemGraphics.fill();
 
-    this.gemGraphics.lineStyle(3, 0xe0f2fe, 0.95);
+    // Internal Refraction Lines
+    this.gemGraphics.lineStyle(2, 0xe0f2fe, 0.95);
     this.gemGraphics.stroke();
 
-    this.gemGraphics.lineStyle(1.5, 0xbae6fd, 0.7);
+    this.gemGraphics.lineStyle(1.5, 0xbae6fd, 0.75);
     this.gemGraphics.strokeLineShape(new Phaser.Geom.Line(cx + points[0][0], cy + points[0][1], cx + points[2][0], cy + points[2][1]));
     this.gemGraphics.strokeLineShape(new Phaser.Geom.Line(cx + points[1][0], cy + points[1][1], cx + points[3][0], cy + points[3][1]));
   }
@@ -182,20 +203,22 @@ export class GemAlignScene extends Phaser.Scene {
     this.rx = this.startRx;
     this.ry = this.startRy;
     this.drawGem();
-    this.feedbackText?.setText('POSISI PERMATA DIULANG').setColor('#7dd3fc');
+    this.soundManager?.playSelect();
+    this.feedbackText?.setText('POSISI SUDUT PERMATA DIULANG').setColor('#7dd3fc');
   }
 
   private tryAlign(): void {
     if (this.complete) return;
     const dx = gemAngleDist(this.rx, GEM_TARGET.rx);
     const dy = gemAngleDist(this.ry, GEM_TARGET.ry);
-    const win = this.assisted ? 1.45 : 2.75;
+    const win = this.assisted ? 1.5 : 2.75;
 
     if (dx < win && dy < win) {
       this.onFinish();
     } else {
       this.misses += 1;
       if (this.misses >= 3) this.assisted = true;
+      this.soundManager?.playErrorBuzz();
       this.feedbackText?.setText(this.assisted ? 'PANTULAN BELUM COCOK — BANTUAN AKTIF' : 'PANTULAN BELUM MENYATU DENGAN BAYANGAN').setColor('#f87171');
       if (!this.registry.get('reduceMotion')) {
         this.cameras.main.shake(140, 0.005);
@@ -213,9 +236,11 @@ export class GemAlignScene extends Phaser.Scene {
     this.gemData.run.inventory.water_gem = 1;
     this.gemData.save.saveCycle('1999', this.gemData.run);
 
-    this.feedbackText?.setText('BAYANGAN DAN PERMATA TELAH SELARAS! PERMATA AIR MASUK KE TAS.').setColor('#4ade80');
+    this.soundManager?.playWaterShimmer();
+    this.soundManager?.playSuccessFanfare();
+    this.feedbackText?.setText('BAYANGAN & PERMATA AIR SELARAS 100%! MASUK KE TAS.').setColor('#86efac');
 
-    this.time.delayedCall(800, () => {
+    this.time.delayedCall(950, () => {
       this.scene.stop();
       this.gemData.onComplete();
     });
@@ -224,7 +249,7 @@ export class GemAlignScene extends Phaser.Scene {
   private createInputHandlers(): void {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (this.complete) return;
-      if (pointer.y > 140 && pointer.y < 380 && pointer.x > 260 && pointer.x < 700) {
+      if (pointer.y > 110 && pointer.y < 370 && pointer.x > 220 && pointer.x < 740) {
         this.isDragging = true;
         this.lastPointer = { x: pointer.x, y: pointer.y };
       }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -10,6 +11,7 @@ export type CryoBalanceData = {
 
 export class CryoBalanceScene extends Phaser.Scene {
   private balanceData!: CryoBalanceData;
+  private soundManager?: SoundManager;
   private stage: 'choose' | 'play' | 'success' = 'choose';
   private chosenApproach: 'empathy' | 'logic' = 'empathy';
   private selectedChoice = 0;
@@ -27,6 +29,7 @@ export class CryoBalanceScene extends Phaser.Scene {
   private step = 0;
   private misses = 0;
   private assisted = false;
+  private lastVitalBeep = 0;
 
   private statusText?: Phaser.GameObjects.Text;
   private feedbackText?: Phaser.GameObjects.Text;
@@ -41,6 +44,7 @@ export class CryoBalanceScene extends Phaser.Scene {
 
   create(data: CryoBalanceData): void {
     this.balanceData = data;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'cryobalance');
     this.stage = 'choose';
     this.step = 0;
@@ -65,9 +69,11 @@ export class CryoBalanceScene extends Phaser.Scene {
       if (this.keys) {
         if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.a)) {
           this.selectedChoice = 0;
+          this.soundManager?.playSelect();
           this.refreshChoiceUI();
         } else if (Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.d)) {
           this.selectedChoice = 1;
+          this.soundManager?.playSelect();
           this.refreshChoiceUI();
         } else if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
           this.startPlayStage();
@@ -77,10 +83,10 @@ export class CryoBalanceScene extends Phaser.Scene {
     }
 
     if (this.stage === 'play') {
-      const spd = this.assisted ? 0.7 : 1.0;
+      const spd = this.assisted ? 0.75 : 1.05;
 
       if (!this.vitLocked) {
-        this.vit += this.vitDir * dt * 1.6 * spd;
+        this.vit += this.vitDir * dt * 1.5 * spd;
         if (this.vit >= 1) {
           this.vit = 1;
           this.vitDir = -1;
@@ -91,7 +97,7 @@ export class CryoBalanceScene extends Phaser.Scene {
       }
 
       if (!this.serLocked) {
-        this.ser += this.serDir * dt * 2.1 * spd;
+        this.ser += this.serDir * dt * 1.9 * spd;
         if (this.ser >= 1) {
           this.ser = 1;
           this.serDir = -1;
@@ -110,24 +116,25 @@ export class CryoBalanceScene extends Phaser.Scene {
   }
 
   private createBackground(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050810, 0.95);
-    this.add.text(GAME_WIDTH / 2, 42, 'STABILISASI KAPSUL KRIOGENIK', {
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040810, 0.95);
+    this.add.text(GAME_WIDTH / 2, 38, 'STABILISASI KAPSUL KRIOGENIK 1999', {
       color: '#67e8f9', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
+      stroke: '#083344', strokeThickness: 5,
     }).setOrigin(0.5);
 
     this.gaugeGraphics = this.add.graphics();
 
-    this.statusText = this.add.text(GAME_WIDTH / 2, 85, '', {
+    this.statusText = this.add.text(GAME_WIDTH / 2, 75, '', {
       color: '#f5f0e8', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
 
-    this.feedbackText = this.add.text(GAME_WIDTH / 2, 430, '', {
-      color: '#67e8f9', fontFamily: 'Poppins, sans-serif', fontSize: '13px',
+    this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, '', {
+      color: '#67e8f9', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 480, 'KUNCI PARAMETER (SPACE / ENTER)', {
-      backgroundColor: '#0891b2dd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', padding: { x: 20, y: 9 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => this.tryLockStep());
+    this.add.text(GAME_WIDTH / 2, 478, 'KUNCI PARAMETER (SPACE / ENTER / SENTUH DI SINI)', {
+      backgroundColor: '#0891b2dd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', padding: { x: 22, y: 9 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.tryLockStep());
   }
 
   private createChooseUI(): void {
@@ -155,8 +162,8 @@ export class CryoBalanceScene extends Phaser.Scene {
       color: '#fff', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
     }).setOrigin(0.5);
 
-    btn1Bg.on('pointerup', () => { this.selectedChoice = 0; this.startPlayStage(); });
-    btn2Bg.on('pointerup', () => { this.selectedChoice = 1; this.startPlayStage(); });
+    btn1Bg.on('pointerup', () => { this.selectedChoice = 0; this.soundManager?.playConfirm(); this.startPlayStage(); });
+    btn2Bg.on('pointerup', () => { this.selectedChoice = 1; this.soundManager?.playConfirm(); this.startPlayStage(); });
 
     this.chooseContainer.add([sub, btn1Bg, btn1Title, btn1Desc, btn2Bg, btn2Title, btn2Desc]);
   }
@@ -175,8 +182,9 @@ export class CryoBalanceScene extends Phaser.Scene {
     this.chosenApproach = this.selectedChoice === 0 ? 'empathy' : 'logic';
     this.stage = 'play';
     this.chooseContainer?.setVisible(false);
-    this.statusText?.setText('TAHAP 1: KUNCI TANDA VITAL MERAH');
+    this.statusText?.setText('TAHAP 1: KUNCI TANDA VITAL MERAH (DETAK JANTUNG)');
     this.feedbackText?.setText('TEKAN SPACE / ENTER SAAT INDIKATOR MERAH DI ZONA TARGET');
+    this.soundManager?.playConfirm();
   }
 
   private drawGauges(): void {
@@ -188,40 +196,63 @@ export class CryoBalanceScene extends Phaser.Scene {
     const trackW = trackR - trackL;
     const winW = (this.assisted ? 0.16 : 0.10) * trackW;
 
-    // Track 1: Vital (Red)
-    const y1 = 200;
-    this.gaugeGraphics.fillStyle(0x1f1315, 0.9);
-    this.gaugeGraphics.fillRect(trackL, y1 - 25, trackW, 50);
+    // Track 1: Vital (Red ECG)
+    const y1 = 185;
+    this.gaugeGraphics.fillStyle(0x1a0f12, 0.92);
+    this.gaugeGraphics.fillRect(trackL, y1 - 32, trackW, 64);
     this.gaugeGraphics.lineStyle(2, 0x881337, 1);
-    this.gaugeGraphics.strokeRect(trackL, y1 - 25, trackW, 50);
+    this.gaugeGraphics.strokeRect(trackL, y1 - 32, trackW, 64);
 
     const targetX1 = trackL + this.targetVit * trackW;
-    this.gaugeGraphics.fillStyle(0xf43f5e, 0.35);
-    this.gaugeGraphics.fillRect(targetX1 - winW, y1 - 22, winW * 2, 44);
+    this.gaugeGraphics.fillStyle(0xf43f5e, 0.3);
+    this.gaugeGraphics.fillRect(targetX1 - winW, y1 - 28, winW * 2, 56);
     this.gaugeGraphics.lineStyle(2, 0xfb7185, 0.9);
-    this.gaugeGraphics.strokeLineShape(new Phaser.Geom.Line(targetX1, y1 - 22, targetX1, y1 + 22));
+    this.gaugeGraphics.strokeLineShape(new Phaser.Geom.Line(targetX1, y1 - 28, targetX1, y1 + 28));
+
+    // ECG wave line
+    const t = this.time.now / 1000;
+    this.gaugeGraphics.lineStyle(1.5, 0xf43f5e, 0.7);
+    this.gaugeGraphics.beginPath();
+    for (let x = trackL; x <= trackR; x += 4) {
+      const p = (x - trackL) / trackW;
+      const ecg = Math.sin(p * 20 - t * 6) > 0.8 ? Math.sin(p * 50) * 16 : 0;
+      if (x === trackL) this.gaugeGraphics.moveTo(x, y1 + ecg);
+      else this.gaugeGraphics.lineTo(x, y1 + ecg);
+    }
+    this.gaugeGraphics.stroke();
 
     const curX1 = trackL + this.vit * trackW;
-    this.gaugeGraphics.fillStyle(this.vitLocked ? 0x22c55e : 0xf43f5e, 0.95);
+    this.gaugeGraphics.fillStyle(this.vitLocked ? 0x22c55e : 0xf43f5e, 1);
     this.gaugeGraphics.fillCircle(curX1, y1, 11);
     this.gaugeGraphics.lineStyle(2, 0xffffff, 1);
     this.gaugeGraphics.strokeCircle(curX1, y1, 11);
 
-    // Track 2: Serum (Blue)
-    const y2 = 310;
-    this.gaugeGraphics.fillStyle(0x0c1a24, 0.9);
-    this.gaugeGraphics.fillRect(trackL, y2 - 25, trackW, 50);
+    // Track 2: Coolant / Serum (Cyan)
+    const y2 = 300;
+    this.gaugeGraphics.fillStyle(0x081721, 0.92);
+    this.gaugeGraphics.fillRect(trackL, y2 - 32, trackW, 64);
     this.gaugeGraphics.lineStyle(2, 0x0e7490, 1);
-    this.gaugeGraphics.strokeRect(trackL, y2 - 25, trackW, 50);
+    this.gaugeGraphics.strokeRect(trackL, y2 - 32, trackW, 64);
 
     const targetX2 = trackL + this.targetSer * trackW;
-    this.gaugeGraphics.fillStyle(0x06b6d4, 0.35);
-    this.gaugeGraphics.fillRect(targetX2 - winW, y2 - 22, winW * 2, 44);
+    this.gaugeGraphics.fillStyle(0x06b6d4, 0.3);
+    this.gaugeGraphics.fillRect(targetX2 - winW, y2 - 28, winW * 2, 56);
     this.gaugeGraphics.lineStyle(2, 0x67e8f9, 0.9);
-    this.gaugeGraphics.strokeLineShape(new Phaser.Geom.Line(targetX2, y2 - 22, targetX2, y2 + 22));
+    this.gaugeGraphics.strokeLineShape(new Phaser.Geom.Line(targetX2, y2 - 28, targetX2, y2 + 28));
+
+    // Coolant flow sine
+    this.gaugeGraphics.lineStyle(1.5, 0x06b6d4, 0.7);
+    this.gaugeGraphics.beginPath();
+    for (let x = trackL; x <= trackR; x += 4) {
+      const p = (x - trackL) / trackW;
+      const wave = Math.sin(p * 14 + t * 4) * 8;
+      if (x === trackL) this.gaugeGraphics.moveTo(x, y2 + wave);
+      else this.gaugeGraphics.lineTo(x, y2 + wave);
+    }
+    this.gaugeGraphics.stroke();
 
     const curX2 = trackL + this.ser * trackW;
-    this.gaugeGraphics.fillStyle(this.serLocked ? 0x22c55e : 0x06b6d4, 0.95);
+    this.gaugeGraphics.fillStyle(this.serLocked ? 0x22c55e : 0x06b6d4, 1);
     this.gaugeGraphics.fillCircle(curX2, y2, 11);
     this.gaugeGraphics.lineStyle(2, 0xffffff, 1);
     this.gaugeGraphics.strokeCircle(curX2, y2, 11);
@@ -235,6 +266,7 @@ export class CryoBalanceScene extends Phaser.Scene {
       if (Math.abs(this.vit - this.targetVit) <= win) {
         this.vitLocked = true;
         this.step = 1;
+        this.soundManager?.playLockSuccess();
         this.statusText?.setText('TAHAP 2: KUNCI KEMURNIAN SERUM BIRU');
         this.feedbackText?.setText('VITAL MERAH TERKUNCI (1/2)! SEKARANG KUNCI SERUM BIRU').setColor('#86efac');
       } else {
@@ -243,6 +275,7 @@ export class CryoBalanceScene extends Phaser.Scene {
     } else if (this.step === 1) {
       if (Math.abs(this.ser - this.targetSer) <= win) {
         this.serLocked = true;
+        this.soundManager?.playSteamRelease();
         this.onFinish();
       } else {
         this.onMiss();
@@ -256,6 +289,7 @@ export class CryoBalanceScene extends Phaser.Scene {
     this.vitLocked = false;
     this.serLocked = false;
     this.step = 0;
+    this.soundManager?.playErrorBuzz();
     this.statusText?.setText('TAHAP 1: KUNCI TANDA VITAL MERAH');
     this.feedbackText?.setText(this.assisted ? 'GARIS BELUM PAS — BANTUAN AKTIF' : 'GARIS BELUM PAS — KUNCI SAAT MENYENTUH AMBANG').setColor('#f87171');
     if (!this.registry.get('reduceMotion')) {
@@ -269,10 +303,11 @@ export class CryoBalanceScene extends Phaser.Scene {
     this.balanceData.run[this.chosenApproach] += 1;
     this.balanceData.save.saveCycle('1999', this.balanceData.run);
 
-    this.statusText?.setText('STABILISASI KAPSUL KRIOGENIK SELESAI!').setColor('#4ade80');
-    this.feedbackText?.setText('KEMURNIAN SERUM DAN VITAL SELARAS 100%').setColor('#a3e635');
+    this.soundManager?.playSuccessFanfare();
+    this.statusText?.setText('STABILISASI KAPSUL KRIOGENIK SELESAI!').setColor('#86efac');
+    this.feedbackText?.setText('KEMURNIAN SERUM & VITAL SELARAS 100%').setColor('#a3e635');
 
-    this.time.delayedCall(800, () => {
+    this.time.delayedCall(950, () => {
       this.scene.stop();
       this.balanceData.onComplete();
     });

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -18,7 +19,7 @@ type Piece = {
   graphics?: Phaser.GameObjects.Graphics;
 };
 
-const PHOTO_TARGET = { x: 270, y: 118, w: 420, h: 280 };
+const PHOTO_TARGET = { x: 270, y: 110, w: 420, h: 280 };
 
 const PHOTO_PIECES_DEF: { poly: [number, number][]; home: [number, number] }[] = [
   {
@@ -41,6 +42,7 @@ const PHOTO_PIECES_DEF: { poly: [number, number][]; home: [number, number] }[] =
 
 export class PhotoPuzzleScene extends Phaser.Scene {
   private puzzleData!: PhotoPuzzleData;
+  private soundManager?: SoundManager;
   private stage: 'assemble' | 'glue' | 'success' = 'assemble';
   private pieces: Piece[] = [];
   private selectedPiece = 0;
@@ -61,6 +63,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
 
   create(data: PhotoPuzzleData): void {
     this.puzzleData = data;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'photopuzzle');
     this.stage = 'assemble';
     this.selectedPiece = 0;
@@ -83,6 +86,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
         const key = this.keys[`key${i + 1}`];
         if (key && Phaser.Input.Keyboard.JustDown(key)) {
           this.selectedPiece = i;
+          this.soundManager?.playSelect();
           this.refreshAllPieces();
         }
       }
@@ -96,8 +100,8 @@ export class PhotoPuzzleScene extends Phaser.Scene {
 
       const p = this.pieces[this.selectedPiece];
       if (p && !p.placed && (dx !== 0 || dy !== 0)) {
-        p.ox += dx * dt * 175;
-        p.oy += dy * dt * 175;
+        p.ox += dx * dt * 185;
+        p.oy += dy * dt * 185;
         this.refreshPiece(this.selectedPiece);
       }
 
@@ -107,9 +111,11 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     } else if (this.stage === 'glue' && this.keys) {
       if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.up)) {
         this.glueSel = (this.glueSel + 2) % 3;
+        this.soundManager?.playSelect();
         this.drawSeams();
       } else if (Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.down)) {
         this.glueSel = (this.glueSel + 1) % 3;
+        this.soundManager?.playSelect();
         this.drawSeams();
       } else if (Phaser.Input.Keyboard.JustDown(this.keys.space) || Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
         this.glueCurrentLine();
@@ -120,8 +126,9 @@ export class PhotoPuzzleScene extends Phaser.Scene {
   private createBackground(): void {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0a0807, 0.95);
 
-    this.add.text(GAME_WIDTH / 2, 42, 'REKATKAN FOTO ELENA & ARTHUR', {
+    this.add.text(GAME_WIDTH / 2, 38, 'REKATKAN FOTO ELENA & ARTHUR 1999', {
       color: '#f6d57b', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
+      stroke: '#281408', strokeThickness: 5,
     }).setOrigin(0.5);
 
     this.add.rectangle(
@@ -138,18 +145,18 @@ export class PhotoPuzzleScene extends Phaser.Scene {
         PHOTO_TARGET.x + PHOTO_TARGET.w / 2,
         PHOTO_TARGET.y + PHOTO_TARGET.h / 2,
         'elena-arthur-photo',
-      ).setDisplaySize(PHOTO_TARGET.w, PHOTO_TARGET.h).setAlpha(0.15);
+      ).setDisplaySize(PHOTO_TARGET.w, PHOTO_TARGET.h).setAlpha(0.18);
     }
 
     this.seamGraphics = this.add.graphics();
 
-    this.feedbackText = this.add.text(GAME_WIDTH / 2, 430, 'RAPIKAN EMPAT ROBEKAN FOTO (ANGKA 1-4 & ARAH + SPACE)', {
+    this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, 'RAPIKAN EMPAT ROBEKAN FOTO (ANGKA 1-4 & ARAH + SPACE)', {
       color: '#faedcd', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 480, 'PERIKSA ROBEKAN / REKATKAN GARIS', {
-      backgroundColor: '#94342edd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', padding: { x: 18, y: 8 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => {
+    this.add.text(GAME_WIDTH / 2, 478, 'PERIKSA ROBEKAN / REKATKAN GARIS (SPACE / ENTER)', {
+      backgroundColor: '#94342edd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', padding: { x: 20, y: 9 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
       if (this.stage === 'assemble') {
         for (let i = 0; i < 4; i++) this.trySnap(i);
       } else if (this.stage === 'glue') {
@@ -182,7 +189,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     const posX = PHOTO_TARGET.x + p.ox;
     const posY = PHOTO_TARGET.y + p.oy;
 
-    p.graphics.fillStyle(p.placed ? 0xd4a373 : (isSelected ? 0xe9d8a6 : 0xbb9457), p.placed ? 0.9 : 0.75);
+    p.graphics.fillStyle(p.placed ? 0xd4a373 : (isSelected ? 0xe9d8a6 : 0xbb9457), p.placed ? 0.92 : 0.78);
     p.graphics.beginPath();
     p.poly.forEach((pt, i) => {
       const x = posX + pt[0];
@@ -206,11 +213,13 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     if (!p || p.placed) return;
 
     const dist = Math.hypot(p.ox, p.oy);
-    if (dist < 46) {
+    if (dist < 48) {
       p.ox = 0;
       p.oy = 0;
       p.placed = true;
       this.refreshPiece(idx);
+      this.soundManager?.playPaperSlide();
+      this.emitPieceSparks(idx);
 
       const placedCount = this.pieces.filter(q => q.placed).length;
       this.feedbackText?.setText(`ROBEKAN ${placedCount} / 4 TERPASANG`).setColor('#86efac');
@@ -222,7 +231,31 @@ export class PhotoPuzzleScene extends Phaser.Scene {
       p.ox = p.homeX;
       p.oy = p.homeY;
       this.refreshPiece(idx);
+      this.soundManager?.playErrorBuzz();
       this.feedbackText?.setText('TEPI FOTO BELUM COCOK').setColor('#fca5a5');
+    }
+  }
+
+  private emitPieceSparks(idx: number): void {
+    const p = this.pieces[idx];
+    if (!p) return;
+    const cx = PHOTO_TARGET.x + (p.poly[0][0] + p.poly[1][0]) / 2;
+    const cy = PHOTO_TARGET.y + (p.poly[0][1] + p.poly[1][1]) / 2;
+
+    for (let i = 0; i < 10; i++) {
+      const spark = this.add.circle(cx, cy, Phaser.Math.Between(2, 3), 0xfde047);
+      const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      const speed = Phaser.Math.Between(30, 90);
+      this.tweens.add({
+        targets: spark,
+        x: cx + Math.cos(angle) * speed,
+        y: cy + Math.sin(angle) * speed,
+        alpha: 0,
+        scale: 0.2,
+        duration: 380,
+        ease: 'Cubic.easeOut',
+        onComplete: () => spark.destroy(),
+      });
     }
   }
 
@@ -230,7 +263,8 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     this.stage = 'glue';
     this.refreshAllPieces();
     if (this.photoImage) this.photoImage.setAlpha(0.65);
-    this.feedbackText?.setText('FOTO TERSUSUN — PILIH & REKATKAN TIGA GARIS ROBEKAN (SPACE / ENTER)').setColor('#f6d57b');
+    this.soundManager?.playConfirm();
+    this.feedbackText?.setText('FOTO TERSUSUN — PILIH & REKATKAN TIGA GARIS EMAS KINTSUGI (SPACE / ENTER)').setColor('#f6d57b');
     this.drawSeams();
   }
 
@@ -252,9 +286,9 @@ export class PhotoPuzzleScene extends Phaser.Scene {
       const isSel = idx === this.glueSel;
 
       this.seamGraphics!.lineStyle(
-        isGlued ? 4 : (isSel ? 5 : 3),
-        isGlued ? 0x22c55e : (isSel ? 0x60a5fa : 0xf87171),
-        0.9,
+        isGlued ? 5 : (isSel ? 5 : 3),
+        isGlued ? 0xf59e0b : (isSel ? 0x60a5fa : 0xf87171),
+        0.95,
       );
       this.seamGraphics!.strokeLineShape(new Phaser.Geom.Line(s.x1, s.y1, s.x2, s.y2));
     });
@@ -263,10 +297,11 @@ export class PhotoPuzzleScene extends Phaser.Scene {
   private glueCurrentLine(): void {
     if (this.stage !== 'glue') return;
     this.glueLines[this.glueSel] = true;
+    this.soundManager?.playGlassClink();
     this.drawSeams();
 
     const gluedCount = this.glueLines.filter(Boolean).length;
-    this.feedbackText?.setText(`GARIS ${gluedCount} / 3 TEREKAT`).setColor('#86efac');
+    this.feedbackText?.setText(`GARIS EMAS ${gluedCount} / 3 TEREKAT SEMPURNA`).setColor('#86efac');
 
     if (this.glueLines.every(Boolean)) {
       this.onFinish();
@@ -284,9 +319,10 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     this.puzzleData.run.inventory.arthur_photo = 1;
     this.puzzleData.save.saveCycle('1999', this.puzzleData.run);
 
+    this.soundManager?.playSuccessFanfare();
     this.feedbackText?.setText('FOTO ELENA & ARTHUR UTUH KEMBALI! MASUK KE TAS.').setColor('#a3e635');
 
-    this.time.delayedCall(800, () => {
+    this.time.delayedCall(950, () => {
       this.scene.stop();
       this.puzzleData.onComplete();
     });
@@ -304,6 +340,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
             this.draggingIndex = i;
             this.selectedPiece = i;
             this.dragOffset = { x: pointer.x - p.ox, y: pointer.y - p.oy };
+            this.soundManager?.playSelect();
             this.refreshAllPieces();
             break;
           }

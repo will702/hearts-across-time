@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { DiaryData, NarrativeState } from '../narrative/storyScript';
 import { getArthurDiary } from '../narrative/storyScript';
@@ -10,6 +11,7 @@ export type DiarySceneData = {
 
 export class DiaryScene extends Phaser.Scene {
   private diaryData!: DiarySceneData;
+  private soundManager?: SoundManager;
   private diaryInfo!: DiaryData;
   private currentPage = 0;
 
@@ -25,6 +27,7 @@ export class DiaryScene extends Phaser.Scene {
 
   create(data: DiarySceneData): void {
     this.diaryData = data;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.diaryInfo = getArthurDiary(data.run);
     this.registry.set('nativeState', 'diary');
     this.currentPage = 0;
@@ -47,18 +50,23 @@ export class DiaryScene extends Phaser.Scene {
   }
 
   private createUI(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050403, 0.85);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050403, 0.88);
 
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 700, 420, 0xfaf3e8, 0.98)
-      .setStrokeStyle(3, 0x6a4930)
+    // Leather book frame
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 720, 430, 0x3d271d, 0.98)
+      .setStrokeStyle(3, 0x1f140e);
+
+    // Inner paper page
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 690, 400, 0xfaf3e8, 0.98)
+      .setStrokeStyle(2, 0xd4a373)
       .setInteractive();
 
     this.headerText = this.add.text(GAME_WIDTH / 2, 95, this.diaryInfo.meta, {
-      color: '#6a4930', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
+      color: '#6a4930', fontFamily: 'Cinzel, serif', fontSize: '16px', fontStyle: 'bold',
     }).setOrigin(0.5);
 
     if (this.diaryInfo.nostalgia) {
-      this.add.text(GAME_WIDTH / 2, 120, '— Terasa sedikit nostalgia —', {
+      this.add.text(GAME_WIDTH / 2, 120, '— Terasa hangat dengan kenangan masa lalu —', {
         color: '#94342e', fontFamily: 'Patrick Hand, sans-serif', fontSize: '15px', fontStyle: 'italic',
       }).setOrigin(0.5);
     }
@@ -68,20 +76,20 @@ export class DiaryScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.pageIndicator = this.add.text(GAME_WIDTH / 2, 385, '', {
-      color: '#8c684d', fontFamily: 'Poppins, sans-serif', fontSize: '13px',
+      color: '#8c684d', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
     }).setOrigin(0.5);
 
     this.add.text(GAME_WIDTH / 2 - 200, 435, '◀ SEBELUMNYA', {
       backgroundColor: '#6a4930', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 14, y: 8 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => this.prevPage());
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.prevPage());
 
     this.add.text(GAME_WIDTH / 2 + 200, 435, 'SELANJUTNYA ▶', {
       backgroundColor: '#94342e', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 14, y: 8 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => this.nextPage());
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.nextPage());
 
-    this.add.text(GAME_WIDTH / 2, 435, 'TUTUP CATATAN', {
+    this.add.text(GAME_WIDTH / 2, 435, 'TUTUP CATATAN (ESC)', {
       backgroundColor: '#2b1d13', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 16, y: 8 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => this.close());
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.close());
   }
 
   private showPage(page: number): void {
@@ -93,6 +101,7 @@ export class DiaryScene extends Phaser.Scene {
 
   private nextPage(): void {
     if (this.currentPage < this.diaryInfo.pages.length - 1) {
+      this.soundManager?.playPaperFlip();
       this.showPage(this.currentPage + 1);
     } else {
       this.close();
@@ -101,11 +110,13 @@ export class DiaryScene extends Phaser.Scene {
 
   private prevPage(): void {
     if (this.currentPage > 0) {
+      this.soundManager?.playPaperFlip();
       this.showPage(this.currentPage - 1);
     }
   }
 
   private close(): void {
+    this.soundManager?.playSelect();
     this.scene.stop();
     this.diaryData.onComplete();
   }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -23,6 +24,7 @@ function getLoopHint(routeB2: string): string {
 
 export class GlitchScene extends Phaser.Scene {
   private glitchData!: GlitchSceneData;
+  private soundManager?: SoundManager;
   private save!: SaveSystem;
 
   constructor() {
@@ -31,8 +33,11 @@ export class GlitchScene extends Phaser.Scene {
 
   create(data: GlitchSceneData): void {
     this.glitchData = data;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.save = this.registry.get('saveSystem') as SaveSystem;
     this.registry.set('nativeState', 'glitch');
+
+    this.soundManager?.playGlitch();
 
     const routeB2 = data.run.routeB2 || '';
     const caseTitle = CASE_FILES[routeB2] || 'BERKAS KASUS — TIMELINE RUNTUH';
@@ -55,16 +60,16 @@ export class GlitchScene extends Phaser.Scene {
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x110204, 1);
 
-    this.add.text(GAME_WIDTH / 2, 90, '⚠ DISTORSI WAKTU — TIMELINE COLLAPSE ⚠', {
+    this.add.text(GAME_WIDTH / 2, 85, '⚠ DISTORSI WAKTU — TIMELINE COLLAPSE ⚠', {
       color: '#ef4444', fontFamily: 'Cinzel, serif', fontSize: '22px', fontStyle: 'bold',
       stroke: '#450a0a', strokeThickness: 5,
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 175, caseTitle, {
+    this.add.text(GAME_WIDTH / 2, 170, caseTitle, {
       color: '#fca5a5', fontFamily: 'Poppins, sans-serif', fontSize: '15px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 255, hint, {
+    this.add.text(GAME_WIDTH / 2, 250, hint, {
       color: '#fff', fontFamily: 'Patrick Hand, sans-serif', fontSize: '19px', wordWrap: { width: 720 }, align: 'center',
     }).setOrigin(0.5);
 

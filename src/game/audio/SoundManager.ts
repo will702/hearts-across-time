@@ -112,6 +112,57 @@ export class SoundManager {
     }
   }
 
+  playGearTick(rate = 1.0): void {
+    this.playSynthTone(1200 * rate, 0.02, 'triangle', 0.14);
+  }
+
+  playLockSuccess(): void {
+    this.playSynthTone(523.25, 0.08, 'sine', 0.18);
+    setTimeout(() => this.playSynthTone(659.25, 0.14, 'sine', 0.22), 70);
+    setTimeout(() => this.playSynthTone(1046.5, 0.22, 'triangle', 0.25), 150);
+  }
+
+  playErrorBuzz(): void {
+    this.playSynthTone(130, 0.18, 'sawtooth', 0.22);
+    setTimeout(() => this.playSynthTone(110, 0.24, 'sawtooth', 0.24), 90);
+  }
+
+  playGlassClink(): void {
+    this.playSynthTone(1864, 0.12, 'sine', 0.2);
+    setTimeout(() => this.playSynthTone(2793, 0.18, 'triangle', 0.16), 40);
+  }
+
+  playWaterShimmer(): void {
+    const freqs = [659.25, 880, 1174.66, 1318.51];
+    freqs.forEach((freq, idx) => {
+      setTimeout(() => this.playSynthTone(freq, 0.25, 'sine', 0.15), idx * 60);
+    });
+  }
+
+  playSteamRelease(): void {
+    this.playSynthNoise(0.45, 600, 0.28);
+  }
+
+  playPaperSlide(): void {
+    this.playSynthNoise(0.08, 1400, 0.18);
+  }
+
+  playSuccessFanfare(): void {
+    const notes = [
+      { f: 523.25, d: 0.1 },
+      { f: 659.25, d: 0.1 },
+      { f: 783.99, d: 0.12 },
+      { f: 1046.5, d: 0.35 },
+    ];
+    notes.forEach((note, i) => {
+      setTimeout(() => this.playSynthTone(note.f, note.d, 'triangle', 0.25), i * 110);
+    });
+  }
+
+  playOscillatorWave(freq: number, duration: number, type: OscillatorType = 'sine', gain = 0.15): void {
+    this.playSynthTone(freq, duration, type, gain);
+  }
+
   private playSynthTone(freq: number, duration: number, type: OscillatorType = 'sine', gainVal = 0.1): void {
     if (this.isMuted) return;
     const ctx = this.context;

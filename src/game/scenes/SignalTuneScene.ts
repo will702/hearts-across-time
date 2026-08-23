@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -8,10 +9,11 @@ export type SignalTuneData = {
   onComplete: () => void;
 };
 
-const TARGETS = [0.3, 0.72, 0.48];
+const TARGETS = [0.30, 0.72, 0.48];
 
 export class SignalTuneScene extends Phaser.Scene {
   private tuneData!: SignalTuneData;
+  private soundManager?: SoundManager;
   private stage: 'choose' | 'play' | 'success' = 'choose';
   private chosenApproach: 'empathy' | 'logic' = 'empathy';
   private selectedChoice = 0;
@@ -21,9 +23,11 @@ export class SignalTuneScene extends Phaser.Scene {
   private dir = 1;
   private misses = 0;
   private assisted = false;
+  private isDraggingSlider = false;
 
   private feedbackText?: Phaser.GameObjects.Text;
   private statusText?: Phaser.GameObjects.Text;
+  private snrText?: Phaser.GameObjects.Text;
   private chooseContainer?: Phaser.GameObjects.Container;
   private waveGraphics?: Phaser.GameObjects.Graphics;
 
@@ -35,6 +39,7 @@ export class SignalTuneScene extends Phaser.Scene {
 
   create(data: SignalTuneData): void {
     this.tuneData = data;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'signaltune');
     this.stage = 'choose';
     this.band = 0;
@@ -54,9 +59,11 @@ export class SignalTuneScene extends Phaser.Scene {
       if (this.keys) {
         if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.a)) {
           this.selectedChoice = 0;
+          this.soundManager?.playSelect();
           this.refreshChoiceUI();
         } else if (Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.d)) {
           this.selectedChoice = 1;
+          this.soundManager?.playSelect();
           this.refreshChoiceUI();
         } else if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
           this.startPlayStage();
@@ -66,14 +73,16 @@ export class SignalTuneScene extends Phaser.Scene {
     }
 
     if (this.stage === 'play') {
-      const speed = this.assisted ? 0.42 : 0.75;
-      this.cursor += this.dir * dt * speed;
-      if (this.cursor >= 1) {
-        this.cursor = 1;
-        this.dir = -1;
-      } else if (this.cursor <= 0) {
-        this.cursor = 0;
-        this.dir = 1;
+      const speed = this.assisted ? 0.38 : 0.65;
+      if (!this.isDraggingSlider) {
+        this.cursor += this.dir * dt * speed;
+        if (this.cursor >= 1) {
+          this.cursor = 1;
+          this.dir = -1;
+        } else if (this.cursor <= 0) {
+          this.cursor = 0;
+          this.dir = 1;
+        }
       }
 
       if (this.keys) {
@@ -81,7 +90,7 @@ export class SignalTuneScene extends Phaser.Scene {
         if (this.keys.left.isDown || this.keys.a.isDown) steer -= 1;
         if (this.keys.right.isDown || this.keys.d.isDown) steer += 1;
         if (steer !== 0) {
-          this.cursor = Phaser.Math.Clamp(this.cursor + steer * dt * 0.5, 0, 1);
+          this.cursor = Phaser.Math.Clamp(this.cursor + steer * dt * 0.55, 0, 1);
           this.dir = steer > 0 ? 1 : -1;
         }
 
@@ -95,24 +104,29 @@ export class SignalTuneScene extends Phaser.Scene {
   }
 
   private createBackground(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x070b10, 0.95);
-    this.add.text(GAME_WIDTH / 2, 42, 'PENYETELAN SINYAL RADIO', {
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050a12, 0.95);
+    this.add.text(GAME_WIDTH / 2, 38, 'PENYETELAN GELOMBANG RADIO 1968', {
       color: '#7dd3fc', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
+      stroke: '#032030', strokeThickness: 5,
     }).setOrigin(0.5);
 
     this.waveGraphics = this.add.graphics();
 
-    this.statusText = this.add.text(GAME_WIDTH / 2, 85, '', {
+    this.statusText = this.add.text(GAME_WIDTH / 2, 75, '', {
       color: '#f5f0e8', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
 
-    this.feedbackText = this.add.text(GAME_WIDTH / 2, 440, '', {
+    this.snrText = this.add.text(GAME_WIDTH / 2, 375, 'SINYAL: 0%', {
+      color: '#38bdf8', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, '', {
       color: '#7dd3fc', fontFamily: 'Poppins, sans-serif', fontSize: '13px',
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 480, 'KUNCI SAAT INDIKATOR COCOK DENGAN TARGET (SPACE / ENTER)', {
-      backgroundColor: '#0369a1dd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 18, y: 8 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => this.tryLock());
+    this.add.text(GAME_WIDTH / 2, 478, 'KUNCI FREKUENSI (SPACE / ENTER / SENTUH DI SINI)', {
+      backgroundColor: '#0284c7dd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', padding: { x: 22, y: 9 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.tryLock());
   }
 
   private createChooseUI(): void {
@@ -140,8 +154,8 @@ export class SignalTuneScene extends Phaser.Scene {
       color: '#f8fafc', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
     }).setOrigin(0.5);
 
-    btn1Bg.on('pointerup', () => { this.selectedChoice = 0; this.startPlayStage(); });
-    btn2Bg.on('pointerup', () => { this.selectedChoice = 1; this.startPlayStage(); });
+    btn1Bg.on('pointerup', () => { this.selectedChoice = 0; this.soundManager?.playConfirm(); this.startPlayStage(); });
+    btn2Bg.on('pointerup', () => { this.selectedChoice = 1; this.soundManager?.playConfirm(); this.startPlayStage(); });
 
     this.chooseContainer.add([sub, btn1Bg, btn1Title, btn1Desc, btn2Bg, btn2Title, btn2Desc]);
   }
@@ -169,8 +183,9 @@ export class SignalTuneScene extends Phaser.Scene {
     this.chosenApproach = this.selectedChoice === 0 ? 'empathy' : 'logic';
     this.stage = 'play';
     this.chooseContainer?.setVisible(false);
-    this.statusText?.setText(`GELOMBANG 1 / 3 • TARGET: ${Math.round(TARGETS[0] * 100)}%`);
-    this.feedbackText?.setText('SELARASKAN INDIKATOR DENGAN TARGET FREKUENSI');
+    this.statusText?.setText(`SALURAN ${this.band + 1} / 3 • TARGET: ${Math.round(TARGETS[0] * 100)} MHz`);
+    this.feedbackText?.setText('SELARASKAN INDIKATOR DENGAN ZONA HIJAU SPEKTRUM');
+    this.soundManager?.playConfirm();
   }
 
   private drawWaveform(): void {
@@ -180,59 +195,86 @@ export class SignalTuneScene extends Phaser.Scene {
     const trackL = 190;
     const trackR = 770;
     const trackW = trackR - trackL;
-    const trackY = 260;
+    const trackY = 220;
 
-    this.waveGraphics.fillStyle(0x0f172a, 0.8);
-    this.waveGraphics.fillRect(trackL, trackY - 60, trackW, 120);
-    this.waveGraphics.lineStyle(2, 0x1e293b, 1);
-    this.waveGraphics.strokeRect(trackL, trackY - 60, trackW, 120);
+    // Oscilloscope CRT Frame
+    this.waveGraphics.fillStyle(0x031322, 0.92);
+    this.waveGraphics.fillRect(trackL, trackY - 90, trackW, 180);
+    this.waveGraphics.lineStyle(2, 0x0369a1, 1);
+    this.waveGraphics.strokeRect(trackL, trackY - 90, trackW, 180);
+
+    // Grid lines
+    this.waveGraphics.lineStyle(1, 0x0c4a6e, 0.4);
+    for (let x = trackL + 40; x < trackR; x += 40) {
+      this.waveGraphics.strokeLineShape(new Phaser.Geom.Line(x, trackY - 90, x, trackY + 90));
+    }
+    for (let y = trackY - 60; y < trackY + 90; y += 30) {
+      this.waveGraphics.strokeLineShape(new Phaser.Geom.Line(trackL, y, trackR, y));
+    }
 
     const targetX = trackL + TARGETS[this.band] * trackW;
-    const winW = (this.assisted ? 0.13 : 0.075) * trackW;
-
-    this.waveGraphics.fillStyle(0x22c55e, 0.35);
-    this.waveGraphics.fillRect(targetX - winW, trackY - 55, winW * 2, 110);
-    this.waveGraphics.lineStyle(2, 0x4ade80, 0.9);
-    this.waveGraphics.strokeLineShape(new Phaser.Geom.Line(targetX, trackY - 55, targetX, trackY + 55));
-
+    const winW = (this.assisted ? 0.14 : 0.08) * trackW;
     const curX = trackL + this.cursor * trackW;
-    this.waveGraphics.fillStyle(0x38bdf8, 0.9);
-    this.waveGraphics.fillCircle(curX, trackY, 9);
-    this.waveGraphics.lineStyle(3, 0xbae6fd, 1);
-    this.waveGraphics.strokeLineShape(new Phaser.Geom.Line(curX, trackY - 55, curX, trackY + 55));
+    const dist = Math.abs(this.cursor - TARGETS[this.band]);
+    const snr = Math.max(0, 1 - dist / 0.25);
 
-    this.waveGraphics.lineStyle(2, 0x0284c7, 0.6);
+    // Target Range Box
+    this.waveGraphics.fillStyle(0x22c55e, 0.3);
+    this.waveGraphics.fillRect(targetX - winW, trackY - 85, winW * 2, 170);
+    this.waveGraphics.lineStyle(2, 0x4ade80, 0.9);
+    this.waveGraphics.strokeLineShape(new Phaser.Geom.Line(targetX, trackY - 85, targetX, trackY + 85));
+
+    // Dynamic Multi-Harmonic Oscilloscope Sine Wave
+    const t = this.time.now / 1000;
+    this.waveGraphics.lineStyle(2.5, snr > 0.7 ? 0x4ade80 : 0x38bdf8, 0.95);
     this.waveGraphics.beginPath();
-    for (let x = trackL; x <= trackR; x += 4) {
+
+    const noiseFactor = (1 - snr) * 14;
+    for (let x = trackL; x <= trackR; x += 3) {
       const p = (x - trackL) / trackW;
-      const freq = 12 + this.cursor * 20;
-      const y = trackY + Math.sin(p * Math.PI * freq) * 28;
+      const freq1 = 8 + this.cursor * 24;
+      const freq2 = 14 + TARGETS[this.band] * 12;
+      const noise = (Math.sin(x * 12.3 + t * 20) * Math.cos(x * 5.7)) * noiseFactor;
+      const y = trackY + Math.sin(p * Math.PI * freq1 + t * 4) * 32 * snr
+                       + Math.sin(p * Math.PI * freq2 - t * 2) * 14
+                       + noise;
       if (x === trackL) this.waveGraphics.moveTo(x, y);
       else this.waveGraphics.lineTo(x, y);
     }
     this.waveGraphics.stroke();
+
+    // Slider Needle Indicator
+    this.waveGraphics.fillStyle(0x38bdf8, 1);
+    this.waveGraphics.fillCircle(curX, trackY, 8);
+    this.waveGraphics.lineStyle(3, 0xffffff, 1);
+    this.waveGraphics.strokeLineShape(new Phaser.Geom.Line(curX, trackY - 85, curX, trackY + 85));
+
+    this.snrText?.setText(`KEJERNIHAN SINYAL (SNR): ${Math.round(snr * 100)}%`)
+      .setColor(snr > 0.75 ? '#86efac' : (snr > 0.4 ? '#fde047' : '#38bdf8'));
   }
 
   private tryLock(): void {
     if (this.stage !== 'play') return;
     const target = TARGETS[this.band];
-    const win = this.assisted ? 0.13 : 0.075;
+    const win = this.assisted ? 0.14 : 0.08;
     const dist = Math.abs(this.cursor - target);
 
     if (dist <= win) {
+      this.soundManager?.playLockSuccess();
       this.band += 1;
       if (this.band >= 3) {
         this.onFinish();
       } else {
-        this.statusText?.setText(`GELOMBANG ${this.band + 1} / 3 • TARGET: ${Math.round(TARGETS[this.band] * 100)}%`);
-        this.feedbackText?.setText(`TERKUNCI ${this.band} / 3`).setColor('#4ade80');
+        this.statusText?.setText(`SALURAN ${this.band + 1} / 3 • TARGET: ${Math.round(TARGETS[this.band] * 100)} MHz`);
+        this.feedbackText?.setText(`FREKUENSI ${this.band} / 3 BERHASIL TERKUNCI`).setColor('#86efac');
       }
     } else {
       this.misses += 1;
       if (this.misses >= 3) this.assisted = true;
-      this.feedbackText?.setText(this.assisted ? 'SINYAL LEPAS — BANTUAN AKTIF' : 'SINYAL LEPAS — COBA LAGI').setColor('#f87171');
+      this.soundManager?.playErrorBuzz();
+      this.feedbackText?.setText(this.assisted ? 'SINYAL MELESET — BANTUAN AKTIF' : 'SINYAL MELESET — KUNCI PADA ZONA HIJAU').setColor('#f87171');
       if (!this.registry.get('reduceMotion')) {
-        this.cameras.main.shake(150, 0.005);
+        this.cameras.main.shake(140, 0.005);
       }
     }
   }
@@ -243,10 +285,11 @@ export class SignalTuneScene extends Phaser.Scene {
     this.tuneData.run[this.chosenApproach] += 1;
     this.tuneData.save.saveCycle('1968', this.tuneData.run);
 
-    this.statusText?.setText('SEMUA GELOMBANG FREKUENSI SELARAS!').setColor('#4ade80');
-    this.feedbackText?.setText('TRANSMISI BERHASIL DISINKRONISASI').setColor('#a3e635');
+    this.soundManager?.playSuccessFanfare();
+    this.statusText?.setText('SEMUA GELOMBANG FREKUENSI SELARAS!').setColor('#86efac');
+    this.feedbackText?.setText('TRANSMISI BERHASIL DISINKRONISASI KE TAHUN 1968').setColor('#a3e635');
 
-    this.time.delayedCall(800, () => {
+    this.time.delayedCall(900, () => {
       this.scene.stop();
       this.tuneData.onComplete();
     });
@@ -261,5 +304,24 @@ export class SignalTuneScene extends Phaser.Scene {
       enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
       space: Phaser.Input.Keyboard.KeyCodes.SPACE,
     }) as Record<string, Phaser.Input.Keyboard.Key>;
+
+    // Direct pointer drag on oscilloscope bar
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.stage !== 'play') return;
+      if (pointer.x >= 190 && pointer.x <= 770 && pointer.y >= 130 && pointer.y <= 310) {
+        this.isDraggingSlider = true;
+        this.cursor = Phaser.Math.Clamp((pointer.x - 190) / 580, 0, 1);
+      }
+    });
+
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (this.isDraggingSlider) {
+        this.cursor = Phaser.Math.Clamp((pointer.x - 190) / 580, 0, 1);
+      }
+    });
+
+    this.input.on('pointerup', () => {
+      this.isDraggingSlider = false;
+    });
   }
 }

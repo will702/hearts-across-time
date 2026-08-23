@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { EndingKey, RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -26,6 +27,7 @@ function getEndingKey(kind: 'loop' | 'true', run: RunState): EndingKey {
 
 export class PuzzleAwardScene extends Phaser.Scene {
   private awardData!: PuzzleAwardData;
+  private soundManager?: SoundManager;
   private save!: SaveSystem;
 
   constructor() {
@@ -34,8 +36,11 @@ export class PuzzleAwardScene extends Phaser.Scene {
 
   create(data: PuzzleAwardData): void {
     this.awardData = data;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.save = this.registry.get('saveSystem') as SaveSystem;
     this.registry.set('nativeState', 'puzzleaward');
+
+    this.soundManager?.playSuccessFanfare();
 
     const key = getEndingKey(data.kind, data.run);
     this.save.data.endings[key] = 1;
@@ -45,36 +50,37 @@ export class PuzzleAwardScene extends Phaser.Scene {
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x07040a, 0.96);
 
-    this.add.text(GAME_WIDTH / 2, 70, 'KEPINGAN TAKDIR TERBUKA', {
+    this.add.text(GAME_WIDTH / 2, 65, 'KEPINGAN TAKDIR TERBUKA', {
       color: '#f6d57b', fontFamily: 'Cinzel, serif', fontSize: '26px', fontStyle: 'bold',
       stroke: '#2a1608', strokeThickness: 5,
     }).setOrigin(0.5);
 
     const endingTitle = ENDING_NAMES[key] || 'KEPINGAN ENDING';
-    this.add.text(GAME_WIDTH / 2, 160, endingTitle, {
-      color: '#fff', fontFamily: 'Cinzel, serif', fontSize: '18px', fontStyle: 'bold', align: 'center',
+    this.add.text(GAME_WIDTH / 2, 145, endingTitle, {
+      color: '#fff', fontFamily: 'Cinzel, serif', fontSize: '17px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
 
     if (this.textures.exists('bonus-puzzle-board')) {
-      this.add.image(GAME_WIDTH / 2, 280, 'bonus-puzzle-board')
-        .setDisplaySize(320, 180).setAlpha(0.75);
+      this.add.image(GAME_WIDTH / 2, 270, 'bonus-puzzle-board')
+        .setDisplaySize(320, 180).setAlpha(0.78);
     } else {
-      this.add.rectangle(GAME_WIDTH / 2, 280, 280, 140, 0x1f1418).setStrokeStyle(3, 0xd97706);
+      this.add.rectangle(GAME_WIDTH / 2, 270, 280, 140, 0x1f1418).setStrokeStyle(3, 0xd97706);
     }
 
-    this.add.text(GAME_WIDTH / 2, 395, `TOTAL KEPING TERKUMPUL: ${totalUnlocked} / 6`, {
+    this.add.text(GAME_WIDTH / 2, 385, `TOTAL KEPING TERKUMPUL: ${totalUnlocked} / 6`, {
       color: '#fde047', fontFamily: 'Poppins, sans-serif', fontSize: '14px', fontStyle: 'bold', letterSpacing: 2,
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 465, 'LANJUTKAN', {
+    this.add.text(GAME_WIDTH / 2, 460, 'LANJUTKAN (ENTER / SPACE)', {
       backgroundColor: '#94342edd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '14px', padding: { x: 28, y: 10 },
-    }).setOrigin(0.5).setInteractive().on('pointerup', () => this.advance());
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.advance());
 
     this.input.keyboard?.once('keydown-SPACE', () => this.advance());
     this.input.keyboard?.once('keydown-ENTER', () => this.advance());
   }
 
   private advance(): void {
+    this.soundManager?.playSelect();
     if (this.awardData.kind === 'true') {
       this.scene.start('EndCardScene');
     } else {

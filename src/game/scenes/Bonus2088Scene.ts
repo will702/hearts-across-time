@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { Player } from '../entities/Player';
 import { InputSystem } from '../systems/InputSystem';
@@ -14,6 +15,7 @@ const BONUS_NODES = [
 
 export class Bonus2088Scene extends Phaser.Scene {
   private save!: SaveSystem;
+  private soundManager?: SoundManager;
   private player!: Player;
   private controls!: InputSystem;
   private litNodes: Record<number, boolean> = {};
@@ -27,6 +29,7 @@ export class Bonus2088Scene extends Phaser.Scene {
 
   create(): void {
     this.save = this.registry.get('saveSystem') as SaveSystem;
+    this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'bonus2088');
     this.litNodes = {};
 
@@ -54,7 +57,7 @@ export class Bonus2088Scene extends Phaser.Scene {
 
     this.add.text(GAME_WIDTH - 120, 24, 'MENU UTAMA', {
       backgroundColor: '#450a0add', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '11px', padding: { x: 12, y: 6 },
-    }).setOrigin(0.5).setScrollFactor(0).setInteractive().on('pointerup', () => this.scene.start('TitleScene'));
+    }).setOrigin(0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.scene.start('TitleScene'));
   }
 
   update(_time: number, delta: number): void {
@@ -111,37 +114,272 @@ export class Bonus2088Scene extends Phaser.Scene {
   private openBonusNode(idx: number): void {
     this.controls.setEnabled(false);
     this.player.arcadeBody.setVelocityX(0);
+    this.soundManager?.playSelect();
 
     const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020104, 0.9).setScrollFactor(0);
-    const box = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 720, 420, 0x180f24, 0.98).setStrokeStyle(2, 0xd946ef).setScrollFactor(0);
+    const box = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 740, 430, 0x180f24, 0.98).setStrokeStyle(2, 0xd946ef).setScrollFactor(0);
 
-    const title = this.add.text(GAME_WIDTH / 2, 90, BONUS_NODES[idx].label, {
+    const title = this.add.text(GAME_WIDTH / 2, 80, BONUS_NODES[idx].label, {
       color: '#fdf4ff', fontFamily: 'Cinzel, serif', fontSize: '20px', fontStyle: 'bold',
     }).setOrigin(0.5).setScrollFactor(0);
 
-    let descText = 'Selesaikan mini-game ini untuk mengumpulkan kenangan Arthur & Elena.';
-    if (idx === 0) descText = 'Cari 10 perbedaan di antara kedua panel ilustrasi kenangan.';
-    if (idx === 1) descText = 'Buket Mawar Abadi & kode angka rahasia masa depan: 2088.';
-    if (idx === 2) descText = 'Susun tempat duduk 4 orang (Adi, Budi, Citra, Dina) dan 4 menu makanan.';
-    if (idx === 3) descText = 'Hitung seluruh 18 kucing peliharaan Arthur di dalam ilustrasi.';
-    if (idx === 4) descText = 'Racik Ramuan Cinta: masukkan Jam Arloji -> Gelas Mawar -> Permata Air.';
+    const elements: Phaser.GameObjects.GameObject[] = [shade, box, title];
 
-    const desc = this.add.text(GAME_WIDTH / 2, 170, descText, {
-      color: '#f5d0fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '20px', align: 'center', wordWrap: { width: 620 },
-    }).setOrigin(0.5).setScrollFactor(0);
+    if (idx === 0) {
+      this.buildSpotDiffGame(elements);
+    } else if (idx === 1) {
+      this.buildKeypadGame(elements);
+    } else if (idx === 2) {
+      this.buildSeatingGame(elements);
+    } else if (idx === 3) {
+      this.buildCatCounterGame(elements);
+    } else {
+      this.buildPotionMixingGame(elements);
+    }
 
-    const completeBtn = this.add.text(GAME_WIDTH / 2, 330, 'SELESAIKAN SIMPUL INI', {
-      backgroundColor: '#a21cafdd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '14px', padding: { x: 24, y: 10 },
-    }).setOrigin(0.5).setScrollFactor(0).setInteractive().on('pointerup', () => {
-      this.litNodes[idx] = true;
-      this.closeModal();
-    });
-
-    const closeBtn = this.add.text(GAME_WIDTH / 2, 385, 'TUTUP', {
+    const closeBtn = this.add.text(GAME_WIDTH / 2, 450, 'TUTUP / KELUAR', {
       color: '#e9d5ff', fontFamily: 'Poppins, sans-serif', fontSize: '12px',
-    }).setOrigin(0.5).setScrollFactor(0).setInteractive().on('pointerup', () => this.closeModal());
+    }).setOrigin(0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.closeModal());
 
-    this.activeModal = this.add.container(0, 0, [shade, box, title, desc, completeBtn, closeBtn]);
+    elements.push(closeBtn);
+    this.activeModal = this.add.container(0, 0, elements);
+  }
+
+  // Mini-game 1: Spot 3 differences
+  private buildSpotDiffGame(elements: Phaser.GameObjects.GameObject[]): void {
+    const desc = this.add.text(GAME_WIDTH / 2, 115, 'Temukan 3 titik perbedaan di antara kedua panel kenangan Arthur & Elena:', {
+      color: '#f5d0fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    }).setOrigin(0.5).setScrollFactor(0);
+    elements.push(desc);
+
+    const spotsFound = [false, false, false];
+    const status = this.add.text(GAME_WIDTH / 2, 385, 'DITEMUKAN: 0 / 3', {
+      color: '#fde047', fontFamily: 'Poppins, sans-serif', fontSize: '14px', fontStyle: 'bold',
+    }).setOrigin(0.5).setScrollFactor(0);
+    elements.push(status);
+
+    const diffs = [
+      { x: 340, y: 200, label: 'Arloji Emas' },
+      { x: 480, y: 260, label: 'Mawar Abadi' },
+      { x: 620, y: 210, label: 'Vial Permata' },
+    ];
+
+    diffs.forEach((d, i) => {
+      const spot = this.add.circle(d.x, d.y, 28, 0xd946ef, 0.25).setScrollFactor(0).setStrokeStyle(2, 0xf0abfc)
+        .setInteractive({ useHandCursor: true });
+      const txt = this.add.text(d.x, d.y, `?`, { color: '#fff', fontSize: '16px', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0);
+
+      spot.on('pointerup', () => {
+        if (!spotsFound[i]) {
+          spotsFound[i] = true;
+          spot.setFillStyle(0x22c55e, 0.75).setStrokeStyle(2, 0x86efac);
+          txt.setText('✓');
+          this.soundManager?.playLockSuccess();
+          const count = spotsFound.filter(Boolean).length;
+          status.setText(`DITEMUKAN: ${count} / 3`);
+          if (count === 3) {
+            this.soundManager?.playSuccessFanfare();
+            status.setText('SEMUA PERBEDAAN DITEMUKAN! SIMPUL 1 LENGKAP').setColor('#86efac');
+            this.time.delayedCall(700, () => {
+              this.litNodes[0] = true;
+              this.closeModal();
+            });
+          }
+        }
+      });
+
+      elements.push(spot, txt);
+    });
+  }
+
+  // Mini-game 2: Passcode 2088
+  private buildKeypadGame(elements: Phaser.GameObjects.GameObject[]): void {
+    const desc = this.add.text(GAME_WIDTH / 2, 115, 'Masukkan 4 digit kode tahun masa depan Arthur & Elena:', {
+      color: '#f5d0fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    }).setOrigin(0.5).setScrollFactor(0);
+    elements.push(desc);
+
+    let code = '';
+    const display = this.add.text(GAME_WIDTH / 2, 160, '____', {
+      color: '#fde047', fontFamily: 'Cinzel, serif', fontSize: '32px', fontStyle: 'bold', letterSpacing: 8,
+    }).setOrigin(0.5).setScrollFactor(0);
+    elements.push(display);
+
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'];
+    keys.forEach((k, idx) => {
+      const col = idx % 3;
+      const row = Math.floor(idx / 3);
+      const kx = GAME_WIDTH / 2 - 90 + col * 90;
+      const ky = 215 + row * 45;
+
+      const btn = this.add.rectangle(kx, ky, 75, 36, 0x3b0764, 0.9).setStrokeStyle(2, 0xd946ef).setScrollFactor(0)
+        .setInteractive({ useHandCursor: true });
+      const txt = this.add.text(kx, ky, k, { color: '#fdf4ff', fontFamily: 'Poppins, sans-serif', fontSize: '14px', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0);
+
+      btn.on('pointerup', () => {
+        if (k === 'C') {
+          code = '';
+          this.soundManager?.playSelect();
+        } else if (k === 'OK') {
+          if (code === '2088') {
+            this.soundManager?.playSuccessFanfare();
+            display.setText('2088 ✓').setColor('#86efac');
+            this.time.delayedCall(700, () => {
+              this.litNodes[1] = true;
+              this.closeModal();
+            });
+          } else {
+            this.soundManager?.playErrorBuzz();
+            display.setText('SALAH!').setColor('#f87171');
+            this.time.delayedCall(600, () => { code = ''; display.setText('____').setColor('#fde047'); });
+          }
+        } else if (code.length < 4) {
+          code += k;
+          this.soundManager?.playGearTick(1.2);
+        }
+        if (k !== 'OK' && k !== 'C') {
+          display.setText(code.padEnd(4, '_'));
+        }
+      });
+
+      elements.push(btn, txt);
+    });
+  }
+
+  // Mini-game 3: Dinner seating logic
+  private buildSeatingGame(elements: Phaser.GameObjects.GameObject[]): void {
+    const desc = this.add.text(GAME_WIDTH / 2, 115, 'Susun 4 sahabat di meja makan: Arthur, Elena, Leo, Mira', {
+      color: '#f5d0fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    }).setOrigin(0.5).setScrollFactor(0);
+    elements.push(desc);
+
+    const seats = ['Kiri Atas: Arthur', 'Kanan Atas: Elena', 'Kiri Bawah: Leo', 'Kanan Bawah: Mira'];
+    const confirmed = [false, false, false, false];
+
+    seats.forEach((seat, i) => {
+      const sx = GAME_WIDTH / 2 + (i % 2 === 0 ? -150 : 150);
+      const sy = 190 + Math.floor(i / 2) * 80;
+
+      const btn = this.add.rectangle(sx, sy, 220, 50, 0x3b0764, 0.9).setStrokeStyle(2, 0xd946ef).setScrollFactor(0)
+        .setInteractive({ useHandCursor: true });
+      const txt = this.add.text(sx, sy, `🪑 ${seat}`, { color: '#fdf4ff', fontFamily: 'Poppins, sans-serif', fontSize: '13px' }).setOrigin(0.5).setScrollFactor(0);
+
+      btn.on('pointerup', () => {
+        if (!confirmed[i]) {
+          confirmed[i] = true;
+          btn.setFillStyle(0x15803d, 0.9).setStrokeStyle(2, 0x86efac);
+          this.soundManager?.playLockSuccess();
+          if (confirmed.every(Boolean)) {
+            this.soundManager?.playSuccessFanfare();
+            this.time.delayedCall(700, () => {
+              this.litNodes[2] = true;
+              this.closeModal();
+            });
+          }
+        }
+      });
+
+      elements.push(btn, txt);
+    });
+  }
+
+  // Mini-game 4: Count Cats
+  private buildCatCounterGame(elements: Phaser.GameObjects.GameObject[]): void {
+    const desc = this.add.text(GAME_WIDTH / 2, 115, 'Temukan dan sentuh 4 kucing peliharaan di kamar Arthur 2088:', {
+      color: '#f5d0fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    }).setOrigin(0.5).setScrollFactor(0);
+    elements.push(desc);
+
+    const catsFound = [false, false, false, false];
+    const catPositions = [
+      { x: 260, y: 220, name: '🐱 Kucing Belang' },
+      { x: 420, y: 300, name: '🐱 Kucing Oranye' },
+      { x: 540, y: 210, name: '🐱 Kucing Hitam' },
+      { x: 700, y: 290, name: '🐱 Kucing Putih' },
+    ];
+
+    const status = this.add.text(GAME_WIDTH / 2, 385, 'KUCING DITEMUKAN: 0 / 4', {
+      color: '#fde047', fontFamily: 'Poppins, sans-serif', fontSize: '14px', fontStyle: 'bold',
+    }).setOrigin(0.5).setScrollFactor(0);
+    elements.push(status);
+
+    catPositions.forEach((c, i) => {
+      const btn = this.add.rectangle(c.x, c.y, 110, 44, 0x4a044e, 0.9).setStrokeStyle(2, 0xf472b6).setScrollFactor(0)
+        .setInteractive({ useHandCursor: true });
+      const txt = this.add.text(c.x, c.y, c.name, { color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '11px' }).setOrigin(0.5).setScrollFactor(0);
+
+      btn.on('pointerup', () => {
+        if (!catsFound[i]) {
+          catsFound[i] = true;
+          btn.setFillStyle(0x15803d, 0.9).setStrokeStyle(2, 0x86efac);
+          this.soundManager?.playLockSuccess();
+          const count = catsFound.filter(Boolean).length;
+          status.setText(`KUCING DITEMUKAN: ${count} / 4`);
+          if (count === 4) {
+            this.soundManager?.playSuccessFanfare();
+            status.setText('SEMUA 4 KUCING DITEMUKAN!').setColor('#86efac');
+            this.time.delayedCall(700, () => {
+              this.litNodes[3] = true;
+              this.closeModal();
+            });
+          }
+        }
+      });
+
+      elements.push(btn, txt);
+    });
+  }
+
+  // Mini-game 5: Alchemy Potion Mixing Sequence
+  private buildPotionMixingGame(elements: Phaser.GameObjects.GameObject[]): void {
+    const desc = this.add.text(GAME_WIDTH / 2, 115, 'Masukkan 3 elemen obat penawar sesuai urutan garis waktu:\n1944 (Arloji) → 1968 (Mawar) → 1999 (Permata)', {
+      color: '#f5d0fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px', align: 'center',
+    }).setOrigin(0.5).setScrollFactor(0);
+    elements.push(desc);
+
+    const expectedOrder = [0, 1, 2];
+    const currentOrder: number[] = [];
+
+    const items = [
+      { name: '⏱️ 1. Arloji Arthur 1944', x: 260, y: 260 },
+      { name: '🌹 2. Mawar Abadi 1968', x: 480, y: 260 },
+      { name: '💎 3. Permata Air 1999', x: 700, y: 260 },
+    ];
+
+    const status = this.add.text(GAME_WIDTH / 2, 385, 'URUTAN: MASUKKAN ELEMEN 1', {
+      color: '#fde047', fontFamily: 'Poppins, sans-serif', fontSize: '14px', fontStyle: 'bold',
+    }).setOrigin(0.5).setScrollFactor(0);
+    elements.push(status);
+
+    items.forEach((item, idx) => {
+      const btn = this.add.rectangle(item.x, item.y, 180, 60, 0x3b0764, 0.9).setStrokeStyle(2, 0xd946ef).setScrollFactor(0)
+        .setInteractive({ useHandCursor: true });
+      const txt = this.add.text(item.x, item.y, item.name, { color: '#fdf4ff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0);
+
+      btn.on('pointerup', () => {
+        if (expectedOrder[currentOrder.length] === idx) {
+          currentOrder.push(idx);
+          btn.setFillStyle(0x15803d, 0.9).setStrokeStyle(2, 0x86efac);
+          this.soundManager?.playWaterShimmer();
+          status.setText(`URUTAN ${currentOrder.length} / 3 BENAR!`).setColor('#86efac');
+
+          if (currentOrder.length === 3) {
+            this.soundManager?.playSuccessFanfare();
+            status.setText('RAMUAN PENAWAR WAKTU BERHASIL DIRACIK!').setColor('#a3e635');
+            this.time.delayedCall(700, () => {
+              this.litNodes[4] = true;
+              this.closeModal();
+            });
+          }
+        } else {
+          this.soundManager?.playErrorBuzz();
+          status.setText('URUTAN SALAH! MULAI DARI 1944').setColor('#f87171');
+          currentOrder.length = 0;
+        }
+      });
+
+      elements.push(btn, txt);
+    });
   }
 
   private closeModal(): void {
@@ -153,6 +391,7 @@ export class Bonus2088Scene extends Phaser.Scene {
   private finishBonusEpilogue(): void {
     this.save.data.bonusSeen = true;
     this.save.save(this.save.data);
+    this.soundManager?.playSuccessFanfare();
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050208, 1).setScrollFactor(0);
     this.add.text(GAME_WIDTH / 2, 180, 'HEARTS ACROSS TIME • EPILOG LENGKAP', {
@@ -165,7 +404,7 @@ export class Bonus2088Scene extends Phaser.Scene {
 
     this.add.text(GAME_WIDTH / 2, 380, 'KEMBALI KE MENU UTAMA (ENTER / SPACE)', {
       backgroundColor: '#94342edd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', padding: { x: 20, y: 10 },
-    }).setOrigin(0.5).setScrollFactor(0).setInteractive().on('pointerup', () => this.scene.start('TitleScene'));
+    }).setOrigin(0.5).setScrollFactor(0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.scene.start('TitleScene'));
 
     this.input.keyboard?.once('keydown-SPACE', () => this.scene.start('TitleScene'));
     this.input.keyboard?.once('keydown-ENTER', () => this.scene.start('TitleScene'));
