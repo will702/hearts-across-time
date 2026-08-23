@@ -18,13 +18,13 @@ class HeartsGameScene extends Phaser.Scene{
       setOption:(name,value)=>{if(!['reduceMotion','textScale','textSpd'].includes(name))throw new Error('Opsi QA tidak diizinkan: '+name);OPTS[name]=value;saveOpts();},
       scenario:(name,era)=>{this.qaFrozen=false;resetAll();if(name==='title'){G.state='title';G.titleReady=true;G.titleT=8.4;}
         else if(name==='walk')startWalk(era);
-        else if(name==='dialog'){startWalk(era);startEraDialog();}
+        else if(name==='dialog'){startWalk(era);startEraDialog();D.prog=1;D.popT=1;D.choiceT=1;}
         else if(name==='challenge'){startWalk(era);startChallenge();}
         else if(name==='watchrepair'){startWalk('1944');startWatchRepair();}
         else if(name==='rosepuzzle'){startWalk('1968');startRosePuzzle();}
         else if(name==='gemalign'){startWalk('1999');startGemAlign();}
         else if(name==='photopuzzle'){startWalk('1999');startPhotoPuzzle();}
-        else if(name==='glitch')startGlitch();else if(name==='endcard')startEndCard();else throw new Error('Skenario QA tidak dikenal: '+name);}
+        else if(name==='glitch'){startGlitch();G.glitch.t=1.2;}else if(name==='endcard'){startEndCard();G.endCard.t=4;}else throw new Error('Skenario QA tidak dikenal: '+name);}
     };
     window.__HAT=hat;
   }
