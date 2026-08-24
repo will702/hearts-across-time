@@ -69,6 +69,7 @@ export class TitleScene extends Phaser.Scene {
   snapshot(): Record<string, unknown> {
     return {
       titleInteractive: true,
+      menuSelection: this.selected,
       continueEnabled: Boolean(this.save.data.game),
       confirmation: this.confirmPanel ? this.confirmChoice : null,
       menu: this.items.map((item) => ({ label: item.label, disabled: Boolean(item.disabled?.()) })),

@@ -20,6 +20,7 @@ export class UIScene extends Phaser.Scene {
   private controls?: InputSystem;
   private eraTitleText?: Phaser.GameObjects.Text;
   private prompt?: Phaser.GameObjects.Text;
+  private promptText = '';
   private toast?: Phaser.GameObjects.Text;
   private inventoryText?: Phaser.GameObjects.Text;
   private run?: RunState;
@@ -93,7 +94,14 @@ export class UIScene extends Phaser.Scene {
   }
 
   setPrompt(text = ''): void {
-    this.prompt?.setText(text).setVisible(Boolean(text) && !this.paused && !this.modal);
+    if (!this.prompt) return;
+    const changed = text !== this.promptText;
+    this.promptText = text;
+    this.prompt.setText(text).setVisible(Boolean(text) && !this.paused && !this.modal);
+    if (!changed || !text || this.registry.get('reduceMotion')) return;
+    this.tweens.killTweensOf(this.prompt);
+    this.prompt.setScale(0.92);
+    this.tweens.add({ targets: this.prompt, scale: 1, duration: 150, ease: 'Back.easeOut' });
   }
 
   setModal(on: boolean, owned = true): void {
@@ -306,6 +314,7 @@ export class UIScene extends Phaser.Scene {
     this.controls = undefined;
     this.eraTitleText = undefined;
     this.prompt = undefined;
+    this.promptText = '';
     this.toast = undefined;
     this.inventoryText = undefined;
     this.run = undefined;

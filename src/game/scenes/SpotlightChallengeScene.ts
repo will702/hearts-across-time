@@ -25,6 +25,10 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private assisted = false;
   private alertMeter = 0;
   private lastFootstepX = 200;
+  private checkpointX = 200;
+  private graceUntil = 0;
+  private feedbackHoldUntil = 0;
+  private lastHint = '';
 
   private feedbackText?: Phaser.GameObjects.Text;
   private alertBarGraphics?: Phaser.GameObjects.Graphics;
@@ -51,6 +55,8 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.assisted = false;
     this.alertMeter = 0;
     this.lastFootstepX = 200;
+    this.checkpointX = 200;
+    this.lastHint = '';
 
     this.createBackground();
     this.createChooseUI();
@@ -110,20 +116,27 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       const inCover = COVERS.some(cx => Math.abs(this.playerX - cx) < 38);
       const inBeam = Math.abs(this.playerX - this.beamX) < this.beamWidth / 2;
 
+      if (inCover) {
+        const cover = COVERS.find(cx => Math.abs(this.playerX - cx) < 38);
+        if (cover && cover > this.checkpointX) this.checkpointX = cover;
+      }
+
       if (this.playerSprite) {
         this.playerSprite.setTint(inCover ? 0x94a3b8 : (inBeam ? 0xfef08a : 0xffffff));
       }
 
-      if (inBeam && !inCover) {
+      if (this.time.now >= this.graceUntil && inBeam && !inCover) {
         this.alertMeter += dt * 3.2;
         if (this.alertMeter >= 1.0) {
           this.onDetected();
+          return;
         }
       } else {
         this.alertMeter = Math.max(0, this.alertMeter - dt * 2.0);
       }
 
       this.drawAlertBar();
+      this.updateHint(inCover, inBeam);
 
       if (this.playerX >= 758) {
         this.onFinish();
@@ -140,6 +153,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       covers: COVERS,
       misses: this.misses,
       assisted: this.assisted,
+      checkpointX: this.checkpointX,
     };
   }
 
@@ -291,7 +305,8 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.stage = 'play';
     this.chooseContainer?.setVisible(false);
     this.playerSprite?.setVisible(true);
-    this.feedbackText?.setText('LARI KE KANAN (◀ / ▶ ATAU A / D) • BERLINDUNG DI BALIK KARUNG PASIR');
+    this.graceUntil = this.time.now + 900;
+    this.setHint('TAHAN KANAN UNTUK MAJU • BERHENTI DI KARUNG SAAT CAHAYA MENDEKAT');
     this.soundManager?.playConfirm();
   }
 
@@ -328,6 +343,12 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     if (!this.alertBarGraphics) return;
     this.alertBarGraphics.clear();
 
+    const progress = Phaser.Math.Clamp((this.playerX - 190) / 575, 0, 1);
+    this.alertBarGraphics.fillStyle(0x180f0c, 0.72);
+    this.alertBarGraphics.fillRect(190, 408, 575, 5);
+    this.alertBarGraphics.fillStyle(0x86efac, 0.9);
+    this.alertBarGraphics.fillRect(190, 408, 575 * progress, 5);
+
     if (this.alertMeter > 0.05) {
       const px = this.playerX;
       const py = 310;
@@ -345,11 +366,16 @@ export class SpotlightChallengeScene extends Phaser.Scene {
 
   private onDetected(): void {
     this.misses += 1;
-    if (this.misses >= 3) this.assisted = true;
+    if (this.misses >= 2) this.assisted = true;
     this.alertMeter = 0;
-    this.playerX = 200;
+    this.playerX = this.checkpointX;
+    this.playerSprite?.setX(this.playerX);
+    this.graceUntil = this.time.now + 850;
+    this.feedbackHoldUntil = this.graceUntil;
     this.soundManager?.playErrorBuzz();
-    this.feedbackText?.setText(this.assisted ? 'TERDETEKSI LAMPU SOROT — BANTUAN AKTIF' : 'TERDETEKSI — KEMBALI KE TITIK AWAL').setColor('#ef4444');
+    this.setHint(this.assisted
+      ? 'TERDETEKSI — BANTUAN AKTIF, LANJUT DARI PERLINDUNGAN TERAKHIR'
+      : 'TERDETEKSI — LANJUT DARI PERLINDUNGAN TERAKHIR', '#ef4444');
     if (!this.registry.get('reduceMotion')) {
       this.cameras.main.shake(180, 0.008);
     }
@@ -370,6 +396,23 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       this.scene.stop();
       this.challengeData.onComplete();
     });
+  }
+
+  private updateHint(inCover: boolean, inBeam: boolean): void {
+    if (this.time.now < this.feedbackHoldUntil) return;
+    if (inCover) {
+      this.setHint('AMAN — TUNGGU CAHAYA LEWAT, LALU MAJU', '#86efac');
+    } else if (inBeam) {
+      this.setHint('BAHAYA — CAPAI PERLINDUNGAN TERDEKAT!', '#fca5a5');
+    } else {
+      this.setHint('MAJU KE KANAN • KARUNG PASIR ADALAH TITIK AMAN');
+    }
+  }
+
+  private setHint(text: string, color = '#f6d57b'): void {
+    if (text === this.lastHint) return;
+    this.lastHint = text;
+    this.feedbackText?.setText(text).setColor(color);
   }
 
   private createInputHandlers(): void {

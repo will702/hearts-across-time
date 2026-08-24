@@ -17,6 +17,7 @@ type Snapshot = {
   targets?: { vital: number; serum: number };
   pieces?: Array<{ poly: [number, number][]; ox: number; oy: number; placed: boolean }>;
   selectedPiece?: number;
+  menuSelection?: number;
   glueLines?: boolean[];
   glueTrace?: number[];
   watchRepair?: {
@@ -229,6 +230,8 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).state).toBe('spotlight_challenge');
     await attachCanvas(page, testInfo, 'spotlight-native');
     await page.keyboard.press('Enter');
+    await expect.poll(async () => (await snapshot(page)).stage).toBe('play');
+    await attachCanvas(page, testInfo, 'spotlight-play-native');
     await page.keyboard.down('ArrowRight');
     try {
       await expect.poll(async () => (await snapshot(page)).state, { timeout: 25_000 }).toBe('era1944');
@@ -423,12 +426,21 @@ test.describe('Phaser Native Full Port E2E', () => {
     await page.goto('/?qa=1');
     await expect.poll(async () => (await snapshot(page)).state).toBe('title');
 
-    // Navigate down to Bonus 2088 menu item (item 3)
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
-
-    await expect.poll(async () => (await snapshot(page)).state).toBe('bonus2088');
+    // Hold each input until Phaser consumes it on a game frame.
+    for (const selection of [2, 3]) {
+      await page.keyboard.down('ArrowDown');
+      try {
+        await expect.poll(async () => (await snapshot(page)).menuSelection).toBe(selection);
+      } finally {
+        await page.keyboard.up('ArrowDown');
+      }
+    }
+    await page.keyboard.down('Enter');
+    try {
+      await expect.poll(async () => (await snapshot(page)).state).toBe('bonus2088');
+    } finally {
+      await page.keyboard.up('Enter');
+    }
     await attachCanvas(page, testInfo, 'bonus-world-native');
 
     await openBonusNode(page, 0);
@@ -482,11 +494,19 @@ test.describe('Phaser Native Full Port E2E', () => {
     } finally {
       await page.keyboard.up('ArrowRight');
     }
-    await page.keyboard.press('Space');
-    await expect.poll(async () => (await snapshot(page)).ending).toBe(true);
+    await page.keyboard.down('Space');
+    try {
+      await expect.poll(async () => (await snapshot(page)).ending).toBe(true);
+    } finally {
+      await page.keyboard.up('Space');
+    }
     await attachCanvas(page, testInfo, 'bonus-ending-native');
-    await page.keyboard.press('Enter');
-    await expect.poll(async () => (await snapshot(page)).state).toBe('title');
+    await page.keyboard.down('Enter');
+    try {
+      await expect.poll(async () => (await snapshot(page)).state).toBe('title');
+    } finally {
+      await page.keyboard.up('Enter');
+    }
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hat_save') ?? '{}').bonusSeen)).toBe(true);
   });
 });

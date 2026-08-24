@@ -27,6 +27,7 @@ export class WatchRepairScene extends Phaser.Scene {
 
   private rings: Phaser.GameObjects.Container[] = [];
   private targetMarkers: Phaser.GameObjects.Arc[] = [];
+  private progressDots: Phaser.GameObjects.Arc[] = [];
   private status?: Phaser.GameObjects.Text;
   private proximityText?: Phaser.GameObjects.Text;
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
@@ -76,6 +77,9 @@ export class WatchRepairScene extends Phaser.Scene {
       color: '#fbbf24', fontFamily: 'Poppins, sans-serif', fontSize: '12px', fontStyle: 'bold',
     }).setOrigin(0.5);
 
+    this.progressDots = [0, 1, 2].map(index => this.add.circle(456 + index * 24, 454, 6, 0x3f352b)
+      .setStrokeStyle(2, 0xd4a373, 0.8));
+
     this.createTouchButtons();
     this.createInputHandlers();
     this.refreshRings();
@@ -84,7 +88,11 @@ export class WatchRepairScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (!this.keys || this.complete) return;
     const direction = this.keys.left.isDown || this.keys.a.isDown ? -1 : this.keys.right.isDown || this.keys.d.isDown ? 1 : 0;
-    if (direction) this.rotate(direction * delta / 1000 * (this.assisted ? 0.32 : 0.46));
+    if (direction) {
+      const distance = normalizedAngleDistance(this.angles[this.ring], this.targets[this.ring]);
+      const fineControl = distance < 0.14 ? 0.55 : 1;
+      this.rotate(direction * delta / 1000 * (this.assisted ? 0.32 : 0.46) * fineControl);
+    }
     if (Phaser.Input.Keyboard.JustDown(this.keys.space) || Phaser.Input.Keyboard.JustDown(this.keys.enter)) this.lockCurrent();
   }
 
@@ -213,7 +221,9 @@ export class WatchRepairScene extends Phaser.Scene {
     const tolerance = this.assisted ? 0.12 : 0.065;
 
     if (distance <= tolerance) {
+      this.angles[this.ring] = target;
       this.locked[this.ring] = true;
+      this.progressDots[this.ring]?.setFillStyle(0x86efac).setStrokeStyle(2, 0xf0fdf4);
       this.soundManager?.playLockSuccess();
       this.emitSparks(this.ring);
 
@@ -235,9 +245,11 @@ export class WatchRepairScene extends Phaser.Scene {
       }
     } else {
       this.misses += 1;
-      this.assisted = this.misses >= 3;
+      this.assisted = this.misses >= 2;
       this.soundManager?.playErrorBuzz();
-      this.status?.setText(this.assisted ? 'GIGI BELUM SELARAS — MODE BANTUAN AKTIF' : 'GIGI RODA BELUM SELARAS DENGAN INDIKATOR HIJAU');
+      this.status?.setText(this.assisted
+        ? 'MODE BANTUAN AKTIF — PUTAR PERLAHAN, LALU KUNCI SAAT HIJAU'
+        : 'BELUM SELARAS — DEKATKAN PENUNJUK BIRU KE CAHAYA HIJAU');
       if (!this.registry.get('reduceMotion')) {
         this.cameras.main.shake(140, 0.005);
       }

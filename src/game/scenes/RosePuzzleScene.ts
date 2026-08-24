@@ -25,7 +25,6 @@ type Piece = {
   homeY: number;
   placed: boolean;
   graphics?: Phaser.GameObjects.Graphics;
-  maskGraphics?: Phaser.GameObjects.Graphics;
   image?: Phaser.GameObjects.Image;
   label?: Phaser.GameObjects.Text;
 };
@@ -145,16 +144,14 @@ export class RosePuzzleScene extends Phaser.Scene {
     const homes = randomRoseHomes();
     this.pieces = ROSE_PIECES_DEF.map((def, index) => {
       const g = this.add.graphics().setDepth(4);
-      const maskGraphics = this.make.graphics({ x: 0, y: 0 });
-      const image = this.roseFrame
+      const fragmentTexture = this.roseFrame ? this.ensureRosePieceTexture(index, def.poly) : undefined;
+      const image = fragmentTexture
         ? this.add.image(
-          ROSE_TARGET.x + ROSE_TARGET.w / 2,
-          ROSE_TARGET.y + ROSE_TARGET.h / 2,
-          'rose-bottle-broken',
-          this.roseFrame,
-        ).setDisplaySize(ROSE_TARGET.w, ROSE_TARGET.h).setDepth(3)
+          ROSE_TARGET.x,
+          ROSE_TARGET.y,
+          fragmentTexture,
+        ).setOrigin(0).setDepth(3)
         : undefined;
-      if (image) image.setMask(maskGraphics.createGeometryMask());
       const label = this.add.text(0, 0, String(index + 1), {
         color: '#fff7ed',
         backgroundColor: '#3f1d1dcc',
@@ -171,7 +168,6 @@ export class RosePuzzleScene extends Phaser.Scene {
         homeY: homes[index][1],
         placed: false,
         graphics: g,
-        maskGraphics,
         image,
         label,
       };
@@ -187,16 +183,10 @@ export class RosePuzzleScene extends Phaser.Scene {
     const posX = ROSE_TARGET.x + p.ox;
     const posY = ROSE_TARGET.y + p.oy;
 
-    if (p.image && p.maskGraphics) {
+    if (p.image) {
       p.image
-        .setPosition(ROSE_TARGET.x + ROSE_TARGET.w / 2 + p.ox, ROSE_TARGET.y + ROSE_TARGET.h / 2 + p.oy)
+        .setPosition(ROSE_TARGET.x + p.ox, ROSE_TARGET.y + p.oy)
         .setAlpha(p.placed ? 1 : (isSelected ? 0.98 : 0.84));
-      p.maskGraphics.clear().fillStyle(0xffffff).beginPath();
-      p.poly.forEach((pt, i) => {
-        if (i === 0) p.maskGraphics!.moveTo(posX + pt[0], posY + pt[1]);
-        else p.maskGraphics!.lineTo(posX + pt[0], posY + pt[1]);
-      });
-      p.maskGraphics.closePath().fill();
     }
 
     if (p.label) {
@@ -374,6 +364,40 @@ export class RosePuzzleScene extends Phaser.Scene {
       }
     }
     return texture.has(ROSE_SOURCE_FRAME) ? ROSE_SOURCE_FRAME : undefined;
+  }
+
+  private ensureRosePieceTexture(index: number, poly: [number, number][]): string | undefined {
+    const key = `rose-fragment-${index}`;
+    if (this.textures.exists(key)) return key;
+
+    const sourceFrame = this.textures.getFrame('rose-bottle-broken', ROSE_SOURCE_FRAME);
+    if (!sourceFrame) return undefined;
+    const texture = this.textures.createCanvas(key, ROSE_TARGET.w, ROSE_TARGET.h);
+    if (!texture) return undefined;
+
+    const context = texture.context;
+    context.save();
+    context.beginPath();
+    poly.forEach(([x, y], pointIndex) => {
+      if (pointIndex === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    });
+    context.closePath();
+    context.clip();
+    context.drawImage(
+      sourceFrame.source.image as CanvasImageSource,
+      sourceFrame.cutX,
+      sourceFrame.cutY,
+      sourceFrame.cutWidth,
+      sourceFrame.cutHeight,
+      0,
+      0,
+      ROSE_TARGET.w,
+      ROSE_TARGET.h,
+    );
+    context.restore();
+    texture.refresh();
+    return key;
   }
 
 }
