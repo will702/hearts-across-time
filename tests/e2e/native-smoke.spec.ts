@@ -111,6 +111,33 @@ async function reachWatch(page: Page): Promise<Snapshot> {
   return holdKeyUntil(page, 'ArrowRight', state => state.interaction?.id === 'watch');
 }
 
+async function walkAnimation(page: Page): Promise<{
+  key: string | null;
+  frameCount: number;
+  frame: string;
+  texture: string;
+}> {
+  return page.evaluate(() => {
+    const hat = (window as typeof window & {
+      __HAT?: { game: { scene: { getScene: (key: string) => unknown } } };
+    }).__HAT;
+    if (!hat) throw new Error('Runtime Phaser tidak tersedia');
+    const era = hat.game.scene.getScene('Era1944Scene') as unknown as {
+      player: {
+        anims: { currentAnim: { key: string; frames: unknown[] } | null };
+        frame: { name: string | number };
+        texture: { key: string };
+      };
+    };
+    return {
+      key: era.player.anims.currentAnim?.key ?? null,
+      frameCount: era.player.anims.currentAnim?.frames.length ?? 0,
+      frame: String(era.player.frame.name),
+      texture: era.player.texture.key,
+    };
+  });
+}
+
 async function canvasPoint(page: Page, gameX: number, gameY: number): Promise<{ x: number; y: number }> {
   const bounds = await page.locator('#game canvas').boundingBox();
   if (!bounds) throw new Error('Canvas Phaser tidak terlihat');
@@ -223,6 +250,33 @@ test('@smoke keyboard menggerakkan pemain ke kanan dan kiri', async ({ page }) =
 
   expect(rightX).toBeGreaterThan(startX);
   expect(player(left).x).toBeLessThan(rightX);
+});
+
+test('@smoke @visual walk Elena memakai 13 frame unik pada cadence lama', async ({ page }, testInfo) => {
+  await openTitle(page);
+  await startNewCycle(page);
+  await page.evaluate(() => window.__HAT?.game.registry.set('reduceMotion', false));
+
+  const frames: string[] = [];
+  await page.keyboard.down('ArrowRight');
+  try {
+    await expect.poll(async () => (await walkAnimation(page)).texture).toBe('elena-walk');
+    const animation = await walkAnimation(page);
+    expect(animation.key).toBe('elena-walk-neutral');
+    expect(animation.frameCount).toBe(13);
+    for (let i = 0; i < 8; i += 1) {
+      frames.push((await walkAnimation(page)).frame);
+      await page.waitForTimeout(50);
+    }
+    await testInfo.attach('elena-walk-native', {
+      body: await page.locator('#game canvas').screenshot(),
+      contentType: 'image/png',
+    });
+  } finally {
+    await page.keyboard.up('ArrowRight');
+  }
+
+  expect(new Set(frames).size).toBeGreaterThan(2);
 });
 
 test('@smoke arloji memblokir pemain sebelum selesai', async ({ page }) => {

@@ -22,7 +22,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   readonly shadow: Phaser.GameObjects.Ellipse;
 
   private reduceMotion: boolean;
-  private readonly hasWalkSheet: boolean;
+  private readonly idleTexture: string;
+  private readonly walkTexture?: string;
   private readonly loop: number;
   private stepDistance = 0;
   private groundY: number;
@@ -30,10 +31,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly surfaceAt?: PlayerOptions['surfaceAt'];
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: PlayerOptions = {}) {
-    const hasWalkSheet = scene.textures.exists('elena');
-    super(scene, x, y, hasWalkSheet ? 'elena' : 'elena-fallback', 0);
+    const idleTexture = scene.textures.exists('elena') ? 'elena' : 'elena-fallback';
+    const walkTexture = scene.textures.exists('elena-walk')
+      ? 'elena-walk'
+      : scene.textures.exists('elena') ? 'elena' : undefined;
+    super(scene, x, y, idleTexture, 0);
 
-    this.hasWalkSheet = hasWalkSheet;
+    this.idleTexture = idleTexture;
+    this.walkTexture = walkTexture;
     this.loop = Math.max(0, Math.floor(options.loop ?? 0));
     this.reduceMotion = Boolean(options.reduceMotion);
     this.onStep = options.onStep;
@@ -105,25 +110,27 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private ensureWalkAnimation(): void {
-    if (!this.hasWalkSheet) return;
+    if (!this.walkTexture) return;
     if (this.scene.anims.exists(WALK_ANIMATION)) return;
     this.scene.anims.create({
       key: WALK_ANIMATION,
-      frames: this.scene.anims.generateFrameNumbers('elena', { frames: [1, 2, 3, 2] }),
-      frameRate: 8,
+      frames: this.scene.anims.generateFrameNumbers(this.walkTexture, this.walkTexture === 'elena-walk'
+        ? { start: 0, end: 12 }
+        : { frames: [1, 2, 3, 2] }),
+      duration: 500,
       repeat: -1,
     });
   }
 
   private updateWalkAnimation(moving: boolean, velocity: number): void {
-    if (!moving || !this.hasWalkSheet) {
+    if (!moving || !this.walkTexture) {
       this.anims.stop();
-      this.setFrame(0);
+      this.setTexture(this.idleTexture, 0);
       return;
     }
     if (this.reduceMotion) {
       this.anims.stop();
-      this.setFrame(2);
+      this.setTexture(this.idleTexture, this.idleTexture === 'elena' ? 2 : 0);
       return;
     }
     this.play(WALK_ANIMATION, true);

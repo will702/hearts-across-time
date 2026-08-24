@@ -59,6 +59,7 @@ export const BONUS_PROP_SHEET_ASSETS: Record<string, string> = {
 
 export const CHARACTER_SHEET_ASSETS: Record<string, string> = {
   'elena': 'assets/elena_sheet.png',
+  'elena-walk': 'assets/animations/elena-walk/spritesheet.png',
   'arthur-muda': 'assets/arthur_muda_sheet.png',
   'arthur-dewasa': 'assets/arthur_dewasa_sheet.png',
   'arthur-buron': 'assets/arthur_buron_sheet.png',
