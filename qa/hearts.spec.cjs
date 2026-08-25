@@ -16,7 +16,7 @@ async function openGame(page,save=null){
     localStorage.setItem('hat_opts',JSON.stringify({reduceMotion:true,textSpd:2,vol:0}));
     if(save)localStorage.setItem('hat_save',JSON.stringify(save));
   },{save});
-  await page.goto('/index.html?qa=1');
+  await page.goto('/legacy.html?qa=1');
   await page.getByRole('button',{name:'LEWATI'}).click();
   await page.waitForFunction(()=>window.__HAT?.qa&&window.__HAT.qa.snapshot().assets.ready);
   return errors;

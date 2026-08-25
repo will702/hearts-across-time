@@ -1,12 +1,29 @@
 {
   "name": "hearts-across-time-qa",
   "private": true,
+  "type": "module",
   "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 8777 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 8777 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --no-error-on-unmatched-pattern \"src/**/*.ts\" \"tests/**/*.ts\" vite.config.ts",
+    "test:unit": "vitest run",
     "qa": "playwright test",
     "qa:smoke": "playwright test --grep @smoke",
-    "qa:visual": "playwright test --grep @visual"
+    "qa:visual": "playwright test --grep @visual",
+    "qa:legacy": "playwright test --config=playwright.legacy.config.cjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1"
+    "@playwright/test": "^1.62.1",
+    "@types/node": "26.2.0",
+    "eslint": "10.9.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
+  },
+  "dependencies": {
+    "phaser": "4.2.1"
   }
 }

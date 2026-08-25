@@ -1,66 +1,88 @@
 # Peta modul `src/`
 
-_Referensi singkat untuk classic-script modular Hearts Across Time._
+_Referensi singkat untuk runtime produksi Phaser-native Hearts Across Time._
 
 ---
 
-## 📦 Urutan load dan kontrak
+## 📦 Satu runtime produksi
 
-Tidak ada `import` atau `export`. `index.html` memuat file berikut secara berurutan; global yang dibuat file awal dipakai file setelahnya. Mengubah urutan adalah perubahan interface.
+`index.html` adalah satu-satunya entry produksi. Vite memuat `src/main.ts`, lalu
+TypeScript/ESM membuat `Phaser.Game` dan mendaftarkan seluruh scene dari
+`game/config.ts`.
 
-| Urutan | File | Tanggung jawab dan simbol utama |
-| ---: | --- | --- |
-| 1 | `core/runtime.js` | Canvas `cv`/`ctx`, konstanta `W/H/GROUND`, utilitas, input `keys`/`pressed`/`ptr`, audio `AU`/`SFX`, state `G`/`S`, opsi `OPTS`, save `SAVE`, dan waktu `T` |
-| 2 | `core/assets.js` | `PAL`, font, `ASSET_MANIFEST`, `AUDIO_MANIFEST`, loader `AS`, buffer audio, `drawCharSheet()`, `bgLayerImg()` |
-| 3 | `render/characters.js` | Fallback prosedural `drawElena()` dan `drawArthur()` beserta wajah, tubuh, dan gerak karakter |
-| 4 | `render/world.js` | Latar/parallax, props, interactable visual, `POSES`, `HOTSPOTS`, `LORE`, `parts`, paper UI primitives, grading, post-FX, dan fallback foreground |
-| 5 | `ui/dialog.js` | `WHO`, `wrap()`, bubble/narator, choice, dan diary popup |
-| 6 | `data/story.js` | `NODES`, `N()`, `say()`, pilihan/rute, ending ops, dan `arthurDiary()`; sumber naratif adalah `FIRST_IDEA.md` (sebelumnya `FIKS IDE.md`) |
-| 7 | `data/worlds.js` | `WORLD_DEFS` dan geometri/sensor/action data-driven untuk traversal Arcade Physics |
-| 8–11 | `game/{world-object,surface-system,interaction-system,player-controller}.js` | Body/surface statis, sensor proximity, input interaksi, sinkronisasi `G.player`, dan facade `HAT_WORLD` |
-| 12 | `game/flow.js` | `D`, runner operasi cerita, `G.state` update, traversal, input consumption, interactable, mini-game, save siklus, pause, ending, dan bonus |
-| 13 | `render/screens.js` | Komposisi scene/HUD/screen, renderer mini-game, `render()`, pause/backlog/mute UI |
-| 14 | `game/main.js` | `HeartsGameScene`, Arcade config, `PHASER_CONFIG`, `HAT_GAME`, hook `POST_RENDER`, intro video, lifecycle, `window.__HAT`, dan bridge `?qa=1` |
+Seluruh perjalanan 1944/1968/1999, dialog dan rute, mini-game, loop, enam ending,
+true ending, serta bonus 2088 berjalan di scene TypeScript. `legacy.html` dan
+classic-script `.js` tetap tersedia sebagai referensi/parity regression, tetapi tidak
+diimpor oleh runtime native dan tidak disalin ke `dist/`.
 
-## 🔗 Dependency penting
+Sumber kebenaran produksi:
 
-- `runtime.js` menangkap DOM/input dan membuat state; fungsi audionya memanggil helper buffer yang baru tersedia setelah `assets.js` termuat.
-- `assets.js` memakai `AU`/`ac()` dari runtime dan menyediakan fallback-aware helpers untuk renderer.
-- `characters.js` memakai utilitas runtime serta `PAL`, `AS`, dan `drawCharSheet()` dari assets.
-- `world.js` memakai runtime/assets dan menyediakan global yang dikonsumsi flow/screens. Referensi seperti `WATCH_X` baru dievaluasi saat fungsi dipanggil setelah `flow.js` termuat.
-- `dialog.js` memakai primitive kertas `sketchRR()`, `inkTag()`, dan `PAPER_COL` dari world.
-- `story.js` membuat callback yang memutasi `S` ketika choice dijalankan oleh flow.
-- `worlds.js` mendefinisikan traversal fisika 1944; empat modul berikutnya membentuk `HAT_WORLD`, tetapi action cerita tetap dikembalikan ke `flow.js`.
-- `flow.js` mengonsumsi `NODES`, world globals, input, audio, save, dan assets; file ini adalah owner transisi gameplay.
-- `screens.js` mengonsumsi seluruh layer sebelumnya. `render()` memilih cabang dari `G.state` dan menggambar langsung ke `ctx`.
-- `main.js` harus terakhir karena `update()` dan `render()` harus sudah tersedia ketika Phaser dibuat.
+- Runtime dan scene: `main.ts` serta file `.ts` di `game/`.
+- Narasi aktif: `game/narrative/storyScript.ts`, dicocokkan dengan `FIRST_IDEA.md`
+  dan `DIALOG.md`.
+- Referensi historis: `legacy.html`, `src/core/`, `src/data/`, file
+  `src/game/*.js`, `src/render/`, dan `src/ui/`.
 
-## 🧭 Pemilik fitur
+## 🎬 Scene Phaser-native
 
-| Fitur | Owner | Pendukung |
+| Kelompok | Scene | Tanggung jawab |
 | --- | --- | --- |
-| Game flow dan state transition | `game/flow.js::update()` | `data/story.js`, `render/screens.js` |
-| Capture keyboard/mouse/touch | `core/runtime.js` | `game/flow.js` mengonsumsi; `render/screens.js` menggambar kontrol sentuh |
-| Rendering | `render/screens.js::render()` | `render/characters.js`, `render/world.js`, `ui/dialog.js` |
-| Dialogue runner | `game/flow.js::{startNode,step,updateDialog}` | `data/story.js::NODES`, `ui/dialog.js` |
-| Audio | `core/runtime.js` | manifest/buffer di `core/assets.js`; mute UI di `render/screens.js` |
-| Save/load | `core/runtime.js::{SAVE,persistSave,normalizeRun}` | `game/flow.js::saveCycle()` dan `titleMenu()` |
-| Story data | `data/story.js` | `FIRST_IDEA.md` untuk GDD; `DIALOG.md` sebagai referensi rinci |
-| Phaser lifecycle | `game/main.js::HeartsGameScene` | flow update dan screen render |
-| World fisika 1944 | `data/worlds.js`, `game/player-controller.js::HAT_WORLD` | `flow.js` tetap memproses action cerita |
+| Fondasi | `BootScene`, `PreloadScene` | Membuat service, menormalisasi save/opsi, memuat aset, dan menyediakan fallback |
+| Presentasi | `IntroScene`, `TitleScene`, `PrologueScene` | Intro, sampul/menu/Continue, dan pembuka cerita |
+| UI/narasi | `UIScene`, `DialogueScene` | HUD, touch, pause, dialog, pilihan, backlog, dan interpretasi operasi cerita |
+| Era | `Era1944Scene`, `Era1968Scene`, `Era1999Scene` | World, pemain, kamera, interaksi, autosave, dan transisi naratif tiap era |
+| Mini-game 1944 | `WatchRepairScene`, `SpotlightChallengeScene` | Perbaikan arloji dan tantangan lampu sorot |
+| Mini-game 1968 | `RosePuzzleScene`, `SignalTuneScene`, `DiaryScene` | Botol mawar, penyetelan sinyal, dan buku harian |
+| Mini-game 1999 | `GemAlignScene`, `PhotoPuzzleScene`, `CryoBalanceScene` | Permata air, foto, dan stabilisasi krio |
+| Transisi/hasil | `VortexScene`, `GlitchScene`, `PuzzleAwardScene`, `EndCardScene` | Lompatan era, reset loop, enam pecahan ending, dan true ending |
+| Bonus | `Bonus2088Scene` | Epilog kota pulih dan lima simpul kenangan |
+
+`game/config.ts` adalah satu-satunya daftar scene produksi. Tambahkan scene di sana
+hanya setelah lifecycle, input, pause, save/resume, fallback, reduced motion, dan QA-nya
+lengkap.
+
+## 🧩 Modul TypeScript
+
+| Lokasi | Owner |
+| --- | --- |
+| `main.ts` | Bootstrap `Phaser.Game` dan snapshot `window.__HAT.snapshot()` |
+| `game/config.ts` | Ukuran 960×540, Scale FIT, Arcade Physics, dan daftar scene |
+| `game/entities/Player.ts` | Sprite Elena, body kaki, gerak, animasi, shadow, dan langkah |
+| `game/systems/InputSystem.ts` | Intent keyboard dan touch per frame |
+| `game/systems/SurfaceSystem.ts` | Static Arcade surfaces dan collider |
+| `game/systems/InteractionSystem.ts` | Proximity, prompt, dan action object tanpa mengambil alih cerita |
+| `game/systems/SaveSystem.ts` | Trust boundary `hat_save`, `saveVersion: 2`, normalisasi, dan autosave |
+| `game/world/` | Definisi data 1944/1968/1999, Game Object dunia, dan factory |
+| `game/narrative/storyScript.ts` | Dialog, pilihan, rute, operasi walk/vortex, dan enam ending |
+| `game/minigames/` | Aturan matematis/bonus murni untuk unit test |
+| `game/audio/SoundManager.ts` | Musik, ambience, SFX, mute, dan ducking |
+
+Service/opsi lintas scene disimpan di registry Phaser: `saveSystem`,
+`soundManager`, `options`, `reduceMotion`, `loadErrors`, dan `nativeState`.
+State satu siklus memakai `RunState`; scene gameplay tetap owner mutasinya.
 
 ## 🛠️ Lokasi perubahan umum
 
 | Perubahan | Mulai dari |
 | --- | --- |
-| Tambah/edit dialog atau choice | `data/story.js`; cocokkan `FIRST_IDEA.md` dan `DIALOG.md` |
-| Tambah/edit ending | `data/story.js`, lalu kontrak ending di `game/flow.js` dan label visual di `render/screens.js` |
-| Tambah interactable/lore | Untuk 1944 gunakan `data/worlds.js`; era legacy masih memakai `flow.js` dan `render/world.js::HOTSPOTS` |
-| Tambah mini-game | State/start/update di `game/flow.js`; renderer di `render/screens.js`; reset/save/pause sesuai kebutuhan |
-| Ubah gerak atau kontrol | Capture mentah di `core/runtime.js`; konsumsi di `game/flow.js`; touch affordance di `render/screens.js` |
-| Tambah aset | `core/assets.js::ASSET_MANIFEST`, lalu jalur PNG dan fallback prosedural di renderer pemilik |
-| Ubah save | Default/load/normalisasi di `core/runtime.js`; whitelist cycle di `game/flow.js::saveCycle()` |
-| Ubah audio | Synth/bus/opsi di `core/runtime.js`; file opsional di `core/assets.js::AUDIO_MANIFEST` |
-| Ubah lifecycle/scale/POST_RENDER | `game/main.js`; periksa overlap `core/runtime.js::fit()` dan `G.paused` |
+| Gerak/fisika era | `game/entities/Player.ts`, `game/systems/SurfaceSystem.ts`, dan definisi `game/world/era*.ts` |
+| Object/interaksi | Definisi era, `game/world/WorldObject.ts`, lalu `game/systems/InteractionSystem.ts` |
+| HUD/touch/pause | `game/scenes/UIScene.ts`, lalu `game/systems/InputSystem.ts` |
+| Dialog/rute/ending | `game/narrative/storyScript.ts` dan `game/scenes/DialogueScene.ts` |
+| Mini-game | Scene pemilik dan aturan murni di `game/minigames/` bila dapat dipisahkan |
+| Save/migrasi | `game/systems/SaveSystem.ts`; pertahankan key `hat_save` dan kompatibilitas versi |
+| Audio | `game/audio/SoundManager.ts`; scene hanya meminta ambience/music/SFX semantik |
+| Loader/fallback | `game/scenes/PreloadScene.ts` |
+| Loop/pecahan/akhir | `GlitchScene`, `PuzzleAwardScene`, `EndCardScene`, dan `TitleScene` |
+| Bonus 2088 | `Bonus2088Scene.ts` dan `game/minigames/bonusRules.ts` |
 
-Detail runtime, state, render, input, dan save tersedia di `../docs/ARCHITECTURE.md`. Langkah aman per jenis perubahan tersedia di `../docs/AGENT_WORKFLOWS.md`.
+## 🧱 Referensi classic-script
+
+Runtime lama dipertahankan untuk membandingkan aturan/presentasi melalui
+`npm run qa:legacy`. Ia bukan fallback produksi, bukan target Continue, dan tidak
+boleh menerima fitur baru kecuali tugas secara eksplisit menargetkan parity regression.
+Jika referensi dan TypeScript berbeda, source TypeScript menentukan perilaku produk;
+gunakan GDD/dialog untuk menilai ketidaksesuaian naratif.
+
+Rincian runtime ada di `../docs/ARCHITECTURE.md`; resep perubahan ada di
+`../docs/AGENT_WORKFLOWS.md`.

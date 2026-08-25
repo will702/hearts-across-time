@@ -8,110 +8,115 @@ _Panduan kerja untuk agen coding. Fakta arsitektur di bawah mengikuti source saa
 
 ## 📚 Urutan sumber kebenaran
 
-1. `index.html` dan `src/` menentukan arsitektur serta perilaku produksi.
-2. `FIRST_IDEA.md` adalah nama saat ini dari `FIKS IDE.md` dan tetap menjadi sumber kebenaran GDD/naratif. `DIALOG.md` adalah referensi dialog yang lebih rinci, bukan pengganti source produksi.
+1. `index.html`, `src/main.ts`, dan file TypeScript di `src/game/` menentukan perilaku produksi.
+2. `FIRST_IDEA.md` adalah sumber kebenaran GDD/naratif. `DIALOG.md` adalah referensi dialog rinci; implementasi aktif berada di `src/game/narrative/storyScript.ts`.
 3. `README.md`, `src/README.md`, dan `docs/` menjelaskan implementasi saat ini.
-4. `plans/` hanya menyimpan riwayat pass. Rencana berstatus DONE tidak mengalahkan source.
+4. `plans/`, `legacy.html`, dan classic-script lama adalah riwayat/referensi. Semuanya tidak mengalahkan source produksi.
 
-Jika dokumen dan kode berbeda, dokumentasikan serta pertahankan perilaku kode kecuali developer secara eksplisit meminta perubahan. Untuk perubahan cerita, cocokkan `FIRST_IDEA.md`, `DIALOG.md`, dan `src/data/story.js`; jangan mengarang dialog atau cabang baru.
+Jika dokumen dan kode berbeda, dokumentasikan serta pertahankan perilaku kode kecuali developer meminta perubahan. Untuk perubahan cerita, cocokkan `FIRST_IDEA.md`, `DIALOG.md`, dan `storyScript.ts`; jangan mengarang dialog atau cabang baru.
 
-## 🏗️ Arsitektur saat ini
+## 🏗️ Arsitektur produksi saat ini
 
-Game adalah aplikasi browser 960×540 tanpa build step, bundler, atau ESM. `package.json` hanya menyediakan tooling QA Playwright; produksi tetap dijalankan langsung dari `index.html`, yang memuat Phaser 4.2.1 vendored dan empat belas classic script dalam urutan tetap.
+Game produksi adalah aplikasi browser Phaser 4 + TypeScript/ESM/Vite dengan kanvas logis 960×540:
 
-- Phaser `HeartsGameScene` memiliki lifecycle scene dan frame timing. `update(now, delta)` membatasi `dt` ke 0,05 detik lalu memanggil `update(dt)`.
-- Renderer Canvas 2D menggambar ke canvas Phaser pada event `Phaser.Core.Events.POST_RENDER` melalui `render()`.
-- Scaling memakai `Phaser.Scale.FIT`/`CENTER_BOTH`, tetapi `src/core/runtime.js::fit()` masih mengatur ukuran CSS canvas saat resize. Keduanya aktif.
-- Traversal 1944 memakai Arcade Physics dengan body kaki Elena, surface statis, dan sensor interaksi; era lain masih memakai koordinat legacy di `flow.js`.
-- Pause gameplay memakai `G.paused` dan `setPaused()`; scene Phaser tidak di-pause, tetapi Arcade Physics ikut pause/resume. Saat tab tersembunyi, Phaser menangani tick dan `src/game/main.js` menangguhkan WebAudio.
-- Modul berbagi global classic-script; tidak ada `import`/`export`. Urutan `<script>` di `index.html` adalah dependency graph dan interface internal.
+- `index.html` memuat `src/main.ts`, yang membuat satu `Phaser.Game` dari `src/game/config.ts`.
+- Seluruh era 1944/1968/1999, dialog dan pilihan, mini-game wajib, loop, enam ending, true ending, serta bonus 2088 dimiliki scene native.
+- Sprite, latar, world object, UI, kamera, input, pause, animasi, audio, dan Arcade Physics adalah milik Phaser; produksi tidak memakai `POST_RENDER` atau global classic-script.
+- `legacy.html` dan file `.js` lama hanya referensi/parity regression. Build Vite tidak memasukkannya ke `dist/`.
 
-Urutan produksi:
+Scene produksi terdaftar satu kali di `src/game/config.ts`:
 
-1. `vendor/phaser.min.js`
-2. `src/core/runtime.js`
-3. `src/core/assets.js`
-4. `src/render/characters.js`
-5. `src/render/world.js`
-6. `src/ui/dialog.js`
-7. `src/data/story.js`
-8. `src/data/worlds.js`
-9. `src/game/world-object.js`
-10. `src/game/surface-system.js`
-11. `src/game/interaction-system.js`
-12. `src/game/player-controller.js`
-13. `src/game/flow.js`
-14. `src/render/screens.js`
-15. `src/game/main.js`
+1. Fondasi: `BootScene`, `PreloadScene`, `IntroScene`, `TitleScene`, `PrologueScene`, `UIScene`, `DialogueScene`.
+2. Era: `Era1944Scene`, `Era1968Scene`, `Era1999Scene`.
+3. Mini-game: `WatchRepairScene`, `SpotlightChallengeScene`, `RosePuzzleScene`, `SignalTuneScene`, `DiaryScene`, `GemAlignScene`, `PhotoPuzzleScene`, `CryoBalanceScene`.
+4. Transisi/hasil: `VortexScene`, `GlitchScene`, `PuzzleAwardScene`, `EndCardScene`, `Bonus2088Scene`.
 
-Jangan mengubah urutan tanpa menelusuri semua global yang diproduksi dan dikonsumsi. Beberapa referensi sengaja deferred: fungsi di `runtime.js` memakai helper aset setelah semua script termuat, sedangkan fungsi dunia memakai konstanta flow ketika baru dipanggil.
+Jangan membuat entry produksi kedua atau menghidupkan kembali redirect ke runtime lama.
 
 ## 🗂️ Tanggung jawab modul
 
-| Direktori | Tanggung jawab |
+| Lokasi | Tanggung jawab |
 | --- | --- |
-| `src/core/` | Canvas/context, utilitas, input mentah, state global, opsi, localStorage, WebAudio, manifest dan loader aset |
-| `src/data/` | `NODES`, operasi cerita, pilihan, isi buku harian, dan `WORLD_DEFS` traversal fisika |
-| `src/game/` | Runner dialog, state machine, Arcade Physics 1944, traversal legacy, interactable, mini-game, save siklus, pause, bonus, dan bootstrap Phaser |
-| `src/render/` | Karakter, dunia, fallback prosedural, efek, seluruh layar/HUD, dan fungsi `render()` |
-| `src/ui/` | Bubble dialog, narator, choice, diary popup, dan text wrapping |
+| `src/main.ts`, `src/game/config.ts` | Bootstrap, konfigurasi Phaser/Arcade/Scale, scene list, dan snapshot debug |
+| `src/game/scenes/` | Lifecycle, display list, ketiga era, dialog, UI/pause/touch, mini-game, loop, ending, dan bonus |
+| `src/game/entities/` | Entity Phaser; `Player` memiliki sprite, body kaki, animasi, shadow, dan langkah |
+| `src/game/systems/` | Input intent, surfaces/collider, interaksi, dan trust boundary save |
+| `src/game/world/` | Definisi object/surface data-driven untuk 1944/1968/1999 serta factory Game Object/body |
+| `src/game/narrative/storyScript.ts` | Operasi dialog, pilihan, rute, transisi era, dan ending produksi |
+| `src/game/minigames/` | Aturan murni yang dapat diuji tanpa renderer |
+| `src/game/audio/SoundManager.ts` | Musik, ambience, SFX, mute, ducking, dan lifecycle audio lintas scene |
+| `legacy.html`, `src/**/*.js` | Referensi implementasi lama dan target `qa:legacy`; bukan owner produksi |
 
-Peta file dan dependency rinci ada di `src/README.md`; runtime/state/render/save flow ada di `docs/ARCHITECTURE.md`; resep perubahan umum ada di `docs/AGENT_WORKFLOWS.md`.
+Peta rinci ada di `src/README.md`; kontrak runtime/save ada di `docs/ARCHITECTURE.md`; resep perubahan ada di `docs/AGENT_WORKFLOWS.md`.
 
 ## 🎮 State dan pemilik data
 
-- `G`: state scene/UI sementara, termasuk `G.state`, player, kamera, active mini-game, pause, dan transisi.
-- `S`: state satu siklus: empathy/logic, route, loop, challenge, inventory, dan completion item wajib.
-- `D`: runner dialog aktif; hanya `src/game/flow.js` yang memajukan operasi `NODES`.
-- `SAVE`: progres permanen dan autosave siklus yang disimpan sebagai `hat_save`.
-- `OPTS`: opsi aksesibilitas/audio/teks yang disimpan sebagai `hat_opts`.
-- `AS`/`AU`: registry aset dan runtime audio; `T` adalah waktu global; `LOG` dan `ECHO` hanya hidup selama sesi.
+- Masing-masing Phaser Scene memiliki lifecycle dan Game Object-nya.
+- `RunState` adalah state satu siklus dan disimpan melalui `SaveSystem.saveCycle()`.
+- `SaveSystem` adalah satu-satunya trust boundary untuk parse, normalisasi, migrasi `saveVersion: 2`, dan persist `hat_save`.
+- `InputSystem` menghasilkan intent; scene era tetap owner mutasi gameplay, narasi, reward, save, dan transisi.
+- `DialogueScene` menafsirkan operasi dari `storyScript.ts`; renderer tidak menjadi owner pilihan atau state cerita.
+- Registry menyimpan service/opsi lintas scene seperti `saveSystem`, `soundManager`, `reduceMotion`, `loadErrors`, dan `nativeState`, bukan salinan state gameplay.
+- `window.__HAT.snapshot()` dan registry `nativeState` hanya untuk observasi/QA.
 
-Mutasi gameplay harus berada di update/flow. Jangan menambah mutasi baru pada renderer. Ada pengecualian legacy yang harus dipahami sebelum debugging: `drawParts()` memajukan partikel dengan `1/60`, `drawLensRain()` memindahkan tetes hujan, `poseFade()` menginisialisasi `D._poseBorn`, dan `drawLog()` meng-clamp `G.logScroll`.
+Jangan membuat manager global atau key save paralel.
 
 ## ▶️ Menjalankan dan deploy
 
-Gunakan server lokal agar script, font, video, dan aset dimuat konsisten:
-
 ```sh
-python -m http.server 8777
-# buka http://127.0.0.1:8777/index.html
+npm install
+npm run dev
+# buka http://127.0.0.1:8777/
 ```
 
-Deploy itch.io harus memuat `index.html`, `src/`, `vendor/`, dan `assets/`. Tidak ada langkah build. `phaser-demo.html` dan `legacy-canvas.html` telah dihapus dan hanya relevan sebagai sejarah git; jangan pulihkan atau pakai sebagai referensi implementasi.
+Gate utama:
+
+```sh
+npm run typecheck
+npm run lint
+npm run test:unit
+npm run build
+npm run qa
+npm run qa:legacy
+```
+
+`npm run qa` adalah suite Playwright produksi Phaser-native. `npm run qa:legacy` hanya regression parity terhadap runtime referensi. Deploy itch.io memakai isi `dist/` dari `npm run build`; build memuat `index.html`, bundle native, dan `assets/`, bukan `legacy.html`, `vendor/`, atau classic-script lama.
 
 ## 🎨 Aset dan fallback
 
-- `ASSET_MANIFEST` di `src/core/assets.js` adalah registry gambar opsional; loader font berada di file yang sama. Error ditandai lalu loading tetap berlanjut ke title.
-- Karakter harus mencoba `drawCharSheet()` lalu tetap memiliki gambar prosedural di `drawElena()`/`drawArthur()` bila fungsi mengembalikan `false`.
-- Latar/foreground harus mencoba `bgLayerImg()`/`bgFgImg()` lalu memakai renderer prosedural seperti `fgSilhouette()` bila aset absen.
-- Aset audio eksternal boleh gagal senyap; WebAudio prosedural tetap menjadi fallback bila tersedia. Potret opsional boleh di-skip.
-- Semua motion baru wajib menghormati `OPTS.reduceMotion`. Sisakan informasi dan input yang sama; matikan bob, shake, parallax motion, flap, glitch, atau pulse yang tidak esensial.
-- Gaya seni tetap watercolor-storybook, tile horizontal seamless, jangkar bawah, dan sheet karakter menghadap kanan. Jangan regenerate atau mengubah aset saat pass dokumentasi/fitur lain.
-
-Pipeline Python berada di `scripts/`: `gen_image*.py`/`gen_*.py` menghasilkan bahan mentah ke `assets/gen/`, lalu `build_sheets.py`, `compose_all.py`, `build_props.py`, atau `build_extra.py` menghasilkan aset final. Developer manusia menguji pipeline; agen tidak menjalankan regenerasi tanpa permintaan eksplisit.
+- Muat aset produksi melalui `PreloadScene` dan gunakan key stabil pada Phaser Game Object.
+- Bila aset penting gagal, buat fallback texture sekali lalu pakai seperti texture biasa. Jangan menggambar world melalui Canvas eksternal.
+- Karakter wajib memiliki fallback texture. World object wajib mempertahankan visual, prompt, dan input yang menyampaikan fungsi sama saat aset opsional absen.
+- Semua motion menghormati registry `reduceMotion`; informasi dan input tidak boleh hilang.
+- Gaya seni tetap watercolor-storybook, tile horizontal seamless, jangkar bawah, dan sheet karakter menghadap kanan.
+- Pipeline Python di `scripts/` menulis bahan mentah ke `assets/gen/`. Jangan menjalankan regenerasi atau mengubah aset tanpa permintaan eksplisit.
 
 ## 🔒 Keamanan dan git
 
-- `.env` berisi API key dan di-gitignore. Jangan membaca nilainya ke output, mencetak, menyimpan, atau commit file tersebut.
-- Jangan commit `.env`, `.venv/`, `node_modules/`, `assets/gen/`, `qa/artifacts/`, log, cache Python, atau screenshot. Source test di `qa/` wajib di-versioning.
+- `.env` berisi API key dan di-gitignore. Jangan membaca nilainya ke output, menyimpan, atau commit file tersebut.
+- Jangan commit `.env`, `.venv/`, `node_modules/`, `dist/`, `assets/gen/`, `qa/artifacts/`, log, cache, atau screenshot. Source test di `qa/` dan `tests/` wajib di-versioning.
 - Pertahankan kredit CC0 audio di `README.md` dan lisensi SIL OFL font di `assets/fonts/`.
 - Gunakan Conventional Commits berbahasa Inggris dan satu pass per commit bila developer meminta commit.
-- Pertahankan perubahan milik user; periksa status/diff sebelum mengedit dan stage hanya path yang diminta.
+- Pertahankan perubahan user; periksa status/diff sebelum mengedit dan stage hanya path yang diminta.
 
 ## 🧪 Kebijakan QA
 
-QA memakai model AI-first hybrid. Agen wajib menjalankan cek yang relevan, memperbaiki kegagalan objektif pada root cause, lalu mengulang cek sampai lolos. Gunakan `npm run qa:smoke` untuk perubahan logic/save/input dan `npm run qa` untuk perubahan gameplay, physics, render, UI, aset, atau audio.
+QA memakai model AI-first hybrid. Jalankan cek relevan, perbaiki kegagalan objektif pada root cause, lalu ulangi sampai lolos.
 
-Untuk perubahan visual/gameplay, agen juga wajib mereview artefak deterministik `npm run qa:visual` dengan AI vision serta memeriksa runtime melalui Chrome DevTools: console, request gagal/404, ukuran canvas, `window.__HAT.qa.snapshot()`, dan `?physicsDebug=1` bila menyentuh traversal. Jangan menebak state dari screenshot; Playwright memainkan input nyata dan menunggu snapshot dari `?qa=1`.
+- Logic/save/input: `npm run typecheck`, `npm run lint`, `npm run test:unit`, dan `npm run qa:smoke`.
+- Gameplay/physics/render/UI/aset/audio: tambahkan `npm run build`, `npm run qa`, dan review `npm run qa:visual` dengan AI vision.
+- Periksa console, request gagal/404, ukuran canvas, dan `window.__HAT.snapshot()`. Gunakan `?physicsDebug=1` bila menyentuh traversal.
+- Gunakan `npm run qa:legacy` hanya saat membandingkan parity atau sengaja mengubah fixture/reference lama; kegagalannya bukan alasan mengalihkan fitur produksi kembali ke classic-script.
+- Playwright harus memainkan input nyata dan menunggu snapshot deterministik. Jangan melemahkan assertion atau memutasi state langsung dari test agar hijau.
 
-Agen boleh langsung memperbaiki clipping, overlap, objek melayang, aset/prompt hilang, state/save salah, error browser, atau ketidaksesuaian acceptance criteria. Jangan melemahkan assertion agar hijau. Serahkan ke manusia hanya keputusan rasa seni/narasi yang benar-benar ambigu atau QA yang terblokir alat, dan laporkan bukti serta cek yang belum selesai.
+Agen boleh memperbaiki clipping, overlap, objek melayang, aset/prompt hilang, state/save salah, error browser, atau ketidaksesuaian acceptance criteria. Serahkan hanya keputusan seni/narasi yang benar-benar ambigu atau QA yang terblokir alat, dengan bukti jelas.
 
 ## ✍️ Konvensi perubahan
 
 - Semua teks in-game dan dokumentasi proyek memakai Bahasa Indonesia; nama simbol mengikuti source.
-- Pertahankan classic-script modular dan gaya JS padat; jangan migrasi framework, menambah bundler, memecah ke ESM, atau melakukan reformat massal.
-- Perubahan cerita berada di `src/data/story.js`; perubahan flow/input/save di `src/game/flow.js`; render di `src/render/`; capture input/audio/state dasar di `src/core/runtime.js`; Phaser bootstrap di `src/game/main.js`.
-- Saat menambah field save, beri default aman, normalisasi save lama di `normalizeRun()`, dan tambahkan ke whitelist `saveCycle()` bila termasuk autosave siklus. Jangan rename/hapus key tanpa migrasi.
-- Saat menambah state, lengkapi start/update di `flow.js`, render branch di `screens.js`, reset/pause/input yang relevan, serta fallback dan reduced-motion bila visual.
-- Jangan mengubah gameplay, dialog, visual, balance, atau production code dalam pass dokumentasi.
+- Produksi tetap TypeScript/ESM/Vite/Phaser tanpa React atau Matter.js. Hindari manager global dan abstraksi satu-implementasi.
+- Perubahan cerita dilakukan di `src/game/narrative/storyScript.ts`; cocokkan GDD/dialog dan tambah test operasi/rute terkait.
+- World object ditambah di definisi era pada `src/game/world/`; collision, sensor, prompt, visual, condition, action, material, dan save key tetap terpisah dalam data.
+- Save field baru wajib memiliki default aman, normalisasi/migrasi, dan unit test. Jangan rename/hapus key tanpa migrasi.
+- Scene baru wajib memiliki start/update/render owner, shutdown, pause, input keyboard/touch, fallback, reduced-motion, save/resume, dan QA relevan.
+- Classic-script lama tidak menerima fitur produksi baru. Ubah hanya bila tugas secara eksplisit menargetkan referensi atau parity regression.

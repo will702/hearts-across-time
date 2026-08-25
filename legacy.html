@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Hearts Across Time — Break The Loop</title>
+<style>
+  html,body{margin:0;padding:0;background:#0a0806;height:100%;overflow:hidden;font-family:'Trebuchet MS','Segoe UI',sans-serif}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;image-rendering:auto;touch-action:none;cursor:default;box-shadow:0 0 80px rgba(0,0,0,.8)}
+  #cinematic{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:#000}
+  #cinematic[hidden]{display:none}
+  #intro-video{width:100%;height:100%;object-fit:contain;background:#000}
+  #intro-start,#intro-skip{position:absolute;border:1px solid rgba(245,240,232,.65);border-radius:4px;background:rgba(10,8,6,.76);color:#f5f0e8;font:700 15px 'Trebuchet MS',sans-serif;letter-spacing:.12em;cursor:pointer}
+  #intro-start{inset:50% auto auto 50%;padding:15px 24px;transform:translate(-50%,-50%)}
+  #intro-skip{right:24px;bottom:22px;padding:10px 16px}
+  #intro-start:hover,#intro-start:focus-visible,#intro-skip:hover,#intro-skip:focus-visible{background:rgba(168,62,56,.9);outline:2px solid #f5f0e8;outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game" width="960" height="540"></canvas></div>
+<div id="cinematic" role="dialog" aria-modal="true" aria-label="Intro sinematik">
+  <video id="intro-video" preload="auto" playsinline aria-label="Intro Hearts Across Time">
+    <source src="assets/intro.mp4" type="video/mp4">
+  </video>
+  <button id="intro-start" type="button">PUTAR INTRO</button>
+  <button id="intro-skip" type="button">LEWATI</button>
+</div>
+
+<!-- Urutan ini adalah dependency graph yang eksplisit. Setiap file tetap classic-script
+     agar migrasi tidak mengubah kontrak global game/save dalam satu pass. -->
+<script src="vendor/phaser.min.js"></script>
+<script src="src/core/runtime.js?v=20260823-4"></script>
+<script src="src/core/assets.js?v=20260823-5"></script>
+<script src="src/render/characters.js?v=20260819-6"></script>
+<script src="src/render/world.js?v=20260822-6"></script>
+<script src="src/ui/dialog.js?v=20260819-6"></script>
+<script src="src/data/story.js?v=20260822-7"></script>
+<script src="src/data/worlds.js?v=20260823-1"></script>
+<script src="src/game/world-object.js?v=20260823-1"></script>
+<script src="src/game/surface-system.js?v=20260823-1"></script>
+<script src="src/game/interaction-system.js?v=20260823-1"></script>
+<script src="src/game/player-controller.js?v=20260823-1"></script>
+<script src="src/game/flow.js?v=20260823-10"></script>
+<script src="src/render/screens.js?v=20260823-10"></script>
+<script src="src/game/main.js?v=20260823-1"></script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 "use strict";
+const LEGACY_CONTINUE=new URLSearchParams(location.search).get('continue')==='1';
 /* Phaser menjadi pemilik lifecycle, timing, dan pause runtime. Renderer Canvas yang sudah
    teruji digambar pada POST_RENDER, sehingga seluruh rute tetap identik selama scene-scene
    visual dipindahkan bertahap ke display list Phaser. */
@@ -27,6 +28,8 @@ class HeartsGameScene extends Phaser.Scene{
         else if(name==='glitch'){startGlitch();G.glitch.t=1.2;}else if(name==='endcard'){startEndCard();G.endCard.t=4;}else throw new Error('Skenario QA tidak dikenal: '+name);}
     };
     window.__HAT=hat;
+    if(LEGACY_CONTINUE&&SAVE.game){const resume=SAVE.game;Object.assign(S,resume.S||{});normalizeRun();G.fadeIn=1;startWalk(resume.era||'1944');
+      if(Number.isFinite(resume.playerX)){G.player.x=clamp(resume.playerX,90,(G.walk&&G.walk.len||1450)-40);if(G.era==='1944')HAT_WORLD.player.enter(G.player);}}
   }
   update(now,delta){
     if(this.qaFrozen)return;
@@ -67,7 +70,7 @@ introStart.addEventListener('click',()=>playIntroVideo());
 introSkip.addEventListener('click',()=>finishIntroVideo());
 introVideo.addEventListener('ended',()=>finishIntroVideo());
 introVideo.addEventListener('error',()=>finishIntroVideo(false));
-playIntroVideo();
+if(LEGACY_CONTINUE)introShell.hidden=true;else playIntroVideo();
 
 // Hemat audio saat tab tidak terlihat; Phaser otomatis menghentikan tick rendernya.
 document.addEventListener('visibilitychange',()=>{if(!AU.ctx)return;
