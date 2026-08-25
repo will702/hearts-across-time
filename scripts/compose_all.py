@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compose final character sheets into assets/<char>_sheet.png and QC montages.
+"""Compose final character sheets into assets/art/characters/<char>_sheet.png and QC montages.
 
 Usage: compose_all.py            (all 5 characters)
 """
@@ -45,9 +45,9 @@ def main():
                 rows.append([p, p, p, p])
         spec = CELL / f"{char}_spec.json"
         spec.write_text(__import__("json").dumps({"rows": rows}))
-        subprocess.run([sys.executable, str(BS), "compose", str(spec), f"assets/{char}_sheet.png"], check=True)
+        subprocess.run([sys.executable, str(BS), "compose", str(spec), f"assets/art/characters/{char}_sheet.png"], check=True)
         # QC montage: sheet on checkerboard + labels
-        sheet = Image.open(f"assets/{char}_sheet.png").convert("RGBA")
+        sheet = Image.open(f"assets/art/characters/{char}_sheet.png").convert("RGBA")
         bg = Image.new("RGBA", (sheet.width * 2, sheet.height * 2), (64, 64, 72, 255))
         big = sheet.resize((sheet.width * 2, sheet.height * 2), Image.LANCZOS)
         d = ImageDraw.Draw(bg)

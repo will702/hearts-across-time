@@ -13,7 +13,7 @@ Game memiliki satu entry produksi:
   `src/game/config.ts`.
 - Seluruh era, dialog, mini-game, loop, enam ending, dan bonus berjalan di scene
   TypeScript/Phaser.
-- `legacy.html` dan classic-script lama hanya referensi/parity regression dan tidak
+- `legacy/index.html` dan classic-script lama hanya referensi/parity regression dan tidak
   termasuk build `dist/`.
 
 ```mermaid
@@ -126,7 +126,7 @@ menjalankan efek pilihan, menyimpan progres yang relevan, dan mengembalikan hasi
 kepada scene pemilik. `VortexScene` menangani transisi era; `PuzzleAwardScene`,
 `GlitchScene`, dan `EndCardScene` menangani hasil rute.
 
-Perubahan cerita wajib mencocokkan `FIRST_IDEA.md`, `DIALOG.md`, dan node aktif di
+Perubahan cerita wajib mencocokkan `docs/design/FIRST_IDEA.md`, `docs/design/DIALOG.md`, dan node aktif di
 `storyScript.ts`. Jangan menaruh mutasi narasi di renderer atau menggandakan skrip
 cerita di file lain.
 
@@ -175,8 +175,7 @@ Jangan membuat key save paralel.
 
 ## 🧱 Runtime referensi
 
-`legacy.html` dan classic-script di `src/core/`, `src/data/`, `src/game/*.js`,
-`src/render/`, serta `src/ui/` dipertahankan untuk inspeksi historis dan
+`legacy/index.html` dan seluruh classic-script di `legacy/src/` dipertahankan untuk inspeksi historis dan
 `npm run qa:legacy`. Runtime itu:
 
 - bukan entry deploy;
@@ -207,6 +206,6 @@ npm run qa:legacy
 ```
 
 `npm run qa` menjalankan suite Playwright native di `tests/e2e/`.
-`npm run qa:legacy` menjalankan parity regression terpisah dari `qa/`.
+`npm run qa:legacy` menjalankan parity regression dari `tests/legacy/`.
 `npm run build` memakai `index.html` sebagai satu-satunya Rollup input dan menyalin
 `assets/`; hasil `dist/` berisi entry/bundle native dan aset produksi saja.

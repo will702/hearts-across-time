@@ -9,11 +9,11 @@ _Panduan kerja untuk agen coding. Fakta arsitektur di bawah mengikuti source saa
 ## 📚 Urutan sumber kebenaran
 
 1. `index.html`, `src/main.ts`, dan file TypeScript di `src/game/` menentukan perilaku produksi.
-2. `FIRST_IDEA.md` adalah sumber kebenaran GDD/naratif. `DIALOG.md` adalah referensi dialog rinci; implementasi aktif berada di `src/game/narrative/storyScript.ts`.
+2. `docs/design/FIRST_IDEA.md` adalah sumber kebenaran GDD/naratif. `docs/design/DIALOG.md` adalah referensi dialog rinci; implementasi aktif berada di `src/game/narrative/storyScript.ts`.
 3. `README.md`, `src/README.md`, dan `docs/` menjelaskan implementasi saat ini.
-4. `plans/`, `legacy.html`, dan classic-script lama adalah riwayat/referensi. Semuanya tidak mengalahkan source produksi.
+4. `docs/plans/`, `legacy/index.html`, dan classic-script lama adalah riwayat/referensi. Semuanya tidak mengalahkan source produksi.
 
-Jika dokumen dan kode berbeda, dokumentasikan serta pertahankan perilaku kode kecuali developer meminta perubahan. Untuk perubahan cerita, cocokkan `FIRST_IDEA.md`, `DIALOG.md`, dan `storyScript.ts`; jangan mengarang dialog atau cabang baru.
+Jika dokumen dan kode berbeda, dokumentasikan serta pertahankan perilaku kode kecuali developer meminta perubahan. Untuk perubahan cerita, cocokkan `docs/design/FIRST_IDEA.md`, `docs/design/DIALOG.md`, dan `storyScript.ts`; jangan mengarang dialog atau cabang baru.
 
 ## 🏗️ Arsitektur produksi saat ini
 
@@ -22,7 +22,7 @@ Game produksi adalah aplikasi browser Phaser 4 + TypeScript/ESM/Vite dengan kanv
 - `index.html` memuat `src/main.ts`, yang membuat satu `Phaser.Game` dari `src/game/config.ts`.
 - Seluruh era 1944/1968/1999, dialog dan pilihan, mini-game wajib, loop, enam ending, true ending, serta bonus 2088 dimiliki scene native.
 - Sprite, latar, world object, UI, kamera, input, pause, animasi, audio, dan Arcade Physics adalah milik Phaser; produksi tidak memakai `POST_RENDER` atau global classic-script.
-- `legacy.html` dan file `.js` lama hanya referensi/parity regression. Build Vite tidak memasukkannya ke `dist/`.
+- `legacy/index.html` dan file `.js` lama hanya referensi/parity regression. Build Vite tidak memasukkannya ke `dist/`.
 
 Scene produksi terdaftar satu kali di `src/game/config.ts`:
 
@@ -45,7 +45,7 @@ Jangan membuat entry produksi kedua atau menghidupkan kembali redirect ke runtim
 | `src/game/narrative/storyScript.ts` | Operasi dialog, pilihan, rute, transisi era, dan ending produksi |
 | `src/game/minigames/` | Aturan murni yang dapat diuji tanpa renderer |
 | `src/game/audio/SoundManager.ts` | Musik, ambience, SFX, mute, ducking, dan lifecycle audio lintas scene |
-| `legacy.html`, `src/**/*.js` | Referensi implementasi lama dan target `qa:legacy`; bukan owner produksi |
+| `legacy/` | Referensi implementasi lama dan target `qa:legacy`; bukan owner produksi |
 
 Peta rinci ada di `src/README.md`; kontrak runtime/save ada di `docs/ARCHITECTURE.md`; resep perubahan ada di `docs/AGENT_WORKFLOWS.md`.
 
@@ -80,7 +80,7 @@ npm run qa
 npm run qa:legacy
 ```
 
-`npm run qa` adalah suite Playwright produksi Phaser-native. `npm run qa:legacy` hanya regression parity terhadap runtime referensi. Deploy itch.io memakai isi `dist/` dari `npm run build`; build memuat `index.html`, bundle native, dan `assets/`, bukan `legacy.html`, `vendor/`, atau classic-script lama.
+`npm run qa` adalah suite Playwright produksi Phaser-native. `npm run qa:legacy` hanya regression parity terhadap runtime referensi. Deploy itch.io memakai isi `dist/` dari `npm run build`; build memuat `index.html`, bundle native, dan `assets/`, bukan `legacy/index.html`, `legacy/vendor/`, atau classic-script lama.
 
 ## 🎨 Aset dan fallback
 
@@ -94,7 +94,7 @@ npm run qa:legacy
 ## 🔒 Keamanan dan git
 
 - `.env` berisi API key dan di-gitignore. Jangan membaca nilainya ke output, menyimpan, atau commit file tersebut.
-- Jangan commit `.env`, `.venv/`, `node_modules/`, `dist/`, `assets/gen/`, `qa/artifacts/`, log, cache, atau screenshot. Source test di `qa/` dan `tests/` wajib di-versioning.
+- Jangan commit `.env`, `.venv/`, `node_modules/`, `dist/`, `assets/gen/`, `qa/artifacts/`, log, cache, atau screenshot. Source test di `tests/` wajib di-versioning.
 - Pertahankan kredit CC0 audio di `README.md` dan lisensi SIL OFL font di `assets/fonts/`.
 - Gunakan Conventional Commits berbahasa Inggris dan satu pass per commit bila developer meminta commit.
 - Pertahankan perubahan user; periksa status/diff sebelum mengedit dan stage hanya path yang diminta.

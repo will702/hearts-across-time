@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Post-process fg occluder layers + key poses into assets/.
+"""Post-process fg occluder layers + key poses into categorized art folders.
 
-  fg:    assets/gen/fg/bg<era>_fg.png -> bgprep (key, cap 260px, width 1920, seal, seam) -> assets/bg<era>_fg.png
-  poses: assets/gen/poses/pose_*.png  -> flood_key + trim -> assets/pose_*.png (+QC montage)
+  fg:    assets/gen/fg/bg<era>_fg.png -> assets/art/backgrounds/bg<era>_fg.png
+  poses: assets/gen/poses/pose_*.png  -> assets/art/characters/pose_*.png (+QC montage)
 
 Usage: python scripts/build_extra.py [fg|poses|all]
 """
@@ -29,7 +29,7 @@ def darken(path, target=(17, 13, 10), k=0.78):
 def do_fg() -> bool:
     ok = True
     for raw in sorted(Path("assets/gen/fg").glob("bg*_fg.png")):
-        out = Path("assets") / (raw.stem + ".png")
+        out = Path("assets/art/backgrounds") / (raw.stem + ".png")
         p = subprocess.run([sys.executable, str(BS), "bgprep", str(raw), str(out),
                             "--maxh", "260", "--width", "1920", "--depink", "1.0", "--blend", "0.25"], capture_output=True, text=True)
         print(p.stdout.strip() or p.stderr.strip())
@@ -46,7 +46,7 @@ def do_poses() -> bool:
         if raw.stem.endswith("_qc"):
             continue
         im = trim(flood_key(Image.open(raw).convert("RGB")), pad=2)
-        out = Path("assets") / (raw.stem + ".png")
+        out = Path("assets/art/characters") / (raw.stem + ".png")
         im.save(out)
         # QC di atas papan catur
         bg = Image.new("RGBA", (im.width * 2, im.height * 2), (64, 64, 72, 255))

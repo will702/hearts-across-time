@@ -5,8 +5,8 @@
 | MEDIUM | DONE |
 
 Konteks: review diff v4 oleh **GLM (pi → zai/glm-5.2)** + QA visual menemukan sisa pekerjaan:
-404 `assets/bg1999_mid.png` (manifest sudah menunjuk; file belum pernah dibuat — di 006 sengaja
-ditunda karena kapsul 1999 tetap prosedural), `assets/bg1999_far.png` menyimpan bercak mauve +
+404 `assets/art/backgrounds/bg1999_mid.png` (manifest sudah menunjuk; file belum pernah dibuat — di 006 sengaja
+ditunda karena kapsul 1999 tetap prosedural), `assets/art/backgrounds/bg1999_far.png` menyimpan bercak mauve +
 fringe magenta di tepi tile (terlihat in-game sebagai coretan merah mengambang), dan tiga bug kecil.
 
 Toolchain pembuatan (sesuai permintaan): **agy CLI** mengendarai generasi gambar, **GLM via `pi`**
@@ -15,7 +15,7 @@ me-review diff, **pi zai-vision MCP** memberi second-opinion screenshot; kunci b
 
 ## Perubahan
 
-- `assets/bg1999_mid.png` BARU (1920×300, parallax .45): catwalk + tangki + konsol bercahaya cyan +
+- `assets/art/backgrounds/bg1999_mid.png` BARU (1920×300, parallax .45): catwalk + tangki + konsol bercahaya cyan +
   kabel gantung + embun beku di garis lantai — **tanpa kapsul** (centerpiece 1999 tetap
   prosedural-animasi). Pipeline: raw via `scripts/gen_image.py` (OpenRouter
   `gemini-3.1-flash-image-preview`, digerakkan `agy` CLI) → wipe magenta global (hue-match tanpa
@@ -23,7 +23,7 @@ me-review diff, **pi zai-vision MCP** memberi second-opinion screenshot; kunci b
   `bgprep --maxh 300 --depink 0 --blend .12` → geser hue mist/violet ke cyan dingin (h→0.56, s×.45).
   WanX DashScope (`wan2.1-t2i-turbo`) dicoba 3× lewat agy (v2–v4) — tak cocok gaya
   (perspektif tajam/palet cerah/tanpa magenta) → fallback sesuai rencana.
-- `assets/bg1999_far.png` DIBANGUN ULANG dari `assets/gen/bg/bg1999_far.png`: crop margin bermasalah,
+- `assets/art/backgrounds/bg1999_far.png` DIBANGUN ULANG dari `assets/gen/bg/bg1999_far.png`: crop margin bermasalah,
   mirror-extend tepi dgn cross-fade 40px di sambungan (proporsi & tinggi asli tetap), buang bercak +
   fringe; seam tile mulus (QC `pair` 0 kolom pink). Flood_key dilewati manual — kanvas tanpa magenta
   membuat estimator hue-nya menelan subjek.

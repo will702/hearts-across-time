@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tutup seam tile horizontal pada PNG bg/fg FINAL di assets/ (plan 010).
+"""Tutup seam tile horizontal pada PNG bg/fg FINAL di assets/art/backgrounds/ (plan 010).
 
 Latar: seam_blend lama (pra-010) tidak pernah menyamakan kolom 0 dengan kolom
 w-1, jadi junction tetap melompat (ukur: 50-335 deltaRGB/baris) walau bgprep
@@ -47,7 +47,7 @@ def main() -> int:
     root = Path(__file__).resolve().parent.parent
     ok = True
     for name in names:
-        p = root / "assets" / (name if name.endswith(".png") else name + ".png")
+        p = root / "assets/art/backgrounds" / (name if name.endswith(".png") else name + ".png")
         im = Image.open(p).convert("RGBA")
         before = seamdiff(im)
         fixed = seam_blend(im, frac)

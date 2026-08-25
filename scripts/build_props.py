@@ -5,7 +5,7 @@ Per prop (assets/gen/props/<id>.png, a horizontal 3-frame strip on magenta):
   1. flood_key magenta -> RGBA            (build_sheets.flood_key)
   2. slice into 3 equal columns, trim each
   3. re-anchor each frame bottom-center into a 200x200 cell
-  4. compose 3x1 strip -> assets/prop_<id>.png
+  4. compose 3x1 strip -> assets/art/props/prop_<id>.png
   5. QC montage on checkerboard -> assets/gen/props/<id>_qc.png
 
 Usage:
@@ -52,7 +52,7 @@ def proc(pid: str) -> bool:
     strip = Image.new("RGBA", (CELL * 3, CELL), (0, 0, 0, 0))
     for k, cell in enumerate(cells):
         strip.alpha_composite(cell, (k * CELL, 0))
-    out = Path("assets") / f"prop_{pid}.png"
+    out = Path("assets/art/props") / f"prop_{pid}.png"
     strip.save(out)
     # QC: strip di atas papan catur + pemisah sel
     bg = Image.new("RGBA", (strip.width * 2, strip.height * 2), (64, 64, 72, 255))

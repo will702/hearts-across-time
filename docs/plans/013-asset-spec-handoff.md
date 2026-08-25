@@ -19,7 +19,7 @@
 Engine integration sudah **terpasang dan fallback-aman**: PNG absen → game identik seperti sekarang.
 Tugas agen gambar: hasilkan raw di `assets/gen/raw/`, lalu dev/agen menjalankan pipeline offline
 (`build_sheets.py` — tanpa API). Gaya resmi repo: **watercolor-storybook** (garis pensil grafit +
-wash cat air muted, latar terang kertas) — samakan dengan `assets/elena_sheet.png` &
+wash cat air muted, latar terang kertas) — samakan dengan `assets/art/characters/elena_sheet.png` &
 `assets/elenadialog1.png` sebagai referensi identitas.
 
 ---
@@ -55,7 +55,7 @@ Buat SPEC JSON 6 kolom (F0–F3 = salin dari sheet lama, F4=closed, F5=open):
 ```
 
 ```
-.venv/bin/python scripts/build_sheets.py compose spec_elena.json assets/elena_sheet.png
+.venv/bin/python scripts/build_sheets.py compose spec_elena.json assets/art/characters/elena_sheet.png
 ```
 
 Engine otomatis memakai kolom 4/5 saat baris dialog diketik (`drawCharSheet`, ±5 flap/dtk,

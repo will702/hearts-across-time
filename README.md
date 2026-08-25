@@ -2,7 +2,7 @@
 
 > 2D Side-Scroller Narrative Puzzle / Psychological Time-Loop • Phaser 4 + TypeScript/Vite
 > Dibangun untuk **COMPFEST Indie Game Jam** dari *Game Design Document*
-> `FIRST_IDEA.md` (sebelumnya `FIKS IDE.md`).
+> `docs/design/FIRST_IDEA.md` (sebelumnya `FIKS IDE.md`).
 
 ## ▶ Cara menjalankan
 
@@ -41,7 +41,7 @@ Phaser-native, dan `assets/`.
   2088.
 
 Semua sprite, latar, physics, kamera, input, dialog, UI, audio, save, loop, ending, dan
-bonus dimiliki runtime native. `legacy.html` serta classic-script lama dipertahankan
+bonus dimiliki runtime native. `legacy/index.html` serta classic-script lama dipertahankan
 sebagai referensi/parity regression melalui `npm run qa:legacy`; keduanya bukan
 fallback produksi dan tidak termasuk `dist/`.
 
@@ -81,7 +81,7 @@ memiliki kontrol pointer yang ditampilkan pada modal masing-masing.
 | Dialog | `storyScript.ts` memuat operasi say/choice/goto/walk/item/fx/vortex/ending; `DialogueScene` menafsirkannya |
 | Save/Continue | `SaveSystem` menormalisasi `hat_save` v2 dan memulihkan langsung ke era 1944/1968/1999 |
 
-Sumber kebenaran cerita adalah `FIRST_IDEA.md`, `DIALOG.md`, dan implementasi aktif
+Sumber kebenaran cerita adalah `docs/design/FIRST_IDEA.md`, `docs/design/DIALOG.md`, dan implementasi aktif
 `src/game/narrative/storyScript.ts`.
 
 ## 🎨 Aset dan fallback
@@ -95,14 +95,14 @@ lapisan horizontal seamless, dan jangkar karakter tengah-bawah.
 
 ### Kontrak sprite dan latar
 
-- Sheet karakter: `assets/<id>_sheet.png`, grid 4 kolom × 8 baris, sel 150×210.
+- Sheet karakter: `assets/art/characters/<id>_sheet.png`, grid 4 kolom × 8 baris, sel 150×210.
 - Kolom: F0 idle; F1–F3 siklus jalan.
 - Baris: `neutral`, `smile`, `sad`, `shock`, `angry`, `mad`, `warm`,
   `happy`.
-- Strip prop: `assets/prop_*.png`, tiga frame 200×200.
-- Latar era: `assets/bg<era>_<layer>.png`; layer far/mid/foreground memakai scroll
+- Strip prop: `assets/art/props/prop_*.png`, tiga frame 200×200.
+- Latar era: `assets/art/backgrounds/bg<era>_<layer>.png`; layer far/mid/foreground memakai scroll
   factor berbeda dan world bounds Phaser.
-- Judul produksi memakai `title_cover_figJma.png` sebagai ilustrasi dan merender teks
+- Judul produksi memakai `assets/art/ui/title-cover.png` sebagai ilustrasi dan merender teks
   tepat **HEARTS ACROSS TIME / BREAK THE LOOP** melalui Phaser; raster wordmark lama
   bukan sumber teks produksi.
 
@@ -151,7 +151,10 @@ src/game/systems/*.ts            — input, interaksi, surface, save
 src/game/narrative/storyScript.ts — operasi narasi/rute produksi
 src/game/minigames/*.ts          — aturan murni yang dapat diuji
 src/game/audio/SoundManager.ts   — musik, ambience, dan SFX
-legacy.html + src/**/*.js        — referensi/parity regression, bukan build produksi
+assets/art/{backgrounds,characters,props,ui,minigames,bonus}/ — visual runtime
+legacy/                         — referensi/parity regression, bukan build produksi
+docs/{design,plans}/            — GDD/dialog dan arsip rencana
+tests/{unit,e2e,legacy}/        — seluruh pemeriksaan otomatis
 ```
 
 Rincian owner ada di `src/README.md`, kontrak runtime di
