@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
-import { gemAngleDistance, isGemAligned } from '../minigames/math';
+import { gemAngleDistance, gemProjection, isGemAligned } from '../minigames/math';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 export type GemAlignData = {
@@ -11,6 +11,7 @@ export type GemAlignData = {
 };
 
 const GEM_TARGET = { rx: 0.62, ry: -0.86 };
+const GEM_ART_CROP = { x: 650, y: 45, width: 1700, height: 1450 };
 
 export class GemAlignScene extends Phaser.Scene {
   private gemData!: GemAlignData;
@@ -27,9 +28,10 @@ export class GemAlignScene extends Phaser.Scene {
 
   private gemGraphics?: Phaser.GameObjects.Graphics;
   private shadowGraphics?: Phaser.GameObjects.Graphics;
-  private causticsGraphics?: Phaser.GameObjects.Graphics;
+  private shadowImage?: Phaser.GameObjects.Image;
   private gemImage?: Phaser.GameObjects.Image;
   private gemBaseScale = { x: 1, y: 1 };
+  private shadowBaseScale = { x: 1, y: 1 };
   private feedbackText?: Phaser.GameObjects.Text;
   private alignPercentText?: Phaser.GameObjects.Text;
 
@@ -99,10 +101,6 @@ export class GemAlignScene extends Phaser.Scene {
 
   private createBackground(): void {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x030914, 0.95);
-    if (this.textures.exists('water-gem-art')) {
-      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'water-gem-art')
-        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.22);
-    }
 
     this.add.text(GAME_WIDTH / 2, 38, 'PENYELARASAN PERMATA AIR 1999', {
       color: '#38bdf8', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
@@ -113,10 +111,19 @@ export class GemAlignScene extends Phaser.Scene {
       color: '#e0f2fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
 
-    this.causticsGraphics = this.add.graphics();
     this.shadowGraphics = this.add.graphics();
     if (this.textures.exists('water-gem-art')) {
-      this.gemImage = this.add.image(GAME_WIDTH / 2, 236, 'water-gem-art').setDisplaySize(360, 196);
+      const shadowImage = this.add.image(GAME_WIDTH / 2, 236, 'water-gem-art')
+        .setCrop(GEM_ART_CROP.x, GEM_ART_CROP.y, GEM_ART_CROP.width, GEM_ART_CROP.height)
+        .setScale(276 / GEM_ART_CROP.width, 276 / GEM_ART_CROP.height)
+        .setTint(0x334155)
+        .setTintMode(Phaser.TintModes.FILL)
+        .setAlpha(0.82);
+      this.shadowImage = shadowImage;
+      this.shadowBaseScale = { x: shadowImage.scaleX, y: shadowImage.scaleY };
+      this.gemImage = this.add.image(GAME_WIDTH / 2, 236, 'water-gem-art')
+        .setCrop(GEM_ART_CROP.x, GEM_ART_CROP.y, GEM_ART_CROP.width, GEM_ART_CROP.height)
+        .setScale(272 / GEM_ART_CROP.width, 272 / GEM_ART_CROP.height);
       this.gemBaseScale = { x: this.gemImage.scaleX, y: this.gemImage.scaleY };
     }
     this.gemGraphics = this.add.graphics();
@@ -142,6 +149,14 @@ export class GemAlignScene extends Phaser.Scene {
     if (!this.shadowGraphics) return;
     this.shadowGraphics.clear();
 
+    if (this.shadowImage) {
+      const pose = gemProjection(GEM_TARGET.rx, GEM_TARGET.ry);
+      this.shadowImage
+        .setScale(this.shadowBaseScale.x * pose.scaleX, this.shadowBaseScale.y * pose.scaleY)
+        .setRotation(pose.rotation);
+      return;
+    }
+
     const cx = GAME_WIDTH / 2;
     const cy = 236;
     const size = 115;
@@ -149,14 +164,13 @@ export class GemAlignScene extends Phaser.Scene {
     this.shadowGraphics.fillStyle(0x06283d, 0.65);
     this.shadowGraphics.lineStyle(3, 0x0284c7, 0.85);
 
-    const cosX = Math.cos(GEM_TARGET.rx);
-    const cosY = Math.cos(GEM_TARGET.ry);
+    const pose = gemProjection(GEM_TARGET.rx, GEM_TARGET.ry);
 
     const points: [number, number][] = [
-      [0, -size * cosX],
-      [size * cosY, 0],
-      [0, size * cosX],
-      [-size * cosY, 0],
+      [0, -size * pose.scaleY],
+      [size * pose.scaleX, 0],
+      [0, size * pose.scaleY],
+      [-size * pose.scaleX, 0],
     ];
 
     this.shadowGraphics.beginPath();
@@ -177,36 +191,30 @@ export class GemAlignScene extends Phaser.Scene {
     const cy = 236;
     const size = 115;
 
-    const cosX = Math.cos(this.rx);
-    const cosY = Math.cos(this.ry);
-
     const dx = gemAngleDistance(this.rx, GEM_TARGET.rx);
     const dy = gemAngleDistance(this.ry, GEM_TARGET.ry);
     const totalDist = Math.hypot(dx, dy);
     const alignRatio = Math.max(0, 1 - totalDist / 2.8);
 
     if (this.gemImage) {
-      const perspective = (angle: number, target: number): number => {
-        const ratio = Math.cos(angle) / Math.cos(target);
-        return Math.sign(ratio || 1) * Phaser.Math.Clamp(Math.abs(ratio), 0.18, 1.15);
-      };
+      const pose = gemProjection(this.rx, this.ry);
       this.gemImage
-        .setScale(
-          this.gemBaseScale.x * perspective(this.ry, GEM_TARGET.ry),
-          this.gemBaseScale.y * perspective(this.rx, GEM_TARGET.rx),
-        )
-        .setAngle(Phaser.Math.RadToDeg((this.ry - GEM_TARGET.ry) * 0.12))
+        .setScale(this.gemBaseScale.x * pose.scaleX, this.gemBaseScale.y * pose.scaleY)
+        .setRotation(pose.rotation)
         .setAlpha(0.72 + alignRatio * 0.28);
     }
 
     this.alignPercentText?.setText(`KESELARASAN: ${Math.round(alignRatio * 100)}%`)
       .setColor(alignRatio > 0.85 ? '#86efac' : (alignRatio > 0.5 ? '#fde047' : '#38bdf8'));
 
+    if (this.gemImage) return;
+
+    const pose = gemProjection(this.rx, this.ry);
     const points: [number, number][] = [
-      [0, -size * cosX],
-      [size * cosY, 0],
-      [0, size * cosX],
-      [-size * cosY, 0],
+      [0, -size * pose.scaleY],
+      [size * pose.scaleX, 0],
+      [0, size * pose.scaleY],
+      [-size * pose.scaleX, 0],
     ];
 
     this.gemGraphics.fillStyle(0x38bdf8, this.gemImage ? 0.06 : 0.75 + alignRatio * 0.2);

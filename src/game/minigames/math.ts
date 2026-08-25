@@ -7,6 +7,14 @@ export function gemAngleDistance(a: number, b: number): number {
   return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 }
 
+export function gemProjection(rx: number, ry: number): { scaleX: number; scaleY: number; rotation: number } {
+  return {
+    scaleX: 0.38 + 0.62 * Math.abs(Math.cos(ry)),
+    scaleY: 0.5 + 0.5 * Math.abs(Math.cos(rx)),
+    rotation: ry * 0.17,
+  };
+}
+
 export function isGemAligned(
   rx: number,
   ry: number,
