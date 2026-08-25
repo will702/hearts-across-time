@@ -203,7 +203,7 @@ export class Era1999Scene extends Phaser.Scene {
           this.controls.setEnabled(true);
           this.worldFactory.refresh(this.objects, this.worldState());
           this.registry.set('nativeState', 'era1999');
-          this.ui.showToast('DITAMBAHKAN KE TAS — ◆ PERMATA AIR', 3000);
+          this.ui.showToast('Permata air disimpan.', 3000);
         },
       });
       this.scene.pause();
@@ -221,7 +221,7 @@ export class Era1999Scene extends Phaser.Scene {
           this.controls.setEnabled(true);
           this.worldFactory.refresh(this.objects, this.worldState());
           this.registry.set('nativeState', 'era1999');
-          this.ui.showToast('DITAMBAHKAN KE TAS — ▧ FOTO ELENA & ARTHUR', 3000);
+          this.ui.showToast('Foto Elena dan Arthur disimpan.', 3000);
         },
       });
       this.scene.pause();

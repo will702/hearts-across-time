@@ -55,7 +55,7 @@ export class IntroScene extends Phaser.Scene {
       letterSpacing: 4,
     }).setOrigin(0.5);
 
-    const playBtn = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 24, '▶  PUTAR INTRO', {
+    const playBtn = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 24, 'PUTAR INTRO', {
       backgroundColor: '#1b140fee',
       color: '#fffbf0',
       fontFamily: 'Cinzel, serif',
@@ -95,7 +95,7 @@ export class IntroScene extends Phaser.Scene {
     this.preplayContainer = this.add.container(0, 0, [shade, title, subtitle, playBtn, hint]);
 
     // Skip button (always available)
-    this.skipButton = this.add.text(GAME_WIDTH - 84, GAME_HEIGHT - 36, 'LEWATI ▶▶', {
+    this.skipButton = this.add.text(GAME_WIDTH - 84, GAME_HEIGHT - 36, 'LEWATI', {
       backgroundColor: '#0a0d16cc',
       color: '#ede5d8',
       fontFamily: 'Poppins, sans-serif',
@@ -161,4 +161,3 @@ export class IntroScene extends Phaser.Scene {
     this.scene.start('TitleScene');
   }
 }
-

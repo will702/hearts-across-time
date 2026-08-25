@@ -34,11 +34,11 @@ const BONUS_NODES = [
 ] as const;
 
 const BONUS_REWARDS = [
-  { icon: '◷', label: 'ARLOJI' },
-  { icon: '✿', label: 'BUNGA MAWAR' },
-  { icon: '▤', label: 'LIST MAKANAN NGEDATE' },
-  { icon: '♟', label: 'KUCING PELIHARAAN ARTHUR' },
-  { icon: '♥', label: 'RAMUAN CINTA' },
+  { label: 'ARLOJI' },
+  { label: 'BUNGA MAWAR' },
+  { label: 'DAFTAR MAKAN MALAM' },
+  { label: 'KUCING PELIHARAAN ARTHUR' },
+  { label: 'RAMUAN CINTA' },
 ] as const;
 
 const DIFFERENCE_RECT: DisplayRect = { x: 40, y: 62, width: 880, height: 400 };
@@ -948,7 +948,7 @@ export class Bonus2088Scene extends Phaser.Scene {
     this.nodeLights[index]?.setFillStyle(0x166534, 0.96).setStrokeStyle(3, 0x86efac);
     this.rewards.push(index);
     this.soundManager?.playSuccessFanfare();
-    this.ui?.showToast(`DITAMBAHKAN KE TAS — ${BONUS_REWARDS[index].icon} ${BONUS_REWARDS[index].label}`, 3000);
+    this.ui?.showToast(`${BONUS_REWARDS[index].label} menjadi bagian dari kenangan ini.`, 3000);
     this.updateProgressText();
   }
 
@@ -958,8 +958,7 @@ export class Bonus2088Scene extends Phaser.Scene {
 
   private updateProgressText(): void {
     const count = this.completedCount();
-    const bag = this.rewards.map(index => BONUS_REWARDS[index].icon).join(' ');
-    this.statusText?.setText(`SIMPUL KENANGAN: ${count} / ${BONUS_NODES.length}${bag ? `  •  TAS ${bag}` : ''}${count === BONUS_NODES.length ? '  •  TEMUI ARTHUR' : ''}`);
+    this.statusText?.setText(`SIMPUL KENANGAN: ${count} / ${BONUS_NODES.length}${count === BONUS_NODES.length ? '  •  TEMUI ARTHUR' : ''}`);
   }
 
   private bindModalKey(handler: (event: KeyboardEvent) => void): void {

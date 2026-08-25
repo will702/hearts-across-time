@@ -17,10 +17,10 @@ const GAMEPLAY_SCENES = [
 const MODAL_SCENES = GAMEPLAY_SCENES.slice(0, 9);
 
 const STORY_ITEMS_DEF = [
-  { id: 'watch', label: 'Jam Saku', icon: '◷' },
-  { id: 'flower', label: 'Mawar Kering', icon: '✿' },
-  { id: 'water_gem', label: 'Permata Air', icon: '◆' },
-  { id: 'arthur_photo', label: 'Foto Arthur', icon: '◧' },
+  { id: 'watch', label: 'Jam Saku' },
+  { id: 'flower', label: 'Mawar Kering' },
+  { id: 'water_gem', label: 'Permata Air' },
+  { id: 'arthur_photo', label: 'Foto Arthur' },
 ] as const;
 
 export class UIScene extends Phaser.Scene {
@@ -29,9 +29,9 @@ export class UIScene extends Phaser.Scene {
   private prompt?: Phaser.GameObjects.Text;
   private promptText = '';
   private toast?: Phaser.GameObjects.Container;
-  private inventoryText?: Phaser.GameObjects.Text;
   private inventoryContainer?: Phaser.GameObjects.Container;
-  private inventorySlots: Array<{ bg: Phaser.GameObjects.Arc; text: Phaser.GameObjects.Text }> = [];
+  private inventorySlots: Array<{ bg: Phaser.GameObjects.Arc; glyph: Phaser.GameObjects.Graphics }> = [];
+  private inventorySignature = '';
   private run?: RunState;
   private touchObjects: Phaser.GameObjects.Text[] = [];
   private pausePanel?: Phaser.GameObjects.Container;
@@ -56,24 +56,16 @@ export class UIScene extends Phaser.Scene {
     const title = data.eraTitle || 'HEARTS ACROSS TIME';
 
     this.eraTitleText = this.add.text(20, 18, title, {
-      color: '#f7d984', fontFamily: 'Cinzel, serif', fontSize: '16px',
+      color: '#f4d98d', fontFamily: 'Cinzel, serif', fontSize: '13px', letterSpacing: 0.8,
       stroke: '#140d08', strokeThickness: 4,
     });
-    this.add.text(20, 43, 'JEJAK WAKTU TERSIMPAN OTOMATIS', {
-      color: '#f5f0e8aa', fontFamily: 'Poppins, sans-serif', fontSize: '10px', letterSpacing: 1,
-    });
+    this.add.rectangle(20, 43, 46, 1, 0xf4d98d, 0.65).setOrigin(0, 0.5);
     this.prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 62, '', {
       backgroundColor: '#100c09dd', color: '#fff4d1', fontFamily: 'Patrick Hand, sans-serif',
       fontSize: '18px', padding: { x: 18, y: 10 }, align: 'center',
     }).setOrigin(0.5).setVisible(false);
 
-    // Legacy stylized Bag / Inventory HUD (W - 194, 52, 176, 38)
     this.createInventoryHUD();
-
-    this.inventoryText = this.add.text(GAME_WIDTH - 230, 58, '', {
-      backgroundColor: '#07090cb8', color: '#f7d984', fontFamily: 'Poppins, sans-serif',
-      fontSize: '12px', padding: { x: 10, y: 7 }, fixedWidth: 210, align: 'center',
-    }).setVisible(false);
     this.refreshInventory();
 
     const touchMode = this.sys.game.device.input.touch || new URLSearchParams(location.search).get('touch') === '1';
@@ -131,36 +123,27 @@ export class UIScene extends Phaser.Scene {
   showToast(text: string, duration = 2200): void {
     this.toast?.destroy();
     const isReduced = Boolean(this.registry.get('reduceMotion'));
-    const toastCard = this.add.rectangle(0, 0, 410, 74, 0xf3eada, 0.98)
+    const toastCard = this.add.rectangle(0, 0, 430, 58, 0x18120e, 0.94)
       .setStrokeStyle(2, 0x6a4930);
     const toastInner = this.add.graphics();
-    toastInner.lineStyle(1, 0x2b211a, 0.3);
-    toastInner.strokeRoundedRect(-202, -34, 404, 68, 5);
+    toastInner.lineStyle(1, 0xd7b45c, 0.35);
+    toastInner.lineBetween(-207, 23, 207, 23);
 
-    const toastHeader = this.add.text(0, -18, 'DITAMBAHKAN KE TAS', {
-      color: '#94342e',
-      fontFamily: 'Poppins, sans-serif',
-      fontSize: '12px',
-      fontStyle: 'bold',
-      letterSpacing: 1,
-    }).setOrigin(0.5);
-
-    const toastBody = this.add.text(0, 10, text, {
-      color: '#2b211a',
+    const toastBody = this.add.text(0, 0, text, {
+      color: '#f4eadb',
       fontFamily: 'Patrick Hand, sans-serif',
-      fontSize: '20px',
-      fontStyle: 'bold',
+      fontSize: '18px',
     }).setOrigin(0.5);
 
-    this.toast = this.add.container(GAME_WIDTH / 2, 102, [toastCard, toastInner, toastHeader, toastBody])
+    this.toast = this.add.container(GAME_WIDTH / 2, 88, [toastCard, toastInner, toastBody])
       .setDepth(3000);
 
     if (!isReduced) {
-      this.toast.setAlpha(0).setY(116);
+      this.toast.setAlpha(0).setY(102);
       this.tweens.add({
         targets: this.toast,
         alpha: 1,
-        y: 102,
+        y: 88,
         duration: 200,
         ease: 'Sine.easeOut',
       });
@@ -172,7 +155,7 @@ export class UIScene extends Phaser.Scene {
           this.tweens.add({
             targets: this.toast,
             alpha: 0,
-            y: 92,
+            y: 76,
             duration: 200,
             onComplete: () => { this.toast?.destroy(); this.toast = undefined; },
           });
@@ -199,8 +182,8 @@ export class UIScene extends Phaser.Scene {
       button.on('pointerout', () => this.controls?.setTouch(key, false));
       this.touchObjects.push(button);
     };
-    hold(62, '◀', 'left');
-    hold(132, '▶', 'right');
+    hold(62, 'KIRI', 'left');
+    hold(132, 'KANAN', 'right');
     const action = this.add.text(GAME_WIDTH - 78, GAME_HEIGHT - 58, 'PERIKSA', {
       backgroundColor: '#94342ecc', color: '#fff8ea', fontFamily: 'Poppins, sans-serif',
       fontSize: '12px', padding: { x: 16, y: 14 },
@@ -211,13 +194,13 @@ export class UIScene extends Phaser.Scene {
   }
 
   private createInventoryHUD(): void {
-    const w = 176, h = 38, x = GAME_WIDTH - w - 18, y = 52;
+    const w = 194, h = 38, x = GAME_WIDTH - w - 18, y = 52;
     const bg = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x07090c, 0.72)
       .setStrokeStyle(1.2, 0xf1d58b, 0.55);
-    const tasLabel = this.add.text(x + 10, y + h / 2, 'TAS', {
+    const tasLabel = this.add.text(x + 10, y + h / 2, 'KENANGAN', {
       color: '#f1d58b',
       fontFamily: 'Poppins, sans-serif',
-      fontSize: '11px',
+      fontSize: '9px',
       fontStyle: 'bold',
       letterSpacing: 1,
     }).setOrigin(0, 0.5);
@@ -226,19 +209,15 @@ export class UIScene extends Phaser.Scene {
     const slotObjects: Phaser.GameObjects.GameObject[] = [bg, tasLabel];
 
     STORY_ITEMS_DEF.forEach((it, idx) => {
-      const cx = x + 50 + idx * 30;
+      const cx = x + 82 + idx * 25;
       const cy = y + h / 2;
       const slotBg = this.add.circle(cx, cy, 11, 0xf5f0e8, 0.05)
         .setStrokeStyle(1.1, 0xf5f0e8, 0.18);
-      const slotIcon = this.add.text(cx, cy + 1, it.icon, {
-        color: '#f5f0e844',
-        fontFamily: 'Poppins, sans-serif',
-        fontSize: '12px',
-        fontStyle: 'bold',
-      }).setOrigin(0.5);
+      const glyph = this.add.graphics();
+      this.drawInventoryGlyph(glyph, it.id, cx, cy, 0xf5f0e8, 0.2);
 
-      this.inventorySlots.push({ bg: slotBg, text: slotIcon });
-      slotObjects.push(slotBg, slotIcon);
+      this.inventorySlots.push({ bg: slotBg, glyph });
+      slotObjects.push(slotBg, glyph);
     });
 
     this.inventoryContainer = this.add.container(0, 0, slotObjects).setVisible(false);
@@ -246,6 +225,9 @@ export class UIScene extends Phaser.Scene {
 
   private refreshInventory(): void {
     if (!this.run) return;
+    const signature = STORY_ITEMS_DEF.map(it => this.run?.inventory[it.id] ? '1' : '0').join('');
+    if (signature === this.inventorySignature) return;
+    this.inventorySignature = signature;
     const ownedCount = STORY_ITEMS_DEF.filter(it => Boolean(this.run?.inventory[it.id])).length;
     const hasItems = ownedCount > 0;
 
@@ -257,12 +239,34 @@ export class UIScene extends Phaser.Scene {
         const has = Boolean(this.run?.inventory[it.id]);
         slot.bg.setFillStyle(has ? 0xf7d984 : 0xf5f0e8, has ? 0.22 : 0.05);
         slot.bg.setStrokeStyle(1.1, has ? 0xf7d984 : 0xf5f0e8, has ? 1 : 0.18);
-        slot.text.setColor(has ? '#fff0a0' : '#f5f0e828');
+        this.drawInventoryGlyph(slot.glyph, it.id, slot.bg.x, slot.bg.y, has ? 0xfff0a0 : 0xf5f0e8, has ? 1 : 0.18);
       });
     }
+  }
 
-    if (this.inventoryText) {
-      this.inventoryText.setVisible(false).setText(`TAS   ${STORY_ITEMS_DEF.map(it => this.run?.inventory[it.id] ? it.icon : '·').join('   ')}`);
+  private drawInventoryGlyph(
+    graphics: Phaser.GameObjects.Graphics,
+    id: typeof STORY_ITEMS_DEF[number]['id'],
+    x: number,
+    y: number,
+    color: number,
+    alpha: number,
+  ): void {
+    graphics.clear().lineStyle(1.4, color, alpha);
+    if (id === 'watch') {
+      graphics.strokeCircle(x, y, 5).lineBetween(x, y, x, y - 3).lineBetween(x, y, x + 3, y + 2);
+    } else if (id === 'flower') {
+      graphics.strokeCircle(x, y - 1, 2).strokeCircle(x - 3, y - 2, 2).strokeCircle(x + 3, y - 2, 2)
+        .lineBetween(x, y + 1, x, y + 6);
+    } else if (id === 'water_gem') {
+      graphics.strokePoints([
+        new Phaser.Math.Vector2(x, y - 6),
+        new Phaser.Math.Vector2(x + 5, y),
+        new Phaser.Math.Vector2(x, y + 6),
+        new Phaser.Math.Vector2(x - 5, y),
+      ], true);
+    } else {
+      graphics.strokeRect(x - 6, y - 5, 12, 10).lineBetween(x - 4, y + 3, x, y - 1).lineBetween(x, y - 1, x + 4, y + 3);
     }
   }
 
@@ -270,29 +274,21 @@ export class UIScene extends Phaser.Scene {
     const soundManager = this.registry.get('soundManager') as { setMuted: (m: boolean) => void; muted: boolean } | undefined;
     let muted = soundManager?.muted ?? false;
 
-    // Legacy style circular audio mute button at W - 72, 28
-    const muteCircle = this.add.circle(GAME_WIDTH - 72, 28, 15, 0x0a0806, 0.65)
-      .setStrokeStyle(1.6, 0xf5f0e8, 0.85)
-      .setInteractive({ useHandCursor: true });
-    const muteIcon = this.add.text(GAME_WIDTH - 72, 29, muted ? '🔇' : '🔊', {
-      fontSize: '12px',
-    }).setOrigin(0.5);
+    const muteButton = this.add.text(GAME_WIDTH - 104, 27, muted ? 'SUARA MATI' : 'SUARA', {
+      color: '#f5f0e8bb', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 0.6,
+      padding: { x: 7, y: 5 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-    muteCircle.on('pointerup', () => {
+    muteButton.on('pointerup', () => {
       muted = !muted;
-      muteIcon.setText(muted ? '🔇' : '🔊');
+      muteButton.setText(muted ? 'SUARA MATI' : 'SUARA');
       soundManager?.setMuted(muted);
     });
 
-    // Legacy style circular pause button at W - 32, 28
-    const pauseCircle = this.add.circle(GAME_WIDTH - 32, 28, 15, 0x0a0806, 0.65)
-      .setStrokeStyle(1.6, 0xf5f0e8, 0.85)
-      .setInteractive({ useHandCursor: true });
-    const pauseIcon = this.add.text(GAME_WIDTH - 32, 29, '⏸', {
-      fontSize: '13px',
-    }).setOrigin(0.5);
-
-    pauseCircle.on('pointerup', () => this.togglePause());
+    this.add.text(GAME_WIDTH - 35, 27, 'JEDA', {
+      color: '#f5f0e8bb', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 0.6,
+      padding: { x: 7, y: 5 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.togglePause());
   }
 
   private getActiveGameplayScene(): string {
@@ -343,7 +339,7 @@ export class UIScene extends Phaser.Scene {
       this.applyOptions(options, soundManager);
     };
     this.pauseMenuItems = [
-      { label: () => '▶ LANJUTKAN', action: () => this.togglePause() },
+      { label: () => 'LANJUTKAN', action: () => this.togglePause() },
       { label: () => `VOLUME MASTER  ‹ ${Math.round(options.vol * 100)}% ›`, adjust: direction => volume('vol', direction) },
       { label: () => `MUSIK  ‹ ${Math.round(options.volMus * 100)}% ›`, adjust: direction => volume('volMus', direction) },
       { label: () => `EFEK & AMBIENSI  ‹ ${Math.round(options.volSfx * 100)}% ›`, adjust: direction => volume('volSfx', direction) },
@@ -432,9 +428,9 @@ export class UIScene extends Phaser.Scene {
     this.prompt = undefined;
     this.promptText = '';
     this.toast = undefined;
-    this.inventoryText = undefined;
     this.inventoryContainer = undefined;
     this.inventorySlots = [];
+    this.inventorySignature = '';
     this.run = undefined;
     this.touchObjects = [];
     this.pausePanel = undefined;

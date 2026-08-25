@@ -301,7 +301,7 @@ export class Era1944Scene extends Phaser.Scene {
         this.lastSavedX = WATCH_RESUME_X;
         this.worldFactory.refresh(this.objects, this.worldState());
         this.registry.set('nativeState', 'era1944');
-        this.ui.showToast('DITAMBAHKAN KE TAS — ◷ ARLOJI ARTHUR. Jalan terbuka.', 3000);
+        this.ui.showToast('Arloji Arthur disimpan. Jalan terbuka.', 3000);
       },
     });
     this.scene.pause();

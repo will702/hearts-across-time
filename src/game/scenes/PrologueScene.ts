@@ -8,27 +8,27 @@ const INTRO_PAGES = [
     title: 'MISI: PUTUSKAN LINGKARAN WAKTU',
     lead: 'Tahun 2088 di ambang kepunahan. Setiap pilihanmu dapat mengubah takdir dan alur cerita ke depannya.',
     rows: [
-      ['⏳', 'Jelajahi tahun 1944, 1968, dan 1999 untuk menulis ulang nasib Arthur.'],
-      ['✦', 'Racik formula penawar sebelum Virus Crimson melenyapkan masa depan.'],
-      ['↺', 'Jika garis waktu runtuh, siklus akan berulang—namun ingatan dan pengetahuanmu tetap abadi.'],
+      ['WAKTU', 'Jelajahi tahun 1944, 1968, dan 1999 untuk menulis ulang nasib Arthur.'],
+      ['PENAWAR', 'Racik formula sebelum Virus Crimson melenyapkan masa depan.'],
+      ['SIKLUS', 'Jika garis waktu runtuh, perjalanan berulang—namun ingatanmu tetap ada.'],
     ],
   },
   {
     title: 'BERGERAK MELINTASI WAKTU',
     lead: 'Setiap era menyimpan jalan, petunjuk, dan bahaya berbeda.',
     rows: [
-      ['← →', 'Bergerak dengan ← → atau A D. Tahan SHIFT untuk berlari.'],
-      ['▼', 'Tekan ↓, S, ENTER, atau SPACE untuk memeriksa benda.'],
-      ['ENTER', 'Lanjutkan dialog dengan ENTER, SPACE, klik, atau sentuhan.'],
+      ['GERAK', 'Gunakan ← → atau A D. Tahan SHIFT untuk berlari.'],
+      ['PERIKSA', 'Tekan ↓, S, ENTER, atau SPACE di dekat benda.'],
+      ['DIALOG', 'Lanjutkan dengan ENTER, SPACE, klik, atau sentuhan.'],
     ],
   },
   {
     title: 'PILIHANMU MEMBENTUK ARTHUR',
     lead: 'Game tidak akan mengatakan pilihan mana yang “benar”.',
     rows: [
-      ['1 / 2 / 3', 'Pilih dengan ↑ ↓ lalu ENTER, atau tekan nomor opsi yang tersedia.'],
-      ['♥ ⚙', 'Ucapan dan cara menyelesaikan tantangan diam-diam mengubah Arthur.'],
-      ['★', 'Baca buku harian, temukan jejak cerita, dan ungkap akhir sejati.'],
+      ['PILIHAN', 'Gunakan ↑ ↓ lalu ENTER, atau tekan nomor opsi yang tersedia.'],
+      ['KARAKTER', 'Ucapan dan caramu menyelesaikan tantangan diam-diam mengubah Arthur.'],
+      ['JEJAK', 'Baca buku harian dan temukan jejak cerita untuk mengungkap akhir sejati.'],
     ],
   },
 ] as const;
@@ -149,13 +149,12 @@ export class PrologueScene extends Phaser.Scene {
     // 3 Content Rows
     page.rows.forEach(([icon, text], index) => {
       const y = 208 + index * 63;
-      const rowBox = this.add.rectangle(GAME_WIDTH / 2, y + 25, 630, 51, 0x5a4a3c, 0.055)
-        .setStrokeStyle(1, 0x2b211a, 0.24);
+      const rowRule = this.add.rectangle(174, y + 25, 2, 39, 0x94342e, 0.6);
 
       const iconText = this.add.text(205, y + 26, icon, {
-        color: '#55677a',
+        color: '#94342e',
         fontFamily: 'Poppins, sans-serif',
-        fontSize: '15px',
+        fontSize: '9px',
         fontStyle: 'bold',
         align: 'center',
         fixedWidth: 70,
@@ -168,7 +167,7 @@ export class PrologueScene extends Phaser.Scene {
         wordWrap: { width: 535, useAdvancedWrap: true },
       }).setOrigin(0, 0.5);
 
-      objects.push(rowBox, iconText, rowText);
+      objects.push(rowRule, iconText, rowText);
     });
 
     // Pagination: HALAMAN X / 3
@@ -186,7 +185,7 @@ export class PrologueScene extends Phaser.Scene {
     const backBtnBg = this.add.rectangle(285, 445, 210, 38, isBackActive ? 0x94342e : 0x5a4a3c, isBackActive ? 1 : 0.1)
       .setStrokeStyle(1.5, isBackActive ? 0x6d211d : 0x2b211a, isBackActive ? 1 : 0.38)
       .setInteractive({ useHandCursor: isBackActive });
-    const backBtnText = this.add.text(285, 445, '‹ KEMBALI', {
+    const backBtnText = this.add.text(285, 445, 'KEMBALI', {
       color: isBackActive ? '#fff8ea' : '#4f4236',
       fontFamily: 'Poppins, sans-serif',
       fontSize: '14px',
@@ -204,7 +203,7 @@ export class PrologueScene extends Phaser.Scene {
     const nextBtnBg = this.add.rectangle(680, 445, 220, 38, 0x94342e, 1)
       .setStrokeStyle(1.5, 0x6d211d, 1)
       .setInteractive({ useHandCursor: true });
-    const nextBtnText = this.add.text(680, 445, isLastPage ? 'MULAI PERJALANAN ›' : 'LANJUT ›', {
+    const nextBtnText = this.add.text(680, 445, isLastPage ? 'MULAI PERJALANAN' : 'LANJUT', {
       color: '#fff8ea',
       fontFamily: 'Poppins, sans-serif',
       fontSize: '14px',

@@ -173,7 +173,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     // Sandbag Cover Points
     COVERS.forEach(cx => {
       this.add.rectangle(cx, 370, 74, 30, 0x5a4838).setStrokeStyle(2, 0x8a7058);
-      this.add.text(cx, 370, '🛡️ PERLINDUNGAN', {
+      this.add.text(cx, 370, 'PERLINDUNGAN', {
         color: '#f5f0e8cc', fontFamily: 'Poppins, sans-serif', fontSize: '9px', fontStyle: 'bold',
       }).setOrigin(0.5);
     });
@@ -196,13 +196,13 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private createTouchControls(): void {
     const leftBtn = this.add.rectangle(260, 485, 110, 44, 0x1f1712, 0.9)
       .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true });
-    this.add.text(260, 485, '◀ LARI KIRI', {
+    this.add.text(260, 485, 'LARI KIRI', {
       color: '#fff8ea', fontFamily: 'Poppins, sans-serif', fontSize: '12px',
     }).setOrigin(0.5);
 
     const rightBtn = this.add.rectangle(700, 485, 110, 44, 0x1f1712, 0.9)
       .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true });
-    this.add.text(700, 485, 'LARI KANAN ▶', {
+    this.add.text(700, 485, 'LARI KANAN', {
       color: '#fff8ea', fontFamily: 'Poppins, sans-serif', fontSize: '12px',
     }).setOrigin(0.5);
 

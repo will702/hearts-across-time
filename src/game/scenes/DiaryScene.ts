@@ -80,11 +80,11 @@ export class DiaryScene extends Phaser.Scene {
       color: '#8c684d', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2 - 200, 435, '◀ SEBELUMNYA', {
+    this.add.text(GAME_WIDTH / 2 - 200, 435, 'SEBELUMNYA', {
       backgroundColor: '#6a4930', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 14, y: 8 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.prevPage());
 
-    this.add.text(GAME_WIDTH / 2 + 200, 435, 'SELANJUTNYA ▶', {
+    this.add.text(GAME_WIDTH / 2 + 200, 435, 'SELANJUTNYA', {
       backgroundColor: '#94342e', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', padding: { x: 14, y: 8 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.nextPage());
 

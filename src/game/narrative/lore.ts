@@ -25,7 +25,7 @@ export type LoreId = keyof typeof LORE_LINES;
 
 export const LORE_IDS = Object.keys(LORE_LINES) as LoreId[];
 
-export const LORE_COMPLETION_TEXT = '✦ Kelima jejak kisah ditemukan — kau membaca hidup Arthur sampai habis.';
+export const LORE_COMPLETION_TEXT = 'Kelima jejak kisah ditemukan — kau membaca hidup Arthur sampai habis.';
 
 export function isLoreId(value: string): value is LoreId {
   return Object.prototype.hasOwnProperty.call(LORE_LINES, value);

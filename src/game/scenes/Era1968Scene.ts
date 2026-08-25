@@ -216,7 +216,7 @@ export class Era1968Scene extends Phaser.Scene {
           this.controls.setEnabled(true);
           this.worldFactory.refresh(this.objects, this.worldState());
           this.registry.set('nativeState', 'era1968');
-          this.ui.showToast('DITAMBAHKAN KE TAS — ✿ BOTOL MAWAR ABADI', 3000);
+          this.ui.showToast('Botol mawar abadi disimpan.', 3000);
         },
       });
       this.scene.pause();

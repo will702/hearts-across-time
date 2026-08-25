@@ -13,7 +13,7 @@ export class TitleScene extends Phaser.Scene {
   private save!: SaveSystem;
   private items: MenuItem[] = [];
   private buttons: Phaser.GameObjects.Text[] = [];
-  private menuPlate?: Phaser.GameObjects.Image;
+  private selectionMark?: Phaser.GameObjects.Rectangle;
   private selected = 0;
   private confirmPanel?: Phaser.GameObjects.Container;
   private confirmYes?: Phaser.GameObjects.Text;
@@ -91,19 +91,23 @@ export class TitleScene extends Phaser.Scene {
         ease: 'Sine.inOut',
       });
     }
-    this.add.rectangle(GAME_WIDTH / 2, 106, GAME_WIDTH, 212, 0x02050d, 0.54);
-    this.add.rectangle(GAME_WIDTH / 2, 442, GAME_WIDTH, 196, 0x010207, 0.82);
-    this.add.text(GAME_WIDTH / 2, 86, 'HEARTS ACROSS TIME', {
-      color: '#f6d57b', fontFamily: 'Cinzel, serif', fontSize: '47px', fontStyle: 'bold',
-      stroke: '#21130c', strokeThickness: 7, shadow: { color: '#d89a42', blur: 18, fill: true },
-    }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 139, 'BREAK THE LOOP', {
-      color: '#fffaf0', fontFamily: 'Poppins, sans-serif', fontSize: '14px', letterSpacing: 7,
-      stroke: '#090b14', strokeThickness: 4,
-    }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 184, 'Kisah cinta, waktu, dan pengorbanan • 1944 – 1968 – 1999 – 2088', {
-      color: '#f5f0e8bb', fontFamily: 'Patrick Hand, sans-serif', fontSize: '17px',
-    }).setOrigin(0.5);
+    const veil = this.add.graphics();
+    veil.fillGradientStyle(0x02050d, 0x02050d, 0x02050d, 0x02050d, 0.92, 0.18, 0.92, 0.18);
+    veil.fillRect(0, 0, 610, GAME_HEIGHT);
+    this.add.rectangle(67, 61, 38, 2, 0xd7b45c, 0.9).setOrigin(0, 0.5);
+    this.add.text(66, 79, 'HEARTS\nACROSS TIME', {
+      color: '#f4d98d', fontFamily: 'Cinzel, serif', fontSize: '39px', fontStyle: 'bold',
+      lineSpacing: -8, stroke: '#130d0a', strokeThickness: 5,
+    }).setOrigin(0, 0);
+    this.add.text(69, 171, 'BREAK THE LOOP', {
+      color: '#fffaf0', fontFamily: 'Poppins, sans-serif', fontSize: '11px', letterSpacing: 5,
+    }).setOrigin(0, 0.5);
+    this.add.text(68, 207, 'Sebuah kisah tentang cinta yang menolak dilupakan.', {
+      color: '#e8dfd0cc', fontFamily: 'Patrick Hand, sans-serif', fontSize: '17px',
+    }).setOrigin(0, 0.5);
+    this.add.text(68, 232, '1944  /  1968  /  1999  /  2088', {
+      color: '#cbbda699', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 2,
+    }).setOrigin(0, 0.5);
   }
 
   private isBonusUnlocked(): boolean {
@@ -119,31 +123,29 @@ export class TitleScene extends Phaser.Scene {
       { label: 'SIKLUS BARU', action: () => this.newCycle() },
       { label: 'PUTAR ULANG INTRO', action: () => this.scene.start('IntroScene') },
       {
-        label: bonusUnlocked ? 'GAMEPLAY TERAKHIR 2088' : `GAMEPLAY TERAKHIR 🔒 ${endingCount}/6`,
+        label: bonusUnlocked ? 'GAMEPLAY TERAKHIR 2088' : `GAMEPLAY TERAKHIR 2088  ${endingCount}/6 AKHIR`,
         disabled: () => !bonusUnlocked,
         action: () => this.scene.start('Bonus2088Scene'),
       },
     ];
 
     if (!this.save.data.game) this.selected = 1;
-    if (this.textures.exists('title-plate')) {
-      this.menuPlate = this.add.image(GAME_WIDTH / 2, 308, 'title-plate')
-        .setDisplaySize(370, 54)
-        .setAlpha(0.82);
-    }
+    this.add.text(68, 277, 'PILIH BABAK', {
+      color: '#d7b45c', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 2,
+    });
+    this.selectionMark = this.add.rectangle(68, 310, 3, 28, 0xd7b45c).setOrigin(0, 0.5);
     this.buttons = this.items.map((item, index) => {
-      const button = this.add.text(GAME_WIDTH / 2, 308 + index * 48, item.label, {
-        backgroundColor: '#080a12dd', color: '#fffdf2', fontFamily: 'Cinzel, serif',
-        fontSize: '14px', align: 'center', fixedWidth: 330,
-        padding: { x: 16, y: 10 },
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      const button = this.add.text(82, 310 + index * 43, item.label, {
+        color: '#fffdf2', fontFamily: 'Cinzel, serif', fontSize: '13px', fixedWidth: 360,
+        padding: { x: 0, y: 7 },
+      }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
       button.on('pointerover', () => { if (!item.disabled?.()) { this.selected = index; this.refreshMenu(); } });
       button.on('pointerup', () => this.activate(index));
       return button;
     });
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 18, '↑ ↓ / ENTER • sentuh menu • ESC/P untuk jeda saat bermain', {
-      color: '#f5f0e899', fontFamily: 'Poppins, sans-serif', fontSize: '10px',
-    }).setOrigin(0.5);
+    this.add.text(68, GAME_HEIGHT - 25, '↑ ↓ memilih   ENTER membuka   ESC / P jeda', {
+      color: '#d8cfbf88', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 0.4,
+    }).setOrigin(0, 0.5);
     this.refreshMenu();
   }
 
@@ -162,15 +164,14 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private refreshMenu(): void {
-    this.menuPlate?.setY(308 + this.selected * 48);
+    this.selectionMark?.setY(310 + this.selected * 43);
     this.buttons.forEach((button, index) => {
       const disabled = Boolean(this.items[index]?.disabled?.());
       const selected = index === this.selected && !disabled;
       button.setStyle({
-        backgroundColor: selected && this.menuPlate ? '#00000000' : (selected ? '#d3a848ee' : '#080a12dd'),
-        color: disabled ? '#f5f0e855' : (selected && this.menuPlate ? '#281508' : '#fffdf2'),
+        color: disabled ? '#c9c0b050' : (selected ? '#f4d98d' : '#e9e2d8c0'),
       });
-      button.setText(`${selected ? '▶ ' : ''}${this.items[index]?.label ?? ''}`);
+      button.setX(selected ? 88 : 82).setText(this.items[index]?.label ?? '');
     });
   }
 

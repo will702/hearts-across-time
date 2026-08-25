@@ -47,15 +47,6 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
     color: '#f5f0e899', fontFamily: 'Poppins, sans-serif', fontSize: '10px', letterSpacing: 0.5,
   }).setOrigin(0.5).setScrollFactor(0).setDepth(3000);
 
-  // Fast-forward skip button matching legacy drawFFBtn
-  const skipBtnBg = scene.add.circle(46, 496, 22, 0x0a0806, 0.65)
-    .setStrokeStyle(1.6, 0xf5f0e8, 0.85)
-    .setScrollFactor(0).setDepth(3000)
-    .setInteractive({ useHandCursor: true });
-  const skipBtnIcon = scene.add.text(46, 496, '⏩', {
-    fontSize: '14px',
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
-
   const finish = (): void => {
     if (finished) return;
     finished = true;
@@ -68,13 +59,9 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
     track.destroy();
     bar.destroy();
     hint.destroy();
-    skipBtnBg.destroy();
-    skipBtnIcon.destroy();
     camera.setZoom(1);
     config.onComplete();
   };
-
-  skipBtnBg.on('pointerup', finish);
 
   const tween = scene.tweens.add({
     targets: progress,
