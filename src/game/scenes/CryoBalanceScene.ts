@@ -1,6 +1,12 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import {
+  CIRCUIT_BOARDS,
+  circuitMask,
+  firstCircuitHint,
+  isCircuitComplete,
+} from '../minigames/challengeRules';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 export type CryoBalanceData = {
@@ -9,33 +15,24 @@ export type CryoBalanceData = {
   onComplete: () => void;
 };
 
+const CELL_SIZE = 82;
+const GRID_TOP = 116;
+
 export class CryoBalanceScene extends Phaser.Scene {
   private balanceData!: CryoBalanceData;
   private soundManager?: SoundManager;
   private stage: 'choose' | 'play' | 'success' = 'choose';
   private chosenApproach: 'empathy' | 'logic' = 'empathy';
   private selectedChoice = 0;
-
-  private vit = 0;
-  private vitDir = 1;
-  private vitLocked = false;
-  private readonly targetVit = 0.62;
-
-  private ser = 0;
-  private serDir = 1;
-  private serLocked = false;
-  private readonly targetSer = 0.68;
-
-  private step = 0;
-  private misses = 0;
+  private system = 0;
+  private rotations: number[] = [];
+  private focusIndex = 0;
+  private testFailures = 0;
   private assisted = false;
-  private lastVitalBeep = 0;
 
   private statusText?: Phaser.GameObjects.Text;
-  private feedbackText?: Phaser.GameObjects.Text;
   private chooseContainer?: Phaser.GameObjects.Container;
-  private gaugeGraphics?: Phaser.GameObjects.Graphics;
-
+  private boardContainer?: Phaser.GameObjects.Container;
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
 
   constructor() {
@@ -47,293 +44,270 @@ export class CryoBalanceScene extends Phaser.Scene {
     this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'cryobalance');
     this.stage = 'choose';
-    this.step = 0;
-    this.vit = 0;
-    this.vitDir = 1;
-    this.vitLocked = false;
-    this.ser = 0;
-    this.serDir = 1;
-    this.serLocked = false;
-    this.misses = 0;
+    this.selectedChoice = 0;
+    this.system = 0;
+    this.rotations = [];
+    this.focusIndex = 0;
+    this.testFailures = 0;
     this.assisted = false;
 
-    this.createBackground();
-    this.createChooseUI();
-    this.createInputHandlers();
-  }
-
-  update(_time: number, delta: number): void {
-    const dt = delta / 1000;
-
-    if (this.stage === 'choose') {
-      if (this.keys) {
-        if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.a)) {
-          this.selectedChoice = 0;
-          this.soundManager?.playSelect();
-          this.refreshChoiceUI();
-        } else if (Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.d)) {
-          this.selectedChoice = 1;
-          this.soundManager?.playSelect();
-          this.refreshChoiceUI();
-        } else if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
-          this.startPlayStage();
-        }
-      }
-      return;
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040810, 0.97);
+    if (this.textures.exists('bg1999-mid')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1999-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.1);
     }
-
-    if (this.stage === 'play') {
-      const spd = this.assisted ? 0.75 : 1.05;
-
-      if (!this.vitLocked) {
-        this.vit += this.vitDir * dt * 1.5 * spd;
-        if (this.vit >= 1) {
-          this.vit = 1;
-          this.vitDir = -1;
-        } else if (this.vit <= 0) {
-          this.vit = 0;
-          this.vitDir = 1;
-        }
-      }
-
-      if (!this.serLocked) {
-        this.ser += this.serDir * dt * 1.9 * spd;
-        if (this.ser >= 1) {
-          this.ser = 1;
-          this.serDir = -1;
-        } else if (this.ser <= 0) {
-          this.ser = 0;
-          this.serDir = 1;
-        }
-      }
-
-      if (this.keys && (Phaser.Input.Keyboard.JustDown(this.keys.space) || Phaser.Input.Keyboard.JustDown(this.keys.enter))) {
-        this.tryLockStep();
-      }
-
-      this.drawGauges();
-    }
-  }
-
-  snapshot(): Record<string, unknown> {
-    return {
-      minigame: 'cryo',
-      stage: this.stage,
-      step: this.step,
-      vital: this.vit,
-      serum: this.ser,
-      targets: { vital: this.targetVit, serum: this.targetSer },
-      misses: this.misses,
-      assisted: this.assisted,
-    };
-  }
-
-  private createBackground(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040810, 0.95);
-    this.add.text(GAME_WIDTH / 2, 38, 'STABILISASI KAPSUL KRIOGENIK 1999', {
+    this.add.text(GAME_WIDTH / 2, 34, 'SIRKUIT PENDINGIN KAPSUL — 1999', {
       color: '#67e8f9', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
       stroke: '#083344', strokeThickness: 5,
     }).setOrigin(0.5);
-
-    this.gaugeGraphics = this.add.graphics();
-
-    this.statusText = this.add.text(GAME_WIDTH / 2, 75, '', {
-      color: '#f5f0e8', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    this.add.text(GAME_WIDTH / 2, 68, 'Sambungkan daya, pendingin, dan serum tanpa jalur bocor.', {
+      color: '#cffafe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
 
-    this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, '', {
-      color: '#67e8f9', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
+    this.boardContainer = this.add.container(0, 0).setVisible(false);
+    this.statusText = this.add.text(GAME_WIDTH / 2, 426, 'Pilih prioritas pemulihan kapsul.', {
+      backgroundColor: '#071521e8', color: '#67e8f9', fontFamily: 'Poppins, sans-serif',
+      fontSize: '13px', padding: { x: 18, y: 9 }, align: 'center',
+    }).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 500, 'PANAH / WASD — FOKUS   •   SPACE — PUTAR   •   ENTER — UJI ALIRAN', {
+      color: '#94a3b8', fontFamily: 'Poppins, sans-serif', fontSize: '11px',
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 478, 'KUNCI PARAMETER (SPACE / ENTER / SENTUH DI SINI)', {
-      backgroundColor: '#0891b2dd', color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', padding: { x: 22, y: 9 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.tryLockStep());
+    this.createChooseUI();
+    this.keys = this.input.keyboard?.addKeys({
+      left: Phaser.Input.Keyboard.KeyCodes.LEFT,
+      right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+      up: Phaser.Input.Keyboard.KeyCodes.UP,
+      down: Phaser.Input.Keyboard.KeyCodes.DOWN,
+      a: Phaser.Input.Keyboard.KeyCodes.A,
+      d: Phaser.Input.Keyboard.KeyCodes.D,
+      w: Phaser.Input.Keyboard.KeyCodes.W,
+      s: Phaser.Input.Keyboard.KeyCodes.S,
+      enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
+      space: Phaser.Input.Keyboard.KeyCodes.SPACE,
+    }) as Record<string, Phaser.Input.Keyboard.Key>;
+  }
+
+  update(): void {
+    if (!this.keys || this.stage === 'success') return;
+    const left = Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.a);
+    const right = Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.d);
+    const up = Phaser.Input.Keyboard.JustDown(this.keys.up) || Phaser.Input.Keyboard.JustDown(this.keys.w);
+    const down = Phaser.Input.Keyboard.JustDown(this.keys.down) || Phaser.Input.Keyboard.JustDown(this.keys.s);
+
+    if (this.stage === 'choose') {
+      if (left || up) this.selectApproach(0);
+      else if (right || down) this.selectApproach(1);
+      if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) this.startPlay();
+      return;
+    }
+
+    if (left) this.moveFocus(-1, 0);
+    else if (right) this.moveFocus(1, 0);
+    else if (up) this.moveFocus(0, -1);
+    else if (down) this.moveFocus(0, 1);
+    if (Phaser.Input.Keyboard.JustDown(this.keys.space)) this.rotateTile(this.focusIndex);
+    if (Phaser.Input.Keyboard.JustDown(this.keys.enter)) this.testFlow();
+  }
+
+  snapshot(): Record<string, unknown> {
+    const board = CIRCUIT_BOARDS[this.system];
+    return {
+      minigame: 'coolant_circuit',
+      stage: this.stage,
+      system: this.system,
+      systemLabel: board?.label ?? null,
+      rotations: this.rotations,
+      targetRotations: board?.tiles.map(() => 0) ?? [],
+      tiles: board?.tiles.map((tile, index) => ({
+        index,
+        x: index % board.width,
+        y: Math.floor(index / board.width),
+        active: tile.targetMask !== 0,
+        rotation: this.rotations[index] ?? 0,
+        targetRotation: 0,
+      })) ?? [],
+      focusIndex: this.focusIndex,
+      testFailures: this.testFailures,
+      assisted: this.assisted,
+      hintTile: this.assisted && board ? firstCircuitHint(board, this.rotations) : null,
+    };
   }
 
   private createChooseUI(): void {
     this.chooseContainer = this.add.container(0, 0);
-
-    const sub = this.add.text(GAME_WIDTH / 2, 85, 'PILIH PRIORITAS STABILISASI KRIO:', {
+    const subtitle = this.add.text(GAME_WIDTH / 2, 112, 'PILIH PRIORITAS PEMULIHAN KAPSUL:', {
       color: '#fffbf0', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
-
-    const btn1Bg = this.add.rectangle(GAME_WIDTH / 2 - 170, 200, 310, 110, 0xf43f5e, 0.95)
-      .setStrokeStyle(2, 0xbe123c).setInteractive({ useHandCursor: true });
-    const btn1Title = this.add.text(GAME_WIDTH / 2 - 170, 165, '1. EMPATI', {
-      color: '#fff', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    const btn1Desc = this.add.text(GAME_WIDTH / 2 - 170, 210, 'Dahulukan tanda vital Arthur.\n(Menjaga detak jantung stabil)', {
-      color: '#fff', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
-    }).setOrigin(0.5);
-
-    const btn2Bg = this.add.rectangle(GAME_WIDTH / 2 + 170, 200, 310, 110, 0x0e7490, 0.95)
-      .setStrokeStyle(2, 0x155e75).setInteractive({ useHandCursor: true });
-    const btn2Title = this.add.text(GAME_WIDTH / 2 + 170, 165, '2. LOGIKA', {
-      color: '#fff', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    const btn2Desc = this.add.text(GAME_WIDTH / 2 + 170, 210, 'Dahulukan kemurnian serum.\n(Menjaga formula sub-zero murni)', {
-      color: '#fff', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
-    }).setOrigin(0.5);
-
-    btn1Bg.on('pointerup', () => { this.selectedChoice = 0; this.soundManager?.playConfirm(); this.startPlayStage(); });
-    btn2Bg.on('pointerup', () => { this.selectedChoice = 1; this.soundManager?.playConfirm(); this.startPlayStage(); });
-
-    this.chooseContainer.add([sub, btn1Bg, btn1Title, btn1Desc, btn2Bg, btn2Title, btn2Desc]);
+    const entries = [
+      { x: 310, title: '1. EMPATI', desc: 'Pulihkan jalur penunjang hidup dahulu.\n(Menjaga Arthur tetap aman)', color: 0x9f1239 },
+      { x: 650, title: '2. LOGIKA', desc: 'Pulihkan sistem sesuai dependensi.\n(Menjaga formula tetap murni)', color: 0x0e7490 },
+    ];
+    entries.forEach((entry, index) => {
+      const bg = this.add.rectangle(entry.x, 230, 310, 116, entry.color, 0.95)
+        .setStrokeStyle(index ? 2 : 3, index ? 0x155e75 : 0xf7d984)
+        .setInteractive({ useHandCursor: true }).on('pointerup', () => {
+          this.selectApproach(index);
+          this.startPlay();
+        });
+      const title = this.add.text(entry.x, 197, entry.title, {
+        color: '#fff', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const desc = this.add.text(entry.x, 245, entry.desc, {
+        color: '#fff', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
+      }).setOrigin(0.5);
+      this.chooseContainer?.add([bg, title, desc]);
+    });
+    this.chooseContainer.add(subtitle);
   }
 
-  private refreshChoiceUI(): void {
+  private selectApproach(index: number): void {
+    if (this.selectedChoice === index) return;
+    this.selectedChoice = index;
+    this.soundManager?.playSelect();
     if (!this.chooseContainer) return;
-    const btn1Bg = this.chooseContainer.getAt(1) as Phaser.GameObjects.Rectangle;
-    const btn2Bg = this.chooseContainer.getAt(4) as Phaser.GameObjects.Rectangle;
-
-    const is1 = this.selectedChoice === 0;
-    btn1Bg.setFillStyle(is1 ? 0xf43f5e : 0x4c0519, 0.95);
-    btn2Bg.setFillStyle(!is1 ? 0x06b6d4 : 0x083344, 0.95);
+    [0, 3].forEach((childIndex, optionIndex) => {
+      const selected = optionIndex === this.selectedChoice;
+      const bg = this.chooseContainer?.getAt(childIndex) as Phaser.GameObjects.Rectangle;
+      bg.setStrokeStyle(selected ? 3 : 2, selected ? 0xf7d984 : optionIndex ? 0x155e75 : 0xbe123c);
+    });
   }
 
-  private startPlayStage(): void {
+  private startPlay(): void {
+    if (this.stage !== 'choose') return;
     this.chosenApproach = this.selectedChoice === 0 ? 'empathy' : 'logic';
     this.stage = 'play';
     this.chooseContainer?.setVisible(false);
-    this.statusText?.setText('TAHAP 1: KUNCI TANDA VITAL MERAH (DETAK JANTUNG)');
-    this.feedbackText?.setText('TEKAN SPACE / ENTER SAAT INDIKATOR MERAH DI ZONA TARGET');
+    this.boardContainer?.setVisible(true);
     this.soundManager?.playConfirm();
+    this.startSystem();
   }
 
-  private drawGauges(): void {
-    if (!this.gaugeGraphics) return;
-    this.gaugeGraphics.clear();
-
-    const trackL = 200;
-    const trackR = 760;
-    const trackW = trackR - trackL;
-    const winW = (this.assisted ? 0.16 : 0.10) * trackW;
-
-    // Track 1: Vital (Red ECG)
-    const y1 = 185;
-    this.gaugeGraphics.fillStyle(0x1a0f12, 0.92);
-    this.gaugeGraphics.fillRect(trackL, y1 - 32, trackW, 64);
-    this.gaugeGraphics.lineStyle(2, 0x881337, 1);
-    this.gaugeGraphics.strokeRect(trackL, y1 - 32, trackW, 64);
-
-    const targetX1 = trackL + this.targetVit * trackW;
-    this.gaugeGraphics.fillStyle(0xf43f5e, 0.3);
-    this.gaugeGraphics.fillRect(targetX1 - winW, y1 - 28, winW * 2, 56);
-    this.gaugeGraphics.lineStyle(2, 0xfb7185, 0.9);
-    this.gaugeGraphics.strokeLineShape(new Phaser.Geom.Line(targetX1, y1 - 28, targetX1, y1 + 28));
-
-    // ECG wave line
-    const t = this.registry.get('reduceMotion') ? 0 : this.time.now / 1000;
-    this.gaugeGraphics.lineStyle(1.5, 0xf43f5e, 0.7);
-    this.gaugeGraphics.beginPath();
-    for (let x = trackL; x <= trackR; x += 4) {
-      const p = (x - trackL) / trackW;
-      const ecg = Math.sin(p * 20 - t * 6) > 0.8 ? Math.sin(p * 50) * 16 : 0;
-      if (x === trackL) this.gaugeGraphics.moveTo(x, y1 + ecg);
-      else this.gaugeGraphics.lineTo(x, y1 + ecg);
-    }
-    this.gaugeGraphics.stroke();
-
-    const curX1 = trackL + this.vit * trackW;
-    this.gaugeGraphics.fillStyle(this.vitLocked ? 0x22c55e : 0xf43f5e, 1);
-    this.gaugeGraphics.fillCircle(curX1, y1, 11);
-    this.gaugeGraphics.lineStyle(2, 0xffffff, 1);
-    this.gaugeGraphics.strokeCircle(curX1, y1, 11);
-
-    // Track 2: Coolant / Serum (Cyan)
-    const y2 = 300;
-    this.gaugeGraphics.fillStyle(0x081721, 0.92);
-    this.gaugeGraphics.fillRect(trackL, y2 - 32, trackW, 64);
-    this.gaugeGraphics.lineStyle(2, 0x0e7490, 1);
-    this.gaugeGraphics.strokeRect(trackL, y2 - 32, trackW, 64);
-
-    const targetX2 = trackL + this.targetSer * trackW;
-    this.gaugeGraphics.fillStyle(0x06b6d4, 0.3);
-    this.gaugeGraphics.fillRect(targetX2 - winW, y2 - 28, winW * 2, 56);
-    this.gaugeGraphics.lineStyle(2, 0x67e8f9, 0.9);
-    this.gaugeGraphics.strokeLineShape(new Phaser.Geom.Line(targetX2, y2 - 28, targetX2, y2 + 28));
-
-    // Coolant flow sine
-    this.gaugeGraphics.lineStyle(1.5, 0x06b6d4, 0.7);
-    this.gaugeGraphics.beginPath();
-    for (let x = trackL; x <= trackR; x += 4) {
-      const p = (x - trackL) / trackW;
-      const wave = Math.sin(p * 14 + t * 4) * 8;
-      if (x === trackL) this.gaugeGraphics.moveTo(x, y2 + wave);
-      else this.gaugeGraphics.lineTo(x, y2 + wave);
-    }
-    this.gaugeGraphics.stroke();
-
-    const curX2 = trackL + this.ser * trackW;
-    this.gaugeGraphics.fillStyle(this.serLocked ? 0x22c55e : 0x06b6d4, 1);
-    this.gaugeGraphics.fillCircle(curX2, y2, 11);
-    this.gaugeGraphics.lineStyle(2, 0xffffff, 1);
-    this.gaugeGraphics.strokeCircle(curX2, y2, 11);
+  private startSystem(): void {
+    const board = CIRCUIT_BOARDS[this.system];
+    this.rotations = board.tiles.map(tile => tile.initialRotation);
+    this.focusIndex = board.tiles.findIndex(tile => tile.targetMask !== 0);
+    this.statusText?.setText(`SISTEM ${this.system + 1}/3 — ${board.label}: PUTAR KONDUIT, LALU UJI ALIRAN`).setColor('#67e8f9');
+    this.renderCircuit();
   }
 
-  private tryLockStep(): void {
+  private moveFocus(dx: number, dy: number): void {
+    const board = CIRCUIT_BOARDS[this.system];
+    let x = this.focusIndex % board.width;
+    let y = Math.floor(this.focusIndex / board.width);
+    const attempts = dx ? board.width : board.height;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      x = Phaser.Math.Wrap(x + dx, 0, board.width);
+      y = Phaser.Math.Wrap(y + dy, 0, board.height);
+      const index = y * board.width + x;
+      if (board.tiles[index].targetMask) {
+        this.focusIndex = index;
+        this.soundManager?.playSelect();
+        this.renderCircuit();
+        return;
+      }
+    }
+  }
+
+  private rotateTile(index: number): void {
+    const board = CIRCUIT_BOARDS[this.system];
+    if (this.stage !== 'play' || !board.tiles[index]?.targetMask) return;
+    this.focusIndex = index;
+    this.rotations[index] = (this.rotations[index] + 1) % 4;
+    this.soundManager?.playGearTick(0.9 + this.system * 0.1);
+    this.renderCircuit();
+  }
+
+  private testFlow(): void {
     if (this.stage !== 'play') return;
-    const win = this.assisted ? 0.16 : 0.10;
-
-    if (this.step === 0) {
-      if (Math.abs(this.vit - this.targetVit) <= win) {
-        this.vitLocked = true;
-        this.step = 1;
-        this.soundManager?.playLockSuccess();
-        this.statusText?.setText('TAHAP 2: KUNCI KEMURNIAN SERUM BIRU');
-        this.feedbackText?.setText('VITAL MERAH TERKUNCI (1/2)! SEKARANG KUNCI SERUM BIRU').setColor('#86efac');
-      } else {
-        this.onMiss();
-      }
-    } else if (this.step === 1) {
-      if (Math.abs(this.ser - this.targetSer) <= win) {
-        this.serLocked = true;
-        this.soundManager?.playSteamRelease();
-        this.onFinish();
-      } else {
-        this.onMiss();
-      }
+    const board = CIRCUIT_BOARDS[this.system];
+    if (!isCircuitComplete(board, this.rotations)) {
+      this.testFailures += 1;
+      this.assisted = this.testFailures >= 2;
+      this.soundManager?.playErrorBuzz();
+      this.statusText?.setText(this.assisted
+        ? 'ALIRAN BOCOR — KONDUIT YANG PERLU DIPERBAIKI DISOROT EMAS'
+        : 'ALIRAN TERPUTUS ATAU BOCOR — PERIKSA SAMBUNGAN').setColor('#fca5a5');
+      if (!this.registry.get('reduceMotion')) this.cameras.main.shake(130, 0.004);
+      this.renderCircuit();
+      return;
     }
+
+    this.soundManager?.playSteamRelease();
+    if (this.system === CIRCUIT_BOARDS.length - 1) {
+      this.finish();
+      return;
+    }
+    this.statusText?.setText('ALIRAN STABIL — MENGALIHKAN KE SISTEM BERIKUTNYA').setColor('#86efac');
+    this.time.delayedCall(420, () => {
+      this.system += 1;
+      this.startSystem();
+    });
   }
 
-  private onMiss(): void {
-    this.misses += 1;
-    if (this.misses >= 3) this.assisted = true;
-    this.vitLocked = false;
-    this.serLocked = false;
-    this.step = 0;
-    this.soundManager?.playErrorBuzz();
-    this.statusText?.setText('TAHAP 1: KUNCI TANDA VITAL MERAH');
-    this.feedbackText?.setText(this.assisted ? 'GARIS BELUM PAS — BANTUAN AKTIF' : 'GARIS BELUM PAS — KUNCI SAAT MENYENTUH AMBANG').setColor('#f87171');
-    if (!this.registry.get('reduceMotion')) {
-      this.cameras.main.shake(140, 0.005);
-    }
+  private renderCircuit(): void {
+    if (!this.boardContainer || this.stage !== 'play') return;
+    this.boardContainer.removeAll(true);
+    const board = CIRCUIT_BOARDS[this.system];
+    const originX = (GAME_WIDTH - board.width * CELL_SIZE) / 2;
+    const colors = [0xfacc15, 0x22d3ee, 0xfb7185];
+    const color = colors[this.system];
+    const hint = this.assisted ? firstCircuitHint(board, this.rotations) : null;
+
+    board.tiles.forEach((tile, index) => {
+      const x = index % board.width;
+      const y = Math.floor(index / board.width);
+      const cx = originX + x * CELL_SIZE + CELL_SIZE / 2;
+      const cy = GRID_TOP + y * CELL_SIZE + CELL_SIZE / 2;
+      const active = tile.targetMask !== 0;
+      const selected = index === this.focusIndex;
+      const cell = this.add.rectangle(cx, cy, CELL_SIZE - 7, CELL_SIZE - 7, active ? 0x0c2430 : 0x07131c, active ? 0.98 : 0.55)
+        .setStrokeStyle(index === hint ? 4 : selected ? 3 : 1,
+          index === hint ? 0xfacc15 : selected ? 0xffffff : 0x155e75,
+          active ? 1 : 0.35);
+      if (active) cell.setInteractive({ useHandCursor: true }).on('pointerup', () => this.rotateTile(index));
+      this.boardContainer?.add(cell);
+      if (!active) return;
+
+      const mask = circuitMask(board, this.rotations, index);
+      const pipe = this.add.graphics();
+      pipe.lineStyle(13, 0x082f49, 1);
+      pipe.lineBetween(cx, cy, cx, cy);
+      pipe.lineStyle(9, color, 0.95);
+      if (mask & 1) pipe.lineBetween(cx, cy, cx, cy - CELL_SIZE / 2 + 4);
+      if (mask & 2) pipe.lineBetween(cx, cy, cx + CELL_SIZE / 2 - 4, cy);
+      if (mask & 4) pipe.lineBetween(cx, cy, cx, cy + CELL_SIZE / 2 - 4);
+      if (mask & 8) pipe.lineBetween(cx, cy, cx - CELL_SIZE / 2 + 4, cy);
+      pipe.fillStyle(color, 1);
+      pipe.fillCircle(cx, cy, 10);
+      this.boardContainer?.add(pipe);
+
+      if (index === board.sourceIndex || index === board.sinkIndex) {
+        const label = this.add.text(cx, cy, index === board.sourceIndex ? 'S' : 'K', {
+          color: '#020617', fontFamily: 'Poppins, sans-serif', fontSize: '11px', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        this.boardContainer?.add(label);
+      }
+    });
+
+    const testButton = this.add.rectangle(GAME_WIDTH / 2, 390, 210, 40, 0x0e7490, 0.96)
+      .setStrokeStyle(2, 0x67e8f9).setInteractive({ useHandCursor: true }).on('pointerup', () => this.testFlow());
+    const testLabel = this.add.text(GAME_WIDTH / 2, 390, 'UJI ALIRAN', {
+      color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.boardContainer.add([testButton, testLabel]);
   }
 
-  private onFinish(): void {
+  private finish(): void {
     this.stage = 'success';
     this.balanceData.run.challenges['1999'] = this.chosenApproach;
     this.balanceData.run[this.chosenApproach] += 1;
     this.balanceData.save.saveCycle('1999', this.balanceData.run);
-
+    this.boardContainer?.removeAll(true);
+    this.statusText?.setText('DAYA, PENDINGIN, DAN SERUM TERSAMBUNG — KAPSUL SIAP DIBUKA').setColor('#86efac');
     this.soundManager?.playSuccessFanfare();
-    this.statusText?.setText('STABILISASI KAPSUL KRIOGENIK SELESAI!').setColor('#86efac');
-    this.feedbackText?.setText('KEMURNIAN SERUM & VITAL SELARAS 100%').setColor('#a3e635');
-
     this.time.delayedCall(950, () => {
       this.scene.stop();
       this.balanceData.onComplete();
     });
-  }
-
-  private createInputHandlers(): void {
-    this.keys = this.input.keyboard?.addKeys({
-      left: Phaser.Input.Keyboard.KeyCodes.LEFT,
-      right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
-      a: Phaser.Input.Keyboard.KeyCodes.A,
-      d: Phaser.Input.Keyboard.KeyCodes.D,
-      enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
-      space: Phaser.Input.Keyboard.KeyCodes.SPACE,
-    }) as Record<string, Phaser.Input.Keyboard.Key>;
   }
 }

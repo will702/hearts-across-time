@@ -30,9 +30,9 @@ Sumber kebenaran produksi:
 | Presentasi | `IntroScene`, `TitleScene`, `PrologueScene` | Intro, sampul/menu/Continue, dan pembuka cerita |
 | UI/narasi | `UIScene`, `DialogueScene` | HUD, touch, pause, dialog, pilihan, backlog, dan interpretasi operasi cerita |
 | Era | `Era1944Scene`, `Era1968Scene`, `Era1999Scene` | World, pemain, kamera, interaksi, autosave, dan transisi naratif tiap era |
-| Mini-game 1944 | `WatchRepairScene`, `SpotlightChallengeScene` | Perbaikan arloji dan tantangan lampu sorot |
-| Mini-game 1968 | `RosePuzzleScene`, `SignalTuneScene`, `DiaryScene` | Botol mawar, penyetelan sinyal, dan buku harian |
-| Mini-game 1999 | `GemAlignScene`, `PhotoPuzzleScene`, `CryoBalanceScene` | Permata air, foto, dan stabilisasi krio |
+| Mini-game 1944 | `WatchRepairScene`, `SpotlightChallengeScene` | Perbaikan arloji dan peta evakuasi |
+| Mini-game 1968 | `RosePuzzleScene`, `SignalTuneScene`, `DiaryScene` | Susun vas mawar, mikrofilm arsip, dan buku harian |
+| Mini-game 1999 | `GemAlignScene`, `PhotoPuzzleScene`, `CryoBalanceScene` | Pencocokan bayangan permata, foto khusus era Arthur tua, dan sirkuit pendingin |
 | Transisi/hasil | `VortexScene`, `GlitchScene`, `PuzzleAwardScene`, `EndCardScene` | Lompatan era, reset loop, enam pecahan ending, dan true ending |
 | Bonus | `Bonus2088Scene` | Epilog kota pulih dan lima simpul kenangan |
 

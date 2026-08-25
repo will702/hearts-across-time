@@ -252,7 +252,7 @@ test('@smoke keyboard menggerakkan pemain ke kanan dan kiri', async ({ page }) =
   expect(player(left).x).toBeLessThan(rightX);
 });
 
-test('@smoke @visual walk Elena memakai 13 frame unik pada cadence lama', async ({ page }, testInfo) => {
+test('@smoke @visual walk Elena memakai 13 frame unik pada cadence halus', async ({ page }, testInfo) => {
   await openTitle(page);
   await startNewCycle(page);
   await page.evaluate(() => window.__HAT?.game.registry.set('reduceMotion', false));
@@ -311,6 +311,22 @@ test('@smoke pause dan resume mengembalikan traversal', async ({ page }) => {
   await page.keyboard.press('ArrowRight');
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('hat_opts') ?? '{}').vol)).toBe(0.1);
   await pressUntilState(page, 'Escape', 'era1944');
+});
+
+test('@smoke tombol musik dan jeda HUD dapat diklik', async ({ page }) => {
+  await openTitle(page);
+  await startNewCycle(page);
+
+  const music = await canvasPoint(page, 850, 27);
+  await page.mouse.click(music.x, music.y);
+  await expect.poll(async () => page.evaluate(() => {
+    const sound = window.__HAT?.game.registry.get('soundManager') as { muted?: boolean } | undefined;
+    return sound?.muted;
+  })).toBe(true);
+
+  const pause = await canvasPoint(page, 927, 27);
+  await page.mouse.click(pause.x, pause.y);
+  await expect.poll(async () => (await snapshot(page)).state).toBe('paused');
 });
 
 test('@smoke menu jeda lalu Lanjutkan mereset state UI', async ({ page }) => {

@@ -16,13 +16,22 @@ const GAMEPLAY_SCENES = [
 
 const MODAL_SCENES = GAMEPLAY_SCENES.slice(0, 9);
 
+const STORY_ITEMS_DEF = [
+  { id: 'watch', label: 'Jam Saku' },
+  { id: 'flower', label: 'Mawar Kering' },
+  { id: 'water_gem', label: 'Permata Air' },
+  { id: 'arthur_photo', label: 'Foto Arthur' },
+] as const;
+
 export class UIScene extends Phaser.Scene {
   private controls?: InputSystem;
   private eraTitleText?: Phaser.GameObjects.Text;
   private prompt?: Phaser.GameObjects.Text;
   private promptText = '';
-  private toast?: Phaser.GameObjects.Text;
-  private inventoryText?: Phaser.GameObjects.Text;
+  private toast?: Phaser.GameObjects.Container;
+  private inventoryContainer?: Phaser.GameObjects.Container;
+  private inventorySlots: Array<{ bg: Phaser.GameObjects.Arc; glyph: Phaser.GameObjects.Graphics }> = [];
+  private inventorySignature = '';
   private run?: RunState;
   private touchObjects: Phaser.GameObjects.Text[] = [];
   private pausePanel?: Phaser.GameObjects.Container;
@@ -47,20 +56,16 @@ export class UIScene extends Phaser.Scene {
     const title = data.eraTitle || 'HEARTS ACROSS TIME';
 
     this.eraTitleText = this.add.text(20, 18, title, {
-      color: '#f7d984', fontFamily: 'Cinzel, serif', fontSize: '16px',
+      color: '#f4d98d', fontFamily: 'Cinzel, serif', fontSize: '13px', letterSpacing: 0.8,
       stroke: '#140d08', strokeThickness: 4,
     });
-    this.add.text(20, 43, 'JEJAK WAKTU TERSIMPAN OTOMATIS', {
-      color: '#f5f0e8aa', fontFamily: 'Poppins, sans-serif', fontSize: '10px', letterSpacing: 1,
-    });
+    this.add.rectangle(20, 43, 46, 1, 0xf4d98d, 0.65).setOrigin(0, 0.5);
     this.prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 62, '', {
       backgroundColor: '#100c09dd', color: '#fff4d1', fontFamily: 'Patrick Hand, sans-serif',
       fontSize: '18px', padding: { x: 18, y: 10 }, align: 'center',
     }).setOrigin(0.5).setVisible(false);
-    this.inventoryText = this.add.text(GAME_WIDTH - 230, 58, '', {
-      backgroundColor: '#07090cb8', color: '#f7d984', fontFamily: 'Poppins, sans-serif',
-      fontSize: '12px', padding: { x: 10, y: 7 }, fixedWidth: 210, align: 'center',
-    }).setVisible(false);
+
+    this.createInventoryHUD();
     this.refreshInventory();
 
     const touchMode = this.sys.game.device.input.touch || new URLSearchParams(location.search).get('touch') === '1';
@@ -117,11 +122,49 @@ export class UIScene extends Phaser.Scene {
 
   showToast(text: string, duration = 2200): void {
     this.toast?.destroy();
-    this.toast = this.add.text(GAME_WIDTH / 2, 104, text, {
-      backgroundColor: '#f4ead8ee', color: '#5f2924', fontFamily: 'Patrick Hand, sans-serif',
-      fontSize: '17px', padding: { x: 18, y: 10 }, align: 'center',
+    const isReduced = Boolean(this.registry.get('reduceMotion'));
+    const toastCard = this.add.rectangle(0, 0, 430, 58, 0x18120e, 0.94)
+      .setStrokeStyle(2, 0x6a4930);
+    const toastInner = this.add.graphics();
+    toastInner.lineStyle(1, 0xd7b45c, 0.35);
+    toastInner.lineBetween(-207, 23, 207, 23);
+
+    const toastBody = this.add.text(0, 0, text, {
+      color: '#f4eadb',
+      fontFamily: 'Patrick Hand, sans-serif',
+      fontSize: '18px',
     }).setOrigin(0.5);
-    this.time.delayedCall(duration, () => { this.toast?.destroy(); this.toast = undefined; });
+
+    this.toast = this.add.container(GAME_WIDTH / 2, 88, [toastCard, toastInner, toastBody])
+      .setDepth(3000);
+
+    if (!isReduced) {
+      this.toast.setAlpha(0).setY(102);
+      this.tweens.add({
+        targets: this.toast,
+        alpha: 1,
+        y: 88,
+        duration: 200,
+        ease: 'Sine.easeOut',
+      });
+    }
+
+    this.time.delayedCall(duration, () => {
+      if (this.toast) {
+        if (!isReduced) {
+          this.tweens.add({
+            targets: this.toast,
+            alpha: 0,
+            y: 76,
+            duration: 200,
+            onComplete: () => { this.toast?.destroy(); this.toast = undefined; },
+          });
+        } else {
+          this.toast.destroy();
+          this.toast = undefined;
+        }
+      }
+    });
   }
 
   isPaused(): boolean {
@@ -139,8 +182,8 @@ export class UIScene extends Phaser.Scene {
       button.on('pointerout', () => this.controls?.setTouch(key, false));
       this.touchObjects.push(button);
     };
-    hold(62, '◀', 'left');
-    hold(132, '▶', 'right');
+    hold(62, 'KIRI', 'left');
+    hold(132, 'KANAN', 'right');
     const action = this.add.text(GAME_WIDTH - 78, GAME_HEIGHT - 58, 'PERIKSA', {
       backgroundColor: '#94342ecc', color: '#fff8ea', fontFamily: 'Poppins, sans-serif',
       fontSize: '12px', padding: { x: 16, y: 14 },
@@ -150,33 +193,122 @@ export class UIScene extends Phaser.Scene {
     this.input.on('pointerup', () => this.controls?.clearTouchMovement());
   }
 
+  private createInventoryHUD(): void {
+    const w = 194, h = 38, x = GAME_WIDTH - w - 18, y = 52;
+    const bg = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x07090c, 0.72)
+      .setStrokeStyle(1.2, 0xf1d58b, 0.55);
+    const tasLabel = this.add.text(x + 10, y + h / 2, 'KENANGAN', {
+      color: '#f1d58b',
+      fontFamily: 'Poppins, sans-serif',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      letterSpacing: 1,
+    }).setOrigin(0, 0.5);
+
+    this.inventorySlots = [];
+    const slotObjects: Phaser.GameObjects.GameObject[] = [bg, tasLabel];
+
+    STORY_ITEMS_DEF.forEach((it, idx) => {
+      const cx = x + 82 + idx * 25;
+      const cy = y + h / 2;
+      const slotBg = this.add.circle(cx, cy, 11, 0xf5f0e8, 0.05)
+        .setStrokeStyle(1.1, 0xf5f0e8, 0.18);
+      const glyph = this.add.graphics();
+      this.drawInventoryGlyph(glyph, it.id, cx, cy, 0xf5f0e8, 0.2);
+
+      this.inventorySlots.push({ bg: slotBg, glyph });
+      slotObjects.push(slotBg, glyph);
+    });
+
+    this.inventoryContainer = this.add.container(0, 0, slotObjects).setVisible(false);
+  }
+
   private refreshInventory(): void {
-    if (!this.run || !this.inventoryText) return;
-    const items = [
-      ['watch', '◷'], ['flower', '✿'], ['water_gem', '◆'], ['arthur_photo', '▧'],
-    ] as const;
-    const owned = items.filter(([key]) => Boolean(this.run?.inventory[key]));
-    this.inventoryText.setVisible(owned.length > 0).setText(`TAS   ${items.map(([key, icon]) => this.run?.inventory[key] ? icon : '·').join('   ')}`);
+    if (!this.run) return;
+    const signature = STORY_ITEMS_DEF.map(it => this.run?.inventory[it.id] ? '1' : '0').join('');
+    if (signature === this.inventorySignature) return;
+    this.inventorySignature = signature;
+    const ownedCount = STORY_ITEMS_DEF.filter(it => Boolean(this.run?.inventory[it.id])).length;
+    const hasItems = ownedCount > 0;
+
+    if (this.inventoryContainer) {
+      this.inventoryContainer.setVisible(hasItems);
+      STORY_ITEMS_DEF.forEach((it, idx) => {
+        const slot = this.inventorySlots[idx];
+        if (!slot) return;
+        const has = Boolean(this.run?.inventory[it.id]);
+        slot.bg.setFillStyle(has ? 0xf7d984 : 0xf5f0e8, has ? 0.22 : 0.05);
+        slot.bg.setStrokeStyle(1.1, has ? 0xf7d984 : 0xf5f0e8, has ? 1 : 0.18);
+        this.drawInventoryGlyph(slot.glyph, it.id, slot.bg.x, slot.bg.y, has ? 0xfff0a0 : 0xf5f0e8, has ? 1 : 0.18);
+      });
+    }
+  }
+
+  private drawInventoryGlyph(
+    graphics: Phaser.GameObjects.Graphics,
+    id: typeof STORY_ITEMS_DEF[number]['id'],
+    x: number,
+    y: number,
+    color: number,
+    alpha: number,
+  ): void {
+    graphics.clear().lineStyle(1.4, color, alpha);
+    if (id === 'watch') {
+      graphics.strokeCircle(x, y, 5).lineBetween(x, y, x, y - 3).lineBetween(x, y, x + 3, y + 2);
+    } else if (id === 'flower') {
+      graphics.strokeCircle(x, y - 1, 2).strokeCircle(x - 3, y - 2, 2).strokeCircle(x + 3, y - 2, 2)
+        .lineBetween(x, y + 1, x, y + 6);
+    } else if (id === 'water_gem') {
+      graphics.strokePoints([
+        new Phaser.Math.Vector2(x, y - 6),
+        new Phaser.Math.Vector2(x + 5, y),
+        new Phaser.Math.Vector2(x, y + 6),
+        new Phaser.Math.Vector2(x - 5, y),
+      ], true);
+    } else {
+      graphics.strokeRect(x - 6, y - 5, 12, 10).lineBetween(x - 4, y + 3, x, y - 1).lineBetween(x, y - 1, x + 4, y + 3);
+    }
   }
 
   private createTopButtons(): void {
     const soundManager = this.registry.get('soundManager') as { setMuted: (m: boolean) => void; muted: boolean } | undefined;
     let muted = soundManager?.muted ?? false;
+    const makeButton = (x: number, width: number, label: string, onPress: () => void): {
+      bg: Phaser.GameObjects.Rectangle;
+      icon: Phaser.GameObjects.Graphics;
+      label: Phaser.GameObjects.Text;
+      container: Phaser.GameObjects.Container;
+    } => {
+      const bg = this.add.rectangle(0, 0, width, 30, 0x090b10, 0.76).setStrokeStyle(1, 0xf1d58b, 0.58);
+      const icon = this.add.graphics();
+      const buttonLabel = this.add.text(-width / 2 + 29, 0, label, {
+        color: '#f5f0e8', fontFamily: 'Poppins, sans-serif', fontSize: '8px', letterSpacing: 0.5,
+      }).setOrigin(0, 0.5);
+      const container = this.add.container(x, 27, [bg, icon, buttonLabel])
+        .setSize(width, 30)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => bg.setFillStyle(0x36251d, 0.94).setStrokeStyle(1.4, 0xf1d58b, 0.9))
+        .on('pointerout', () => bg.setFillStyle(0x090b10, 0.76).setStrokeStyle(1, 0xf1d58b, 0.58))
+        .on('pointerup', onPress);
+      return { bg, icon, label: buttonLabel, container };
+    };
 
-    const muteBtn = this.add.text(GAME_WIDTH - 72, 30, muted ? '🔇' : '🔊', {
-      backgroundColor: '#0b0a08aa', color: '#f5f0e8', fontSize: '14px', padding: { x: 7, y: 6 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-    muteBtn.on('pointerup', () => {
+    const music = makeButton(GAME_WIDTH - 110, 92, 'MUSIK', () => {
       muted = !muted;
-      muteBtn.setText(muted ? '🔇' : '🔊');
       soundManager?.setMuted(muted);
+      drawMusicIcon();
     });
+    const drawMusicIcon = (): void => {
+      music.icon.clear().fillStyle(muted ? 0xb8a898 : 0xf1d58b, 1);
+      music.icon.fillRect(-36, -5, 5, 10).fillTriangle(-31, -7, -31, 7, -23, 0);
+      music.icon.lineStyle(1.5, muted ? 0xb8a898 : 0xf1d58b, 1).strokeCircle(-22, 0, 9);
+      if (muted) music.icon.lineBetween(-31, -9, -14, 9);
+      music.label.setText(muted ? 'MUSIK MATI' : 'MUSIK');
+    };
+    drawMusicIcon();
 
-    const pauseBtn = this.add.text(GAME_WIDTH - 30, 30, 'Ⅱ', {
-      backgroundColor: '#0b0a08aa', color: '#f5f0e8', fontSize: '15px', padding: { x: 8, y: 6 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    pauseBtn.on('pointerup', () => this.togglePause());
+    const pause = makeButton(GAME_WIDTH - 33, 56, 'JEDA', () => this.togglePause());
+    pause.icon.fillStyle(0xf1d58b, 1).fillRect(-20, -6, 4, 12).fillRect(-13, -6, 4, 12);
   }
 
   private getActiveGameplayScene(): string {
@@ -212,7 +344,7 @@ export class UIScene extends Phaser.Scene {
   private showPausePanel(): void {
     const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040302, 0.8);
     const paper = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 520, 506, 0xf4ead8, 0.98).setStrokeStyle(3, 0x6a4930);
-    const title = this.add.text(GAME_WIDTH / 2, 43, 'GAME DIJEDA', {
+    const title = this.add.text(GAME_WIDTH / 2, 43, 'WAKTU BERHENTI SEJENAK', {
       color: '#612a25', fontFamily: 'Cinzel, serif', fontSize: '22px', fontStyle: 'bold',
     }).setOrigin(0.5);
     const options = this.registry.get('options') as GameOptions;
@@ -227,7 +359,7 @@ export class UIScene extends Phaser.Scene {
       this.applyOptions(options, soundManager);
     };
     this.pauseMenuItems = [
-      { label: () => '▶ LANJUTKAN', action: () => this.togglePause() },
+      { label: () => 'LANJUTKAN', action: () => this.togglePause() },
       { label: () => `VOLUME MASTER  ‹ ${Math.round(options.vol * 100)}% ›`, adjust: direction => volume('vol', direction) },
       { label: () => `MUSIK  ‹ ${Math.round(options.volMus * 100)}% ›`, adjust: direction => volume('volMus', direction) },
       { label: () => `EFEK & AMBIENSI  ‹ ${Math.round(options.volSfx * 100)}% ›`, adjust: direction => volume('volSfx', direction) },
@@ -316,7 +448,9 @@ export class UIScene extends Phaser.Scene {
     this.prompt = undefined;
     this.promptText = '';
     this.toast = undefined;
-    this.inventoryText = undefined;
+    this.inventoryContainer = undefined;
+    this.inventorySlots = [];
+    this.inventorySignature = '';
     this.run = undefined;
     this.touchObjects = [];
     this.pausePanel = undefined;
@@ -328,6 +462,5 @@ export class UIScene extends Phaser.Scene {
     this.modal = false;
     this.modalOwned = false;
     this.suppressPauseOnce = false;
-    this.pauseKeys = undefined;
   }
 }

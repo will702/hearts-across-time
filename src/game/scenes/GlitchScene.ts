@@ -62,7 +62,7 @@ export class GlitchScene extends Phaser.Scene {
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x110204, 1);
 
-    this.add.text(GAME_WIDTH / 2, 85, '⚠ DISTORSI WAKTU — TIMELINE COLLAPSE ⚠', {
+    this.add.text(GAME_WIDTH / 2, 85, 'DISTORSI WAKTU', {
       color: '#ef4444', fontFamily: 'Cinzel, serif', fontSize: '22px', fontStyle: 'bold',
       stroke: '#450a0a', strokeThickness: 5,
     }).setOrigin(0.5);

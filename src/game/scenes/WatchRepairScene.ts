@@ -157,9 +157,9 @@ export class WatchRepairScene extends Phaser.Scene {
         fontSize: '13px', padding: { x: 18, y: 10 },
       }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', action);
     };
-    button(310, '◀ PUTAR KIRI', () => this.rotate(-0.04));
+    button(310, 'PUTAR KIRI', () => this.rotate(-0.04));
     button(480, 'KUNCI GIGI', () => this.lockCurrent());
-    button(650, 'PUTAR KANAN ▶', () => this.rotate(0.04));
+    button(650, 'PUTAR KANAN', () => this.rotate(0.04));
   }
 
   private createInputHandlers(): void {

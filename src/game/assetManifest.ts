@@ -1,7 +1,7 @@
 export const IMAGE_ASSETS: Record<string, string> = {
   'title-cover': 'assets/art/ui/title-cover.png',
   'title-plate': 'assets/art/ui/title-start-plate.png',
-  'time-vortex': 'assets/art/backgrounds/time-vortex.png',
+  'time-vortex': 'assets/art/backgrounds/time-vortex-investigation.png',
   'bgnarator': 'assets/art/backgrounds/narrator.png',
   'bg1944-far': 'assets/art/backgrounds/bg1944_far.png',
   'bg1944-mid': 'assets/art/backgrounds/bg1944_mid.png',
@@ -19,6 +19,12 @@ export const IMAGE_ASSETS: Record<string, string> = {
   'rose-bottle-broken': 'assets/art/minigames/rose-bottle-broken.png',
   'water-gem-art': 'assets/art/minigames/water-gem.jpg',
   'elena-arthur-photo': 'assets/art/minigames/elena-arthur-photo.png',
+  'watch-prop': 'assets/art/props/prop_watch1944.png',
+  'spotlight-prop': 'assets/art/props/prop_spotlight1944.png',
+  'crate-prop': 'assets/art/props/prop_crate1944.png',
+  'diary-prop': 'assets/art/props/prop_diary1968.png',
+  'tape-prop': 'assets/art/props/prop_tape1968.png',
+  'cryolog-prop': 'assets/art/props/prop_cryolog1999.png',
   'bonus-puzzle-board': 'assets/art/bonus/puzzle-board.jpg',
   'bonus-city-complete': 'assets/art/bonus/city-complete.jpg',
 };

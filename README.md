@@ -35,8 +35,9 @@ Phaser-native, dan `assets/`.
 
 - fondasi: Boot, Preload, Intro, Title, Prologue, UI, dan Dialogue;
 - traversal: 1944, 1968, dan 1999;
-- mini-game: arloji, lampu sorot, botol mawar, sinyal, buku harian, permata, foto,
-  dan krio;
+- mini-game: arloji, peta evakuasi, botol mawar, mikrofilm arsip,
+  buku harian, pencocokan bayangan permata, foto,
+  dan sirkuit pendingin;
 - transisi/hasil: vortex, glitch loop, enam pecahan ending, true ending, dan bonus
   2088.
 
@@ -56,9 +57,9 @@ fallback produksi dan tidak termasuk `dist/`.
 | Pilihan dialog | `↑ ↓`/`W S` + `Enter`, atau `1–3` | ketuk opsi |
 | Backlog dialog | `Tab`/`B`; `Esc` menutup | ketuk tombol backlog/tutup |
 | Arloji | `← →`/`A D`, lalu `Space`/`Enter` | putar/ketuk kontrol |
-| Lampu sorot, sinyal, krio | `← →`/`A D`, lalu `Space`/`Enter` | ketuk pilihan dan aksi |
+| Peta, mikrofilm, sirkuit | arah/WASD, lalu `Space`/`Enter` | ketuk pilihan dan aksi |
 | Botol mawar dan foto | `1–4`, arah/WASD, lalu `Space`/`Enter` | seret kepingan |
-| Permata air | arah/WASD, `Space`/`Enter`; `R` reset | seret dan konfirmasi |
+| Permata air | arah/WASD, `Space`/`Enter`; `R` reset | cocokkan dengan bayangan |
 | Buku harian | `← →`/`A D`, `Space`/`Enter`; `Esc` tutup | tombol halaman |
 | Jeda | `Esc`/`P`; saat jeda `R` ulang siklus, `M` menu | ikon jeda |
 | Bisu suara | — | ikon suara |
@@ -71,8 +72,8 @@ memiliki kontrol pointer yang ditampilkan pada modal masing-masing.
 | Fitur | Implementasi |
 | --- | --- |
 | Kepribadian tersembunyi | Pilihan dan tiga tantangan memberi Empati/Logika tanpa menampilkan angka saat bermain |
-| Tiga era wajib | 1944 lampu sorot, 1968 penyetelan sinyal, 1999 stabilisasi krio; assist setelah tiga miss |
-| Puzzle barang lintas waktu | Arloji, mawar, permata air, dan foto menjadi gate serta inventory satu siklus |
+| Tiga era wajib | 1944 peta evakuasi, 1968 mikrofilm arsip, 1999 sirkuit pendingin; pilihan pendekatan tetap memengaruhi Empati/Logika |
+| Puzzle barang lintas waktu | Arloji, vas mawar, permata air, dan foto menjadi gate; foto hanya berada di 1999 dekat Arthur tua |
 | Percabangan rute | Pilihan 1944 dan 1968 menghasilkan cabang akhir di 1999 |
 | Loop | Ending gagal memberi pecahan, menaikkan loop, mereset state siklus, lalu kembali ke 1944 |
 | Enam ending | `A1`, `B1`, `B2lock`, `rebut`, `paradox`, dan `true` tersimpan lintas sesi |

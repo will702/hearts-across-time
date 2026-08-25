@@ -5,6 +5,7 @@ import {
   closestPolylineProgress,
   distanceToSegment,
   gemAngleDistance,
+  gemProjection,
   isGemAligned,
   normalizedAngleDistance,
   pointInPolygon,
@@ -26,6 +27,14 @@ describe('Minigame Math & Physics Algorithms', () => {
     expect(isGemAligned(target + 0.19, -0.86 - 0.19, target, -0.86)).toBe(true);
     expect(isGemAligned(target + 0.21, -0.86, target, -0.86)).toBe(false);
     expect(isGemAligned(target + 0.35, -0.86, target, -0.86, true)).toBe(true);
+  });
+
+  it('projects the gem with the same silhouette transform as the legacy shadow puzzle', () => {
+    expect(gemProjection(0.62, -0.86)).toEqual({
+      scaleX: expect.closeTo(0.784511, 5),
+      scaleY: expect.closeTo(0.906939, 5),
+      rotation: expect.closeTo(-0.1462, 5),
+    });
   });
 
   it('detects point in non-convex and convex polygons accurately', () => {

@@ -58,8 +58,9 @@ describe('lima jejak kisah Arthur', () => {
   it('memasang hotspot lanjutan pada era yang tepat', () => {
     const ids1968 = ERA_1968.objects.map(object => object.id);
     const ids1999 = ERA_1999.objects.map(object => object.id);
-    expect(ids1968).toEqual(expect.arrayContaining(['lore_photo', 'lore_tape']));
-    expect(ids1999).toContain('lore_clip');
+    expect(ids1968).toContain('lore_tape');
+    expect(ids1968).not.toContain('lore_photo');
+    expect(ids1999).toEqual(expect.arrayContaining(['lore_clip', 'lore_photo']));
   });
 
   it('mempertahankan dua baris lore asli sebagai node dialog', () => {

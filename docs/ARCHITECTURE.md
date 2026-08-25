@@ -103,9 +103,9 @@ sentuh, sedangkan `UIScene` memiliki HUD, prompt, kontrol sentuh, mute, dan paus
 
 Alur wajib produksi:
 
-1. 1944: perbaikan arloji → tantangan lampu sorot → dialog/rute Arthur.
-2. 1968: botol mawar → penyetelan sinyal → buku harian/dialog rute.
-3. 1999: penyelarasan permata → puzzle foto → stabilisasi krio → keputusan akhir.
+1. 1944: perbaikan arloji → peta evakuasi → dialog/rute Arthur.
+2. 1968: botol mawar → mikrofilm arsip → buku harian/dialog rute.
+3. 1999: penyelarasan permata → puzzle foto → sirkuit pendingin → keputusan akhir.
 4. Ending gagal memberi pecahan melalui `PuzzleAwardScene`, lalu
    `GlitchScene` menaikkan loop dan kembali ke 1944.
 5. True ending membuka `EndCardScene`. Keenam ending

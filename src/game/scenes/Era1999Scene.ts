@@ -165,7 +165,7 @@ export class Era1999Scene extends Phaser.Scene {
     this.createAnimatedProp('prop-frost1999', 720, 444, 88, 2, 439);
 
     if (this.textures.exists('bg1999-fg')) {
-      this.add.image(0, 412, 'bg1999-fg').setOrigin(0).setDisplaySize(1120, 150).setDepth(1000);
+      this.add.image(0, ERA_1999.groundY - 14, 'bg1999-fg').setOrigin(0).setDisplaySize(1120, 152).setDepth(430);
     }
   }
 
@@ -203,7 +203,7 @@ export class Era1999Scene extends Phaser.Scene {
           this.controls.setEnabled(true);
           this.worldFactory.refresh(this.objects, this.worldState());
           this.registry.set('nativeState', 'era1999');
-          this.ui.showToast('DITAMBAHKAN KE TAS — ◆ PERMATA AIR', 3000);
+          this.ui.showToast('Permata air disimpan.', 3000);
         },
       });
       this.scene.pause();
@@ -221,7 +221,7 @@ export class Era1999Scene extends Phaser.Scene {
           this.controls.setEnabled(true);
           this.worldFactory.refresh(this.objects, this.worldState());
           this.registry.set('nativeState', 'era1999');
-          this.ui.showToast('DITAMBAHKAN KE TAS — ▧ FOTO ELENA & ARTHUR', 3000);
+          this.ui.showToast('Foto Elena dan Arthur disimpan.', 3000);
         },
       });
       this.scene.pause();

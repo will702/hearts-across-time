@@ -398,11 +398,12 @@ export class DialogueScene extends Phaser.Scene {
 
     this.boxContainer.add([boxBg, this.nameText, this.dialogText, this.promptIndicator]);
 
-    this.fastForwardButton = this.add.text(18, GAME_HEIGHT - 31, '⏩', {
+    this.fastForwardButton = this.add.text(18, GAME_HEIGHT - 31, 'CEPAT', {
       backgroundColor: '#16120edd',
       color: '#f6d57b',
       fontFamily: 'Poppins, sans-serif',
-      fontSize: '17px',
+      fontSize: '9px',
+      letterSpacing: 0.8,
       padding: { x: 9, y: 5 },
     }).setInteractive({ useHandCursor: true }).setVisible(false);
     this.fastForwardButton.on('pointerdown', () => { this.touchFastForward = true; });

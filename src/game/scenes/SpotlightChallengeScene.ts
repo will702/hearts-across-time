@@ -1,6 +1,13 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import {
+  EVACUATION_BOARDS,
+  applyEvacuationStep,
+  nextEvacuationStep,
+  samePoint,
+  type GridPoint,
+} from '../minigames/challengeRules';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 export type SpotlightChallengeData = {
@@ -9,7 +16,8 @@ export type SpotlightChallengeData = {
   onComplete: () => void;
 };
 
-const COVERS = [300, 480, 660];
+const CELL_SIZE = 62;
+const MAP_TOP = 126;
 
 export class SpotlightChallengeScene extends Phaser.Scene {
   private challengeData!: SpotlightChallengeData;
@@ -17,28 +25,16 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private stage: 'choose' | 'play' | 'success' = 'choose';
   private chosenApproach: 'empathy' | 'logic' = 'empathy';
   private selectedChoice = 0;
-
-  private playerX = 200;
-  private beamX = 350;
-  private beamWidth = 112;
+  private round = 0;
+  private path: GridPoint[] = [];
+  private cursor: GridPoint = { x: 0, y: 0 };
   private misses = 0;
   private assisted = false;
-  private alertMeter = 0;
-  private lastFootstepX = 200;
-  private checkpointX = 200;
-  private graceUntil = 0;
-  private feedbackHoldUntil = 0;
-  private lastHint = '';
 
-  private feedbackText?: Phaser.GameObjects.Text;
-  private alertBarGraphics?: Phaser.GameObjects.Graphics;
-  private playerSprite?: Phaser.GameObjects.Sprite;
-  private beamGraphics?: Phaser.GameObjects.Graphics;
-  private dustParticles: { x: number; y: number; vx: number; vy: number; alpha: number; circle: Phaser.GameObjects.Arc }[] = [];
   private chooseContainer?: Phaser.GameObjects.Container;
-
+  private boardContainer?: Phaser.GameObjects.Container;
+  private statusText?: Phaser.GameObjects.Text;
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
-  private touchMove = 0;
 
   constructor() {
     super('SpotlightChallengeScene');
@@ -50,379 +46,251 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.registry.set('nativeState', 'spotlight_challenge');
     this.stage = 'choose';
     this.selectedChoice = 0;
-    this.playerX = 200;
+    this.round = 0;
+    this.path = [];
     this.misses = 0;
     this.assisted = false;
-    this.alertMeter = 0;
-    this.lastFootstepX = 200;
-    this.checkpointX = 200;
-    this.lastHint = '';
 
-    this.createBackground();
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x100c08, 0.96);
+    if (this.textures.exists('bg1944-mid')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1944-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.16);
+    }
+    this.add.text(GAME_WIDTH / 2, 34, 'PETA EVAKUASI GARIS DEPAN — 1944', {
+      color: '#f7d984', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
+      stroke: '#1a0f08', strokeThickness: 5,
+    }).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 70, 'Bawa tiga korban menuju pos medis tanpa memasuki sektor berbahaya.', {
+      color: '#fff8ea', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    }).setOrigin(0.5);
+
+    this.boardContainer = this.add.container(0, 0).setVisible(false);
+    this.statusText = this.add.text(GAME_WIDTH / 2, 430, 'Pilih cara membaca medan evakuasi.', {
+      backgroundColor: '#180f0ce8', color: '#f6d57b', fontFamily: 'Poppins, sans-serif',
+      fontSize: '13px', padding: { x: 18, y: 9 }, align: 'center',
+    }).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 490, 'PANAH / WASD — FOKUS   •   SPACE / ENTER — PILIH   •   BACKSPACE — MUNDUR', {
+      color: '#d6c5ae', fontFamily: 'Poppins, sans-serif', fontSize: '11px',
+    }).setOrigin(0.5);
+
     this.createChooseUI();
-    this.createInputHandlers();
-    if (!this.registry.get('reduceMotion')) this.createDustParticles();
+    this.keys = this.input.keyboard?.addKeys({
+      left: Phaser.Input.Keyboard.KeyCodes.LEFT,
+      right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+      up: Phaser.Input.Keyboard.KeyCodes.UP,
+      down: Phaser.Input.Keyboard.KeyCodes.DOWN,
+      a: Phaser.Input.Keyboard.KeyCodes.A,
+      d: Phaser.Input.Keyboard.KeyCodes.D,
+      w: Phaser.Input.Keyboard.KeyCodes.W,
+      s: Phaser.Input.Keyboard.KeyCodes.S,
+      enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
+      space: Phaser.Input.Keyboard.KeyCodes.SPACE,
+      back: Phaser.Input.Keyboard.KeyCodes.BACKSPACE,
+    }) as Record<string, Phaser.Input.Keyboard.Key>;
   }
 
-  update(_time: number, delta: number): void {
-    const dt = delta / 1000;
-    this.updateDustParticles(dt);
+  update(): void {
+    if (!this.keys || this.stage === 'success') return;
+    const left = Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.a);
+    const right = Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.d);
+    const up = Phaser.Input.Keyboard.JustDown(this.keys.up) || Phaser.Input.Keyboard.JustDown(this.keys.w);
+    const down = Phaser.Input.Keyboard.JustDown(this.keys.down) || Phaser.Input.Keyboard.JustDown(this.keys.s);
+    const confirm = Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space);
 
     if (this.stage === 'choose') {
-      if (this.keys) {
-        if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.a)) {
-          this.selectedChoice = 0;
-          this.soundManager?.playSelect();
-          this.refreshChoiceUI();
-        } else if (Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.d)) {
-          this.selectedChoice = 1;
-          this.soundManager?.playSelect();
-          this.refreshChoiceUI();
-        } else if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
-          this.startPlayStage();
-        }
-      }
+      if (left || up) this.selectApproach(0);
+      else if (right || down) this.selectApproach(1);
+      if (confirm) this.startPlayStage();
       return;
     }
 
-    if (this.stage === 'play') {
-      const spd = this.assisted ? 220 : 190;
-      let dir = this.touchMove;
-      if (this.keys) {
-        if (this.keys.left.isDown || this.keys.a.isDown) dir -= 1;
-        if (this.keys.right.isDown || this.keys.d.isDown) dir += 1;
-      }
-      dir = Phaser.Math.Clamp(dir, -1, 1);
-
-      this.playerX = Phaser.Math.Clamp(this.playerX + dir * spd * dt, 190, 765);
-      if (Math.abs(this.playerX - this.lastFootstepX) > 28) {
-        this.lastFootstepX = this.playerX;
-        this.soundManager?.playFootstep('metal', this.playerX);
-      }
-
-      if (this.playerSprite) {
-        this.playerSprite.setX(this.playerX);
-        if (dir !== 0) this.playerSprite.setFlipX(dir < 0);
-      }
-
-      const beamSpeed = this.assisted ? 0.62 : 0.95;
-      const t = this.time.now / 1000;
-      this.beamWidth = this.assisted ? 80 : 110;
-      // Sinusoidal sweep with ease near edges
-      this.beamX = 190 + ((Math.sin(t * beamSpeed) + 1) / 2) * 575;
-
-      this.drawBeam();
-
-      const inCover = COVERS.some(cx => Math.abs(this.playerX - cx) < 38);
-      const inBeam = Math.abs(this.playerX - this.beamX) < this.beamWidth / 2;
-
-      if (inCover) {
-        const cover = COVERS.find(cx => Math.abs(this.playerX - cx) < 38);
-        if (cover && cover > this.checkpointX) this.checkpointX = cover;
-      }
-
-      if (this.playerSprite) {
-        this.playerSprite.setTint(inCover ? 0x94a3b8 : (inBeam ? 0xfef08a : 0xffffff));
-      }
-
-      if (this.time.now >= this.graceUntil && inBeam && !inCover) {
-        this.alertMeter += dt * 3.2;
-        if (this.alertMeter >= 1.0) {
-          this.onDetected();
-          return;
-        }
-      } else {
-        this.alertMeter = Math.max(0, this.alertMeter - dt * 2.0);
-      }
-
-      this.drawAlertBar();
-      this.updateHint(inCover, inBeam);
-
-      if (this.playerX >= 758) {
-        this.onFinish();
-      }
+    if (left) this.moveCursor(-1, 0);
+    else if (right) this.moveCursor(1, 0);
+    else if (up) this.moveCursor(0, -1);
+    else if (down) this.moveCursor(0, 1);
+    if (confirm) this.commit(this.cursor);
+    if (Phaser.Input.Keyboard.JustDown(this.keys.back) && this.path.length > 1) {
+      this.path.pop();
+      this.cursor = { ...this.path[this.path.length - 1] };
+      this.soundManager?.playSelect();
+      this.renderBoard();
     }
   }
 
   snapshot(): Record<string, unknown> {
+    const board = EVACUATION_BOARDS[this.round];
     return {
-      minigame: 'spotlight',
+      minigame: 'evacuation_map',
       stage: this.stage,
-      playerX: this.playerX,
-      beamX: this.beamX,
-      covers: COVERS,
+      round: this.round,
+      board: board ? { width: board.width, height: board.height, start: board.start, goal: board.goal, blocked: board.blocked } : null,
+      path: this.path,
+      cursor: this.cursor,
       misses: this.misses,
       assisted: this.assisted,
-      checkpointX: this.checkpointX,
+      hintCell: this.assisted && board ? nextEvacuationStep(board, this.path) : null,
     };
-  }
-
-  private createBackground(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050403, 0.94);
-    if (this.textures.exists('bg1944-mid')) {
-      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1944-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.22);
-    }
-    this.add.text(GAME_WIDTH / 2, 40, 'PENYEBERANGAN LAMPU SOROT', {
-      color: '#f7d984', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
-      stroke: '#1a0f08', strokeThickness: 5,
-    }).setOrigin(0.5);
-
-    // Ground Platform
-    this.add.rectangle(GAME_WIDTH / 2, 385, 620, 8, 0x3d3025);
-
-    // Sandbag Cover Points
-    COVERS.forEach(cx => {
-      this.add.rectangle(cx, 370, 74, 30, 0x5a4838).setStrokeStyle(2, 0x8a7058);
-      this.add.text(cx, 370, '🛡️ PERLINDUNGAN', {
-        color: '#f5f0e8cc', fontFamily: 'Poppins, sans-serif', fontSize: '9px', fontStyle: 'bold',
-      }).setOrigin(0.5);
-    });
-
-    this.beamGraphics = this.add.graphics();
-    this.alertBarGraphics = this.add.graphics();
-
-    if (this.textures.exists('elena')) {
-      this.playerSprite = this.add.sprite(this.playerX, 360, 'elena', 0)
-        .setScale(0.85).setOrigin(0.5, 1).setVisible(false);
-    }
-
-    this.feedbackText = this.add.text(GAME_WIDTH / 2, 436, '', {
-      color: '#f6d57b', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
-    }).setOrigin(0.5);
-
-    this.createTouchControls();
-  }
-
-  private createTouchControls(): void {
-    const leftBtn = this.add.rectangle(260, 485, 110, 44, 0x1f1712, 0.9)
-      .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true });
-    this.add.text(260, 485, '◀ LARI KIRI', {
-      color: '#fff8ea', fontFamily: 'Poppins, sans-serif', fontSize: '12px',
-    }).setOrigin(0.5);
-
-    const rightBtn = this.add.rectangle(700, 485, 110, 44, 0x1f1712, 0.9)
-      .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true });
-    this.add.text(700, 485, 'LARI KANAN ▶', {
-      color: '#fff8ea', fontFamily: 'Poppins, sans-serif', fontSize: '12px',
-    }).setOrigin(0.5);
-
-    leftBtn.on('pointerdown', () => { this.touchMove = -1; });
-    leftBtn.on('pointerup', () => { this.touchMove = 0; });
-    leftBtn.on('pointerout', () => { this.touchMove = 0; });
-
-    rightBtn.on('pointerdown', () => { this.touchMove = 1; });
-    rightBtn.on('pointerup', () => { this.touchMove = 0; });
-    rightBtn.on('pointerout', () => { this.touchMove = 0; });
-  }
-
-  private createDustParticles(): void {
-    for (let i = 0; i < 20; i++) {
-      const circle = this.add.arc(
-        Phaser.Math.Between(190, 770),
-        Phaser.Math.Between(120, 380),
-        Phaser.Math.Between(1, 3),
-        0, 360, false, 0xfff3b0, 0.5,
-      );
-      this.dustParticles.push({
-        x: circle.x,
-        y: circle.y,
-        vx: Phaser.Math.FloatBetween(-12, 12),
-        vy: Phaser.Math.FloatBetween(-8, 8),
-        alpha: Phaser.Math.FloatBetween(0.2, 0.6),
-        circle,
-      });
-    }
-  }
-
-  private updateDustParticles(dt: number): void {
-    this.dustParticles.forEach(p => {
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      if (p.x < 190) p.x = 770;
-      if (p.x > 770) p.x = 190;
-      if (p.y < 110) p.y = 380;
-      if (p.y > 380) p.y = 110;
-      p.circle.setPosition(p.x, p.y);
-
-      // Light up dust when inside beam
-      const inBeam = Math.abs(p.x - this.beamX) < this.beamWidth / 2;
-      p.circle.setAlpha(inBeam ? p.alpha * 1.8 : p.alpha * 0.4);
-    });
   }
 
   private createChooseUI(): void {
     this.chooseContainer = this.add.container(0, 0);
-
-    const sub = this.add.text(GAME_WIDTH / 2, 85, 'PILIH PENDEKATAN STRATEGIS:', {
+    const subtitle = this.add.text(GAME_WIDTH / 2, 112, 'PILIH PENDEKATAN EVAKUASI:', {
       color: '#fffbf0', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
+    const entries = [
+      { x: 310, title: '1. EMPATI', desc: 'Dahulukan korban paling rentan.\n(Fokus pada keselamatan manusia)' },
+      { x: 650, title: '2. LOGIKA', desc: 'Cari jalur tercepat yang masih aman.\n(Fokus pada efisiensi rute)' },
+    ];
+    entries.forEach((entry, index) => {
+      const bg = this.add.rectangle(entry.x, 230, 310, 116, index ? 0x181410 : 0xd3a848, 0.96)
+        .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true })
+        .on('pointerup', () => { this.selectApproach(index); this.startPlayStage(); });
+      const title = this.add.text(entry.x, 197, entry.title, {
+        color: index ? '#f5f0e8' : '#100c08', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const desc = this.add.text(entry.x, 244, entry.desc, {
+        color: index ? '#f5f0e8' : '#100c08', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
+      }).setOrigin(0.5);
+      this.chooseContainer?.add([bg, title, desc]);
+    });
+    this.chooseContainer.add(subtitle);
+  }
 
-    const btn1Bg = this.add.rectangle(GAME_WIDTH / 2 - 170, 200, 310, 110, 0xd3a848, 0.95)
-      .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true });
-    const btn1Title = this.add.text(GAME_WIDTH / 2 - 170, 165, '1. EMPATI', {
-      color: '#100c08', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    const btn1Desc = this.add.text(GAME_WIDTH / 2 - 170, 210, 'Alihkan sorot dari medis terluka.\n(Fokus pada perlindungan)', {
-      color: '#100c08', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
-    }).setOrigin(0.5);
-
-    const btn2Bg = this.add.rectangle(GAME_WIDTH / 2 + 170, 200, 310, 110, 0x181410, 0.95)
-      .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true });
-    const btn2Title = this.add.text(GAME_WIDTH / 2 + 170, 165, '2. LOGIKA', {
-      color: '#f5f0e8', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    const btn2Desc = this.add.text(GAME_WIDTH / 2 + 170, 210, 'Putus daya dan menyeberang langsung.\n(Fokus pada efisiensi misi)', {
-      color: '#f5f0e8', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
-    }).setOrigin(0.5);
-
-    btn1Bg.on('pointerup', () => { this.selectedChoice = 0; this.soundManager?.playConfirm(); this.startPlayStage(); });
-    btn2Bg.on('pointerup', () => { this.selectedChoice = 1; this.soundManager?.playConfirm(); this.startPlayStage(); });
-
-    this.chooseContainer.add([sub, btn1Bg, btn1Title, btn1Desc, btn2Bg, btn2Title, btn2Desc]);
+  private selectApproach(index: number): void {
+    if (this.selectedChoice === index) return;
+    this.selectedChoice = index;
+    this.soundManager?.playSelect();
+    this.refreshChoiceUI();
   }
 
   private refreshChoiceUI(): void {
     if (!this.chooseContainer) return;
-    const btn1Bg = this.chooseContainer.getAt(1) as Phaser.GameObjects.Rectangle;
-    const btn1Title = this.chooseContainer.getAt(2) as Phaser.GameObjects.Text;
-    const btn1Desc = this.chooseContainer.getAt(3) as Phaser.GameObjects.Text;
-    const btn2Bg = this.chooseContainer.getAt(4) as Phaser.GameObjects.Rectangle;
-    const btn2Title = this.chooseContainer.getAt(5) as Phaser.GameObjects.Text;
-    const btn2Desc = this.chooseContainer.getAt(6) as Phaser.GameObjects.Text;
-
-    const is1 = this.selectedChoice === 0;
-    btn1Bg.setFillStyle(is1 ? 0xd3a848 : 0x181410, 0.95);
-    btn1Title.setColor(is1 ? '#100c08' : '#f5f0e8');
-    btn1Desc.setColor(is1 ? '#100c08' : '#f5f0e8');
-
-    btn2Bg.setFillStyle(!is1 ? 0xd3a848 : 0x181410, 0.95);
-    btn2Title.setColor(!is1 ? '#100c08' : '#f5f0e8');
-    btn2Desc.setColor(!is1 ? '#100c08' : '#f5f0e8');
+    [0, 3].forEach((childIndex, index) => {
+      const selected = index === this.selectedChoice;
+      const bg = this.chooseContainer?.getAt(childIndex) as Phaser.GameObjects.Rectangle;
+      const title = this.chooseContainer?.getAt(childIndex + 1) as Phaser.GameObjects.Text;
+      const desc = this.chooseContainer?.getAt(childIndex + 2) as Phaser.GameObjects.Text;
+      bg.setFillStyle(selected ? 0xd3a848 : 0x181410, 0.96);
+      title.setColor(selected ? '#100c08' : '#f5f0e8');
+      desc.setColor(selected ? '#100c08' : '#f5f0e8');
+    });
   }
 
   private startPlayStage(): void {
+    if (this.stage !== 'choose') return;
     this.chosenApproach = this.selectedChoice === 0 ? 'empathy' : 'logic';
     this.stage = 'play';
     this.chooseContainer?.setVisible(false);
-    this.playerSprite?.setVisible(true);
-    this.graceUntil = this.time.now + 900;
-    this.setHint('TAHAN KANAN UNTUK MAJU • BERHENTI DI KARUNG SAAT CAHAYA MENDEKAT');
+    this.boardContainer?.setVisible(true);
     this.soundManager?.playConfirm();
+    this.startRound();
   }
 
-  private drawBeam(): void {
-    if (!this.beamGraphics) return;
-    this.beamGraphics.clear();
-
-    const topX = this.beamX;
-    const topY = 85;
-    const botL = this.beamX - this.beamWidth / 2;
-    const botR = this.beamX + this.beamWidth / 2;
-    const botY = 385;
-
-    // Volumetric Beam Inner Cone
-    this.beamGraphics.fillStyle(0xffec99, 0.38);
-    this.beamGraphics.beginPath();
-    this.beamGraphics.moveTo(topX, topY);
-    this.beamGraphics.lineTo(botR, botY);
-    this.beamGraphics.lineTo(botL, botY);
-    this.beamGraphics.closePath();
-    this.beamGraphics.fill();
-
-    // Beam Outer Border Lines
-    this.beamGraphics.lineStyle(2, 0xfff4c2, 0.8);
-    this.beamGraphics.strokeLineShape(new Phaser.Geom.Line(topX, topY, botL, botY));
-    this.beamGraphics.strokeLineShape(new Phaser.Geom.Line(topX, topY, botR, botY));
-
-    // Spotlight Source Emitter Lens
-    this.beamGraphics.fillStyle(0xfffbeb, 0.9);
-    this.beamGraphics.fillCircle(topX, topY, 10);
+  private startRound(): void {
+    const board = EVACUATION_BOARDS[this.round];
+    this.path = [{ ...board.start }];
+    this.cursor = { ...board.start };
+    this.statusText?.setText(`EVAKUASI ${this.round + 1}/3 — PILIH PETAK BERSEBELAHAN MENUJU POS MEDIS`).setColor('#f6d57b');
+    this.renderBoard();
   }
 
-  private drawAlertBar(): void {
-    if (!this.alertBarGraphics) return;
-    this.alertBarGraphics.clear();
+  private moveCursor(dx: number, dy: number): void {
+    const board = EVACUATION_BOARDS[this.round];
+    this.cursor = {
+      x: Phaser.Math.Clamp(this.cursor.x + dx, 0, board.width - 1),
+      y: Phaser.Math.Clamp(this.cursor.y + dy, 0, board.height - 1),
+    };
+    this.soundManager?.playSelect();
+    this.renderBoard();
+  }
 
-    const progress = Phaser.Math.Clamp((this.playerX - 190) / 575, 0, 1);
-    this.alertBarGraphics.fillStyle(0x180f0c, 0.72);
-    this.alertBarGraphics.fillRect(190, 408, 575, 5);
-    this.alertBarGraphics.fillStyle(0x86efac, 0.9);
-    this.alertBarGraphics.fillRect(190, 408, 575 * progress, 5);
+  private commit(point: GridPoint): void {
+    if (this.stage !== 'play') return;
+    const board = EVACUATION_BOARDS[this.round];
+    const result = applyEvacuationStep(board, this.path, point);
+    this.path = result.path;
+    if (result.result === 'invalid') {
+      this.misses += 1;
+      this.assisted = this.misses >= 2;
+      this.soundManager?.playErrorBuzz();
+      this.statusText?.setText(this.assisted
+        ? 'JALUR TIDAK AMAN — PETAK SARAN DISOROT EMAS'
+        : 'PILIH PETAK TERBUKA YANG BERSEBELAHAN').setColor('#fca5a5');
+    } else {
+      this.cursor = { ...this.path[this.path.length - 1] };
+      this.soundManager?.playLockSuccess();
+      if (samePoint(this.cursor, board.goal)) {
+        if (this.round === EVACUATION_BOARDS.length - 1) {
+          this.finish();
+          return;
+        }
+        this.statusText?.setText('KORBAN TIBA DI POS MEDIS — BUKA PETA BERIKUTNYA').setColor('#86efac');
+        this.time.delayedCall(420, () => {
+          this.round += 1;
+          this.startRound();
+        });
+        return;
+      }
+    }
+    this.renderBoard();
+  }
 
-    if (this.alertMeter > 0.05) {
-      const px = this.playerX;
-      const py = 310;
-      const w = 48;
-      const h = 6;
+  private renderBoard(): void {
+    if (!this.boardContainer || this.stage !== 'play') return;
+    this.boardContainer.removeAll(true);
+    const board = EVACUATION_BOARDS[this.round];
+    const originX = (GAME_WIDTH - board.width * CELL_SIZE) / 2;
+    const graphics = this.add.graphics();
+    graphics.lineStyle(8, 0x86efac, 0.75);
+    for (let index = 1; index < this.path.length; index += 1) {
+      const from = this.path[index - 1];
+      const to = this.path[index];
+      graphics.lineBetween(
+        originX + from.x * CELL_SIZE + CELL_SIZE / 2,
+        MAP_TOP + from.y * CELL_SIZE + CELL_SIZE / 2,
+        originX + to.x * CELL_SIZE + CELL_SIZE / 2,
+        MAP_TOP + to.y * CELL_SIZE + CELL_SIZE / 2,
+      );
+    }
+    this.boardContainer.add(graphics);
+    const hint = this.assisted ? nextEvacuationStep(board, this.path) : null;
 
-      this.alertBarGraphics.fillStyle(0x180f0c, 0.8);
-      this.alertBarGraphics.fillRect(px - w / 2, py, w, h);
-
-      const fillW = Phaser.Math.Clamp(w * this.alertMeter, 0, w);
-      this.alertBarGraphics.fillStyle(this.alertMeter > 0.7 ? 0xef4444 : 0xf59e0b, 1);
-      this.alertBarGraphics.fillRect(px - w / 2, py, fillW, h);
+    for (let y = 0; y < board.height; y += 1) {
+      for (let x = 0; x < board.width; x += 1) {
+        const point = { x, y };
+        const cx = originX + x * CELL_SIZE + CELL_SIZE / 2;
+        const cy = MAP_TOP + y * CELL_SIZE + CELL_SIZE / 2;
+        const blocked = board.blocked.some(cell => samePoint(cell, point));
+        const used = this.path.some(cell => samePoint(cell, point));
+        const isGoal = samePoint(board.goal, point);
+        const isStart = samePoint(board.start, point);
+        const isHint = Boolean(hint && samePoint(hint, point));
+        const cell = this.add.rectangle(cx, cy, CELL_SIZE - 7, CELL_SIZE - 7,
+          blocked ? 0x4c1d1d : used ? 0x14532d : 0x3b3025, 0.95)
+          .setStrokeStyle(isHint ? 4 : samePoint(this.cursor, point) ? 3 : 1,
+            isHint ? 0xfacc15 : samePoint(this.cursor, point) ? 0xf7d984 : 0x8a7058,
+            1)
+          .setInteractive({ useHandCursor: true })
+          .on('pointerup', () => { this.cursor = point; this.commit(point); });
+        const label = this.add.text(cx, cy, blocked ? '✕' : isGoal ? '✚' : isStart ? '●' : used ? '•' : '', {
+          color: blocked ? '#fca5a5' : isGoal ? '#67e8f9' : isStart ? '#f7d984' : '#bbf7d0',
+          fontFamily: 'Poppins, sans-serif', fontSize: isGoal ? '28px' : '20px', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        this.boardContainer.add([cell, label]);
+      }
     }
   }
 
-  private onDetected(): void {
-    this.misses += 1;
-    if (this.misses >= 2) this.assisted = true;
-    this.alertMeter = 0;
-    this.playerX = this.checkpointX;
-    this.playerSprite?.setX(this.playerX);
-    this.graceUntil = this.time.now + 850;
-    this.feedbackHoldUntil = this.graceUntil;
-    this.soundManager?.playErrorBuzz();
-    this.setHint(this.assisted
-      ? 'TERDETEKSI — BANTUAN AKTIF, LANJUT DARI PERLINDUNGAN TERAKHIR'
-      : 'TERDETEKSI — LANJUT DARI PERLINDUNGAN TERAKHIR', '#ef4444');
-    if (!this.registry.get('reduceMotion')) {
-      this.cameras.main.shake(180, 0.008);
-    }
-  }
-
-  private onFinish(): void {
+  private finish(): void {
     this.stage = 'success';
     this.challengeData.run.challenges['1944'] = this.chosenApproach;
     this.challengeData.run[this.chosenApproach] += 1;
     this.challengeData.save.saveCycle('1944', this.challengeData.run, 765);
-
+    this.boardContainer?.removeAll(true);
+    this.statusText?.setText('TIGA JALUR EVAKUASI AMAN — SEMUA KORBAN TIBA DI POS MEDIS').setColor('#86efac');
     this.soundManager?.playSuccessFanfare();
-    this.feedbackText?.setText('PENYEBERANGAN BERHASIL! JALAN MENUJU ARTHUR TERBUKA.').setColor('#86efac');
-    this.beamGraphics?.clear();
-    this.alertBarGraphics?.clear();
-
     this.time.delayedCall(850, () => {
       this.scene.stop();
       this.challengeData.onComplete();
     });
-  }
-
-  private updateHint(inCover: boolean, inBeam: boolean): void {
-    if (this.time.now < this.feedbackHoldUntil) return;
-    if (inCover) {
-      this.setHint('AMAN — TUNGGU CAHAYA LEWAT, LALU MAJU', '#86efac');
-    } else if (inBeam) {
-      this.setHint('BAHAYA — CAPAI PERLINDUNGAN TERDEKAT!', '#fca5a5');
-    } else {
-      this.setHint('MAJU KE KANAN • KARUNG PASIR ADALAH TITIK AMAN');
-    }
-  }
-
-  private setHint(text: string, color = '#f6d57b'): void {
-    if (text === this.lastHint) return;
-    this.lastHint = text;
-    this.feedbackText?.setText(text).setColor(color);
-  }
-
-  private createInputHandlers(): void {
-    this.keys = this.input.keyboard?.addKeys({
-      left: Phaser.Input.Keyboard.KeyCodes.LEFT,
-      right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
-      a: Phaser.Input.Keyboard.KeyCodes.A,
-      d: Phaser.Input.Keyboard.KeyCodes.D,
-      enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
-      space: Phaser.Input.Keyboard.KeyCodes.SPACE,
-    }) as Record<string, Phaser.Input.Keyboard.Key>;
   }
 }

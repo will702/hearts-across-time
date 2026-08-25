@@ -8,13 +8,12 @@ type Snapshot = {
   stage?: string;
   step?: number;
   band?: number;
-  cursor?: number;
+  round?: number;
+  answer?: number | null;
+  cursor?: number | { x: number; y: number };
   target?: number | { x: number; y: number; w: number; h: number } | { rx: number; ry: number } | null;
   rx?: number;
   ry?: number;
-  vital?: number;
-  serum?: number;
-  targets?: { vital: number; serum: number };
   pieces?: Array<{ poly: [number, number][]; ox: number; oy: number; placed: boolean }>;
   selectedPiece?: number;
   menuSelection?: number;
@@ -28,6 +27,29 @@ type Snapshot = {
     assisted: boolean;
   };
   minigame?: string;
+  board?: {
+    width: number;
+    height: number;
+    start: { x: number; y: number };
+    goal: { x: number; y: number };
+    blocked: Array<{ x: number; y: number }>;
+  } | null;
+  path?: Array<{ x: number; y: number }>;
+  positions?: number[];
+  targets?: number[];
+  locked?: boolean[];
+  selectedLayer?: number;
+  assisted?: boolean;
+  system?: number;
+  rotations?: number[];
+  tiles?: Array<{
+    index: number;
+    x: number;
+    y: number;
+    active: boolean;
+    rotation: number;
+    targetRotation: number;
+  }>;
   playerX?: number;
   activeNode?: number;
   completedNodes?: number;
@@ -71,6 +93,17 @@ async function walkTo(page: Page, id: string): Promise<void> {
   } finally {
     await page.keyboard.up('ArrowRight');
   }
+}
+
+async function pressUntilState(page: Page, key: string, expected: string): Promise<void> {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    await page.keyboard.down(key);
+    await page.waitForTimeout(50);
+    await page.keyboard.up(key);
+    if ((await snapshot(page)).state === expected) return;
+    await page.waitForTimeout(70);
+  }
+  throw new Error(`State ${expected} tidak tercapai: ${JSON.stringify(await snapshot(page))}`);
 }
 
 async function walkToBonusNode(page: Page, index: number): Promise<void> {
@@ -155,23 +188,70 @@ async function solveAssembly(page: Page, expectedPieces: number): Promise<void> 
   }
 }
 
-async function lockCryoStep(page: Page, value: 'vital' | 'serum', target: 'vital' | 'serum', expectedStep: number): Promise<void> {
-  const deadline = Date.now() + 8_000;
-  while (Date.now() < deadline) {
-    const state = await snapshot(page);
-    const current = state[value];
-    const goal = state.targets?.[target];
-    if (typeof current === 'number' && typeof goal === 'number' && Math.abs(current - goal) < 0.065) {
-      await page.keyboard.down('Space');
-      await page.waitForTimeout(34);
-      await page.keyboard.up('Space');
-      await page.waitForTimeout(20);
-      if ((await snapshot(page)).stage === 'success' || expectedStep === (await snapshot(page)).step) return;
-    } else {
-      await page.waitForTimeout(10);
+function shortestEvacuationPath(board: NonNullable<Snapshot['board']>): Array<{ x: number; y: number }> {
+  const key = (point: { x: number; y: number }): string => `${point.x},${point.y}`;
+  const blocked = new Set(board.blocked.map(key));
+  const queue: Array<Array<{ x: number; y: number }>> = [[board.start]];
+  const seen = new Set([key(board.start)]);
+  while (queue.length) {
+    const route = queue.shift()!;
+    const current = route[route.length - 1];
+    if (current.x === board.goal.x && current.y === board.goal.y) return route;
+    for (const [dx, dy] of [[1, 0], [0, -1], [0, 1], [-1, 0]]) {
+      const next = { x: current.x + dx, y: current.y + dy };
+      const nextKey = key(next);
+      if (next.x < 0 || next.x >= board.width || next.y < 0 || next.y >= board.height
+        || blocked.has(nextKey) || seen.has(nextKey)) continue;
+      seen.add(nextKey);
+      queue.push([...route, next]);
     }
   }
-  throw new Error(`Parameter krio ${value} tidak dapat dikunci`);
+  throw new Error('Peta evakuasi tidak memiliki jalur aman');
+}
+
+async function solveEvacuation(page: Page): Promise<void> {
+  const cellSize = 62;
+  const top = 126;
+  for (let round = 0; round < 3; round += 1) {
+    const state = await snapshot(page);
+    if (!state.board) throw new Error('Snapshot peta evakuasi tidak lengkap');
+    const originX = (GAME_WIDTH - state.board.width * cellSize) / 2;
+    for (const cell of shortestEvacuationPath(state.board).slice(1)) {
+      const point = await canvasPoint(page, originX + cell.x * cellSize + cellSize / 2, top + cell.y * cellSize + cellSize / 2);
+      await page.mouse.click(point.x, point.y);
+    }
+    if (round < 2) await expect.poll(async () => (await snapshot(page)).round).toBe(round + 1);
+  }
+}
+
+async function solveMicrofilm(page: Page): Promise<void> {
+  for (let layer = 0; layer < 3; layer += 1) {
+    const state = await snapshot(page);
+    const current = state.positions?.[layer];
+    const target = state.targets?.[layer];
+    if (typeof current !== 'number' || typeof target !== 'number') throw new Error('Snapshot mikrofilm tidak lengkap');
+    const key = current < target ? 'ArrowRight' : 'ArrowLeft';
+    for (let move = 0; move < Math.abs(target - current); move += 1) await page.keyboard.press(key);
+    await page.keyboard.press('Space');
+  }
+}
+
+async function solveCircuit(page: Page): Promise<void> {
+  const cellSize = 82;
+  const originX = (GAME_WIDTH - 4 * cellSize) / 2;
+  const top = 116;
+  for (let system = 0; system < 3; system += 1) {
+    const state = await snapshot(page);
+    if (!state.tiles) throw new Error('Snapshot sirkuit pendingin tidak lengkap');
+    for (const tile of state.tiles.filter(tile => tile.active)) {
+      const turns = (tile.targetRotation - tile.rotation + 4) % 4;
+      const point = await canvasPoint(page, originX + tile.x * cellSize + cellSize / 2, top + tile.y * cellSize + cellSize / 2);
+      for (let turn = 0; turn < turns; turn += 1) await page.mouse.click(point.x, point.y);
+    }
+    const testFlow = await canvasPoint(page, 480, 390);
+    await page.mouse.click(testFlow.x, testFlow.y);
+    if (system < 2) await expect.poll(async () => (await snapshot(page)).system).toBe(system + 1);
+  }
 }
 
 test.describe('Phaser Native Full Port E2E', () => {
@@ -179,7 +259,7 @@ test.describe('Phaser Native Full Port E2E', () => {
     test.setTimeout(60_000);
     await page.addInitScript(() => {
       localStorage.clear();
-      localStorage.setItem('hat_opts', JSON.stringify({ reduceMotion: true, textSpd: 2, vol: 0 }));
+      localStorage.setItem('hat_opts', JSON.stringify({ reduceMotion: false, textSpd: 2, vol: 0 }));
       localStorage.setItem('hat_save', JSON.stringify({
         saveVersion: 2,
         game: {
@@ -198,8 +278,7 @@ test.describe('Phaser Native Full Port E2E', () => {
 
     await page.goto('/?qa=1');
     await expect.poll(async () => (await snapshot(page)).state).toBe('title');
-    await page.keyboard.press('Enter');
-    await expect.poll(async () => (await snapshot(page)).state).toBe('era1944');
+    await pressUntilState(page, 'Enter', 'era1944');
     await attachCanvas(page, testInfo, 'era1944-native');
     await walkTo(page, 'watch');
     await page.keyboard.press('Space');
@@ -232,12 +311,16 @@ test.describe('Phaser Native Full Port E2E', () => {
     await page.keyboard.press('Enter');
     await expect.poll(async () => (await snapshot(page)).stage).toBe('play');
     await attachCanvas(page, testInfo, 'spotlight-play-native');
-    await page.keyboard.down('ArrowRight');
-    try {
-      await expect.poll(async () => (await snapshot(page)).state, { timeout: 25_000 }).toBe('era1944');
-    } finally {
-      await page.keyboard.up('ArrowRight');
-    }
+    const evacuation = await snapshot(page);
+    if (!evacuation.board) throw new Error('Peta evakuasi tidak tersedia');
+    const invalid = evacuation.board.blocked[0];
+    const evacuationOriginX = (GAME_WIDTH - evacuation.board.width * 62) / 2;
+    const invalidPoint = await canvasPoint(page, evacuationOriginX + invalid.x * 62 + 31, 126 + invalid.y * 62 + 31);
+    await page.mouse.click(invalidPoint.x, invalidPoint.y);
+    await page.mouse.click(invalidPoint.x, invalidPoint.y);
+    await expect.poll(async () => (await snapshot(page)).assisted).toBe(true);
+    await solveEvacuation(page);
+    await expect.poll(async () => (await snapshot(page)).state).toBe('era1944');
   });
 
   test('@smoke @visual completes Rose puzzle and Signal tune in 1968', async ({ page }, testInfo) => {
@@ -251,7 +334,7 @@ test.describe('Phaser Native Full Port E2E', () => {
         return ((value ^ value >>> 14) >>> 0) / 4294967296;
       };
       localStorage.clear();
-      localStorage.setItem('hat_opts', JSON.stringify({ reduceMotion: true, textSpd: 2, vol: 0 }));
+      localStorage.setItem('hat_opts', JSON.stringify({ reduceMotion: false, textSpd: 2, vol: 0 }));
 
       const saveState = {
         saveVersion: 2,
@@ -282,8 +365,7 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).state).toBe('title');
 
     // Press Enter on "LANJUTKAN" to continue into 1968
-    await page.keyboard.press('Enter');
-    await expect.poll(async () => (await snapshot(page)).state).toBe('era1968');
+    await pressUntilState(page, 'Enter', 'era1968');
     await attachCanvas(page, testInfo, 'era1968-native');
 
     await walkTo(page, 'rose');
@@ -298,14 +380,10 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).state).toBe('signaltune');
     await attachCanvas(page, testInfo, 'signal-native');
     await page.keyboard.press('Enter');
-    for (let band = 0; band < 3; band++) {
-      const state = await snapshot(page);
-      if (typeof state.target !== 'number') throw new Error('Target sinyal tidak tersedia');
-      const point = await canvasPoint(page, 190 + state.target * 580, 220);
-      await page.mouse.click(point.x, point.y);
-      await page.keyboard.press('Space');
-      if (band < 2) await expect.poll(async () => (await snapshot(page)).band).toBe(band + 1);
-    }
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Space');
+    await expect.poll(async () => (await snapshot(page)).assisted).toBe(true);
+    await solveMicrofilm(page);
     await expect.poll(async () => (await snapshot(page)).state).toBe('era1968');
   });
 
@@ -320,7 +398,7 @@ test.describe('Phaser Native Full Port E2E', () => {
         return ((value ^ value >>> 14) >>> 0) / 4294967296;
       };
       localStorage.clear();
-      localStorage.setItem('hat_opts', JSON.stringify({ reduceMotion: true, textSpd: 2, vol: 0 }));
+      localStorage.setItem('hat_opts', JSON.stringify({ reduceMotion: false, textSpd: 2, vol: 0 }));
 
       const saveState = {
         saveVersion: 2,
@@ -351,8 +429,7 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).state).toBe('title');
 
     // Press Enter on "LANJUTKAN" to continue into 1999
-    await page.keyboard.press('Enter');
-    await expect.poll(async () => (await snapshot(page)).state).toBe('era1999');
+    await pressUntilState(page, 'Enter', 'era1999');
     await attachCanvas(page, testInfo, 'era1999-native');
 
     await walkTo(page, 'gem');
@@ -396,8 +473,10 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).state).toBe('cryobalance');
     await attachCanvas(page, testInfo, 'cryo-native');
     await page.keyboard.press('Enter');
-    await lockCryoStep(page, 'vital', 'vital', 1);
-    await lockCryoStep(page, 'serum', 'serum', 2);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await snapshot(page)).assisted).toBe(true);
+    await solveCircuit(page);
     await expect.poll(async () => (await snapshot(page)).state).toBe('era1999');
   });
 

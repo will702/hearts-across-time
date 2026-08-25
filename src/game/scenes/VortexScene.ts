@@ -24,6 +24,7 @@ export class VortexScene extends Phaser.Scene {
   private elapsed = 0;
   private captionText?: Phaser.GameObjects.Text;
   private tunnelGraphics?: Phaser.GameObjects.Graphics;
+  private shardGraphics?: Phaser.GameObjects.Graphics;
 
   constructor() {
     super('VortexScene');
@@ -41,7 +42,7 @@ export class VortexScene extends Phaser.Scene {
     if (this.textures.exists('time-vortex')) {
       const art = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'time-vortex')
         .setDisplaySize(GAME_WIDTH + 80, GAME_HEIGHT + 45)
-        .setAlpha(0.46);
+        .setAlpha(0.72);
       if (!this.registry.get('reduceMotion')) {
         this.tweens.add({
           targets: art,
@@ -56,6 +57,7 @@ export class VortexScene extends Phaser.Scene {
       }
     }
     this.tunnelGraphics = this.add.graphics();
+    this.shardGraphics = this.add.graphics();
 
     const title = data.rewind ? 'MEMUTAR KEMBALI PUSARAN WAKTU…' : 'MELOMPAT MELEWATI DIMENSI WAKTU…';
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 45, title, {
@@ -81,6 +83,7 @@ export class VortexScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (!this.registry.get('reduceMotion')) this.elapsed += delta / 1000;
     this.drawTunnel();
+    this.drawTimeShards();
   }
 
   private drawTunnel(): void {
@@ -90,13 +93,31 @@ export class VortexScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2;
     const isRewind = Boolean(this.vortexData.rewind);
-    const color = isRewind ? 0xef4444 : 0x06b6d4;
+    const eraColor = { '1944': 0xd6a85f, '1968': 0x7ccf9b, '1999': 0x67e8f9, '2088': 0xc084fc }[this.vortexData.to];
+    const color = isRewind ? 0xef4444 : eraColor;
 
-    for (let i = 1; i <= 6; i++) {
-      const radius = ((this.elapsed * 130 + i * 45) % 280);
+    for (let i = 1; i <= 9; i++) {
+      const radius = ((this.elapsed * 155 + i * 34) % 310);
       const alpha = 1 - (radius / 280);
-      this.tunnelGraphics.lineStyle(3, color, alpha);
-      this.tunnelGraphics.strokeCircle(cx, cy, radius);
+      this.tunnelGraphics.lineStyle(i % 3 === 0 ? 4 : 2, color, Math.max(0, alpha) * 0.78);
+      this.tunnelGraphics.strokeEllipse(cx, cy, radius * 1.28, radius * 0.72);
+    }
+  }
+
+  private drawTimeShards(): void {
+    if (!this.shardGraphics) return;
+    this.shardGraphics.clear();
+    const reduced = Boolean(this.registry.get('reduceMotion'));
+    const t = reduced ? 0.8 : this.elapsed;
+    const color = this.vortexData.rewind ? 0xfca5a5 : 0xf7d984;
+    for (let i = 0; i < 12; i += 1) {
+      const angle = i / 12 * Math.PI * 2 + t * (i % 2 ? -0.34 : 0.28);
+      const radius = 115 + ((i * 43 + t * 72) % 245);
+      const x = GAME_WIDTH / 2 + Math.cos(angle) * radius * 1.28;
+      const y = GAME_HEIGHT / 2 + Math.sin(angle) * radius * 0.58;
+      const size = 3 + i % 4;
+      this.shardGraphics.fillStyle(color, 0.22 + (i % 3) * 0.12);
+      this.shardGraphics.fillTriangle(x, y - size * 2, x + size, y + size, x - size, y + size);
     }
   }
 
