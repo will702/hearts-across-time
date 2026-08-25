@@ -18,8 +18,8 @@ type Piece = {
   homeY: number;
   placed: boolean;
   graphics?: Phaser.GameObjects.Graphics;
-  maskGraphics?: Phaser.GameObjects.Graphics;
   image?: Phaser.GameObjects.Image;
+  label?: Phaser.GameObjects.Text;
 };
 
 const PHOTO_TARGET = { x: 270, y: 110, w: 420, h: 280 };
@@ -33,19 +33,19 @@ const PHOTO_SEAMS: [number, number][][] = [
 const PHOTO_PIECES_DEF: { poly: [number, number][]; home: [number, number] }[] = [
   {
     poly: [[0, 0], [210, 0], [205, 18], [214, 34], [202, 52], [216, 70], [207, 88], [219, 107], [204, 126], [212, 140], [187, 148], [164, 137], [139, 145], [115, 135], [91, 147], [68, 137], [45, 146], [24, 136], [0, 140]],
-    home: [-210, 30],
-  },
-  {
-    poly: [[210, 0], [420, 0], [420, 140], [399, 136], [378, 147], [353, 139], [330, 149], [305, 137], [282, 146], [258, 136], [235, 147], [212, 140], [204, 126], [219, 107], [207, 88], [216, 70], [202, 52], [214, 34], [205, 18]],
-    home: [210, 30],
-  },
-  {
-    poly: [[0, 140], [24, 136], [45, 146], [68, 137], [91, 147], [115, 135], [139, 145], [164, 137], [187, 148], [212, 140], [204, 160], [217, 180], [205, 201], [218, 222], [207, 242], [215, 261], [210, 280], [0, 280]],
     home: [-210, 0],
   },
   {
-    poly: [[212, 140], [235, 147], [258, 136], [282, 146], [305, 137], [330, 149], [353, 139], [378, 147], [399, 136], [420, 140], [420, 280], [210, 280], [215, 261], [207, 242], [218, 222], [205, 201], [217, 180], [204, 160]],
+    poly: [[210, 0], [420, 0], [420, 140], [399, 136], [378, 147], [353, 139], [330, 149], [305, 137], [282, 146], [258, 136], [235, 147], [212, 140], [204, 126], [219, 107], [207, 88], [216, 70], [202, 52], [214, 34], [205, 18]],
     home: [210, 0],
+  },
+  {
+    poly: [[0, 140], [24, 136], [45, 146], [68, 137], [91, 147], [115, 135], [139, 145], [164, 137], [187, 148], [212, 140], [204, 160], [217, 180], [205, 201], [218, 222], [207, 242], [215, 261], [210, 280], [0, 280]],
+    home: [-210, 20],
+  },
+  {
+    poly: [[212, 140], [235, 147], [258, 136], [282, 146], [305, 137], [330, 149], [353, 139], [378, 147], [399, 136], [420, 140], [420, 280], [210, 280], [215, 261], [207, 242], [218, 222], [205, 201], [217, 180], [204, 160]],
+    home: [210, 20],
   },
 ];
 
@@ -176,7 +176,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
       ).setDisplaySize(PHOTO_TARGET.w, PHOTO_TARGET.h).setAlpha(0.18);
     }
 
-    this.seamGraphics = this.add.graphics();
+    this.seamGraphics = this.add.graphics().setDepth(6);
 
     this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, 'RAPIKAN EMPAT ROBEKAN FOTO (ANGKA 1-4 & ARAH + SPACE)', {
       color: '#2b211a', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
@@ -194,14 +194,16 @@ export class PhotoPuzzleScene extends Phaser.Scene {
   }
 
   private initPieces(): void {
-    this.pieces = PHOTO_PIECES_DEF.map((def) => {
-      const g = this.add.graphics();
-      const maskGraphics = this.make.graphics({ x: 0, y: 0 });
-      const image = this.textures.exists('elena-arthur-photo')
-        ? this.add.image(PHOTO_TARGET.x + PHOTO_TARGET.w / 2, PHOTO_TARGET.y + PHOTO_TARGET.h / 2, 'elena-arthur-photo')
-          .setDisplaySize(PHOTO_TARGET.w, PHOTO_TARGET.h)
+    this.pieces = PHOTO_PIECES_DEF.map((def, index) => {
+      const g = this.add.graphics().setDepth(4);
+      const fragmentTexture = this.ensurePhotoPieceTexture(index, def.poly);
+      const image = fragmentTexture
+        ? this.add.image(PHOTO_TARGET.x, PHOTO_TARGET.y, fragmentTexture).setOrigin(0).setDepth(3)
         : undefined;
-      if (image) image.setMask(maskGraphics.createGeometryMask());
+      const label = this.add.text(0, 0, String(index + 1), {
+        color: '#fff7ed', backgroundColor: '#5a2a24cc', fontFamily: 'Poppins, sans-serif',
+        fontSize: '11px', fontStyle: 'bold', padding: { x: 4, y: 2 },
+      }).setOrigin(0.5).setDepth(5);
       return {
         poly: def.poly,
         ox: def.home[0],
@@ -210,8 +212,8 @@ export class PhotoPuzzleScene extends Phaser.Scene {
         homeY: def.home[1],
         placed: false,
         graphics: g,
-        maskGraphics,
         image,
+        label,
       };
     });
   }
@@ -225,16 +227,15 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     const posX = PHOTO_TARGET.x + p.ox;
     const posY = PHOTO_TARGET.y + p.oy;
 
-    if (p.image && p.maskGraphics) {
+    if (p.image) {
       p.image
-        .setPosition(PHOTO_TARGET.x + PHOTO_TARGET.w / 2 + p.ox, PHOTO_TARGET.y + PHOTO_TARGET.h / 2 + p.oy)
+        .setPosition(PHOTO_TARGET.x + p.ox, PHOTO_TARGET.y + p.oy)
         .setAlpha(p.placed ? 1 : (isSelected ? 0.98 : 0.82));
-      p.maskGraphics.clear().fillStyle(0xffffff).beginPath();
-      p.poly.forEach((pt, i) => {
-        if (i === 0) p.maskGraphics!.moveTo(posX + pt[0], posY + pt[1]);
-        else p.maskGraphics!.lineTo(posX + pt[0], posY + pt[1]);
-      });
-      p.maskGraphics.closePath().fill();
+    }
+    if (p.label) {
+      p.label
+        .setPosition(posX + p.poly[0][0] + 14, posY + p.poly[0][1] + 18)
+        .setVisible(!p.placed);
     }
 
     p.graphics.fillStyle(
@@ -457,5 +458,40 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     this.feedbackText?.setText(`GARIS ${hit + 1} DILEM ${covered * 10}%`).setColor('#f6d57b');
     this.drawSeams();
     if (covered >= 6) this.glueCurrentLine();
+  }
+
+  private ensurePhotoPieceTexture(index: number, poly: [number, number][]): string | undefined {
+    if (!this.textures.exists('elena-arthur-photo')) return undefined;
+    const key = `photo-fragment-${index}`;
+    if (this.textures.exists(key)) return key;
+
+    const sourceFrame = this.textures.getFrame('elena-arthur-photo');
+    if (!sourceFrame) return undefined;
+    const texture = this.textures.createCanvas(key, PHOTO_TARGET.w, PHOTO_TARGET.h);
+    if (!texture) return undefined;
+
+    const context = texture.context;
+    context.save();
+    context.beginPath();
+    poly.forEach(([x, y], pointIndex) => {
+      if (pointIndex === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    });
+    context.closePath();
+    context.clip();
+    context.drawImage(
+      sourceFrame.source.image as CanvasImageSource,
+      sourceFrame.cutX,
+      sourceFrame.cutY,
+      sourceFrame.cutWidth,
+      sourceFrame.cutHeight,
+      0,
+      0,
+      PHOTO_TARGET.w,
+      PHOTO_TARGET.h,
+    );
+    context.restore();
+    texture.refresh();
+    return key;
   }
 }
