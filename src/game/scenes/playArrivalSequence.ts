@@ -7,6 +7,7 @@ type ArrivalConfig = {
   startFocusX: number;
   endFocusX: number;
   groundY: number;
+  barColor?: number;
   onComplete: () => void;
 };
 
@@ -19,17 +20,41 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
   camera.setZoom(reduced ? 1 : config.startZoom);
   camera.centerOn(config.startFocusX, config.groundY - 120);
 
+  // Era bar color palette matching legacy screens.js
+  let barColor = config.barColor ?? 0xa85550;
+  if (!config.barColor) {
+    if (config.caption.includes('1968') && config.caption.includes('BUNKER')) barColor = 0x6b91a8;
+    else if (config.caption.includes('1968')) barColor = 0x5d91a9;
+    else if (config.caption.includes('1999')) barColor = 0x64a3bc;
+    else if (config.caption.includes('1944')) barColor = 0xa85550;
+  }
+
+  // Top linear gradient dark vignette
+  const topGrad = scene.add.graphics().setScrollFactor(0).setDepth(2999);
+  topGrad.fillGradientStyle(0x040405, 0x040405, 0x040405, 0x040405, 0.85, 0.85, 0, 0);
+  topGrad.fillRect(0, 0, 960, 190);
+
   const caption = scene.add.text(480, 490, config.caption, {
-    color: '#f5f0e8', fontFamily: 'Cinzel, serif', fontSize: '14px', fontStyle: 'italic',
-    stroke: '#080604', strokeThickness: 4,
+    color: '#f5f0e8', fontFamily: 'Cinzel, Georgia, serif', fontSize: '15px', fontStyle: 'italic',
+    stroke: '#080604', strokeThickness: 4, letterSpacing: 2,
   }).setOrigin(0.5).setScrollFactor(0).setDepth(3000);
+
   const track = scene.add.rectangle(375, 514, 210, 3, 0xf5f0e8, 0.2)
     .setOrigin(0, 0.5).setScrollFactor(0).setDepth(3000);
-  const bar = scene.add.rectangle(375, 514, 1, 3, 0xa85550, 1)
+  const bar = scene.add.rectangle(375, 514, 1, 3, barColor, 1)
     .setOrigin(0, 0.5).setScrollFactor(0).setDepth(3001);
   const hint = scene.add.text(480, 526, 'ENTER / SPACE / SENTUH UNTUK MELEWATI', {
-    color: '#f5f0e899', fontFamily: 'Poppins, sans-serif', fontSize: '10px',
+    color: '#f5f0e899', fontFamily: 'Poppins, sans-serif', fontSize: '10px', letterSpacing: 0.5,
   }).setOrigin(0.5).setScrollFactor(0).setDepth(3000);
+
+  // Fast-forward skip button matching legacy drawFFBtn
+  const skipBtnBg = scene.add.circle(46, 496, 22, 0x0a0806, 0.65)
+    .setStrokeStyle(1.6, 0xf5f0e8, 0.85)
+    .setScrollFactor(0).setDepth(3000)
+    .setInteractive({ useHandCursor: true });
+  const skipBtnIcon = scene.add.text(46, 496, '⏩', {
+    fontSize: '14px',
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
 
   const finish = (): void => {
     if (finished) return;
@@ -38,13 +63,18 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
     scene.input.keyboard?.off('keydown-ENTER', finish);
     scene.input.keyboard?.off('keydown-SPACE', finish);
     scene.input.off('pointerdown', finish);
+    topGrad.destroy();
     caption.destroy();
     track.destroy();
     bar.destroy();
     hint.destroy();
+    skipBtnBg.destroy();
+    skipBtnIcon.destroy();
     camera.setZoom(1);
     config.onComplete();
   };
+
+  skipBtnBg.on('pointerup', finish);
 
   const tween = scene.tweens.add({
     targets: progress,

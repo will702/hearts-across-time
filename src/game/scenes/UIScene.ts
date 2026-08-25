@@ -16,13 +16,22 @@ const GAMEPLAY_SCENES = [
 
 const MODAL_SCENES = GAMEPLAY_SCENES.slice(0, 9);
 
+const STORY_ITEMS_DEF = [
+  { id: 'watch', label: 'Jam Saku', icon: '◷' },
+  { id: 'flower', label: 'Mawar Kering', icon: '✿' },
+  { id: 'water_gem', label: 'Permata Air', icon: '◆' },
+  { id: 'arthur_photo', label: 'Foto Arthur', icon: '◧' },
+] as const;
+
 export class UIScene extends Phaser.Scene {
   private controls?: InputSystem;
   private eraTitleText?: Phaser.GameObjects.Text;
   private prompt?: Phaser.GameObjects.Text;
   private promptText = '';
-  private toast?: Phaser.GameObjects.Text;
+  private toast?: Phaser.GameObjects.Container;
   private inventoryText?: Phaser.GameObjects.Text;
+  private inventoryContainer?: Phaser.GameObjects.Container;
+  private inventorySlots: Array<{ bg: Phaser.GameObjects.Arc; text: Phaser.GameObjects.Text }> = [];
   private run?: RunState;
   private touchObjects: Phaser.GameObjects.Text[] = [];
   private pausePanel?: Phaser.GameObjects.Container;
@@ -57,6 +66,10 @@ export class UIScene extends Phaser.Scene {
       backgroundColor: '#100c09dd', color: '#fff4d1', fontFamily: 'Patrick Hand, sans-serif',
       fontSize: '18px', padding: { x: 18, y: 10 }, align: 'center',
     }).setOrigin(0.5).setVisible(false);
+
+    // Legacy stylized Bag / Inventory HUD (W - 194, 52, 176, 38)
+    this.createInventoryHUD();
+
     this.inventoryText = this.add.text(GAME_WIDTH - 230, 58, '', {
       backgroundColor: '#07090cb8', color: '#f7d984', fontFamily: 'Poppins, sans-serif',
       fontSize: '12px', padding: { x: 10, y: 7 }, fixedWidth: 210, align: 'center',
@@ -117,11 +130,58 @@ export class UIScene extends Phaser.Scene {
 
   showToast(text: string, duration = 2200): void {
     this.toast?.destroy();
-    this.toast = this.add.text(GAME_WIDTH / 2, 104, text, {
-      backgroundColor: '#f4ead8ee', color: '#5f2924', fontFamily: 'Patrick Hand, sans-serif',
-      fontSize: '17px', padding: { x: 18, y: 10 }, align: 'center',
+    const isReduced = Boolean(this.registry.get('reduceMotion'));
+    const toastCard = this.add.rectangle(0, 0, 410, 74, 0xf3eada, 0.98)
+      .setStrokeStyle(2, 0x6a4930);
+    const toastInner = this.add.graphics();
+    toastInner.lineStyle(1, 0x2b211a, 0.3);
+    toastInner.strokeRoundedRect(-202, -34, 404, 68, 5);
+
+    const toastHeader = this.add.text(0, -18, 'DITAMBAHKAN KE TAS', {
+      color: '#94342e',
+      fontFamily: 'Poppins, sans-serif',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      letterSpacing: 1,
     }).setOrigin(0.5);
-    this.time.delayedCall(duration, () => { this.toast?.destroy(); this.toast = undefined; });
+
+    const toastBody = this.add.text(0, 10, text, {
+      color: '#2b211a',
+      fontFamily: 'Patrick Hand, sans-serif',
+      fontSize: '20px',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    this.toast = this.add.container(GAME_WIDTH / 2, 102, [toastCard, toastInner, toastHeader, toastBody])
+      .setDepth(3000);
+
+    if (!isReduced) {
+      this.toast.setAlpha(0).setY(116);
+      this.tweens.add({
+        targets: this.toast,
+        alpha: 1,
+        y: 102,
+        duration: 200,
+        ease: 'Sine.easeOut',
+      });
+    }
+
+    this.time.delayedCall(duration, () => {
+      if (this.toast) {
+        if (!isReduced) {
+          this.tweens.add({
+            targets: this.toast,
+            alpha: 0,
+            y: 92,
+            duration: 200,
+            onComplete: () => { this.toast?.destroy(); this.toast = undefined; },
+          });
+        } else {
+          this.toast.destroy();
+          this.toast = undefined;
+        }
+      }
+    });
   }
 
   isPaused(): boolean {
@@ -150,33 +210,89 @@ export class UIScene extends Phaser.Scene {
     this.input.on('pointerup', () => this.controls?.clearTouchMovement());
   }
 
+  private createInventoryHUD(): void {
+    const w = 176, h = 38, x = GAME_WIDTH - w - 18, y = 52;
+    const bg = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x07090c, 0.72)
+      .setStrokeStyle(1.2, 0xf1d58b, 0.55);
+    const tasLabel = this.add.text(x + 10, y + h / 2, 'TAS', {
+      color: '#f1d58b',
+      fontFamily: 'Poppins, sans-serif',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      letterSpacing: 1,
+    }).setOrigin(0, 0.5);
+
+    this.inventorySlots = [];
+    const slotObjects: Phaser.GameObjects.GameObject[] = [bg, tasLabel];
+
+    STORY_ITEMS_DEF.forEach((it, idx) => {
+      const cx = x + 50 + idx * 30;
+      const cy = y + h / 2;
+      const slotBg = this.add.circle(cx, cy, 11, 0xf5f0e8, 0.05)
+        .setStrokeStyle(1.1, 0xf5f0e8, 0.18);
+      const slotIcon = this.add.text(cx, cy + 1, it.icon, {
+        color: '#f5f0e844',
+        fontFamily: 'Poppins, sans-serif',
+        fontSize: '12px',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      this.inventorySlots.push({ bg: slotBg, text: slotIcon });
+      slotObjects.push(slotBg, slotIcon);
+    });
+
+    this.inventoryContainer = this.add.container(0, 0, slotObjects).setVisible(false);
+  }
+
   private refreshInventory(): void {
-    if (!this.run || !this.inventoryText) return;
-    const items = [
-      ['watch', '◷'], ['flower', '✿'], ['water_gem', '◆'], ['arthur_photo', '▧'],
-    ] as const;
-    const owned = items.filter(([key]) => Boolean(this.run?.inventory[key]));
-    this.inventoryText.setVisible(owned.length > 0).setText(`TAS   ${items.map(([key, icon]) => this.run?.inventory[key] ? icon : '·').join('   ')}`);
+    if (!this.run) return;
+    const ownedCount = STORY_ITEMS_DEF.filter(it => Boolean(this.run?.inventory[it.id])).length;
+    const hasItems = ownedCount > 0;
+
+    if (this.inventoryContainer) {
+      this.inventoryContainer.setVisible(hasItems);
+      STORY_ITEMS_DEF.forEach((it, idx) => {
+        const slot = this.inventorySlots[idx];
+        if (!slot) return;
+        const has = Boolean(this.run?.inventory[it.id]);
+        slot.bg.setFillStyle(has ? 0xf7d984 : 0xf5f0e8, has ? 0.22 : 0.05);
+        slot.bg.setStrokeStyle(1.1, has ? 0xf7d984 : 0xf5f0e8, has ? 1 : 0.18);
+        slot.text.setColor(has ? '#fff0a0' : '#f5f0e828');
+      });
+    }
+
+    if (this.inventoryText) {
+      this.inventoryText.setVisible(false).setText(`TAS   ${STORY_ITEMS_DEF.map(it => this.run?.inventory[it.id] ? it.icon : '·').join('   ')}`);
+    }
   }
 
   private createTopButtons(): void {
     const soundManager = this.registry.get('soundManager') as { setMuted: (m: boolean) => void; muted: boolean } | undefined;
     let muted = soundManager?.muted ?? false;
 
-    const muteBtn = this.add.text(GAME_WIDTH - 72, 30, muted ? '🔇' : '🔊', {
-      backgroundColor: '#0b0a08aa', color: '#f5f0e8', fontSize: '14px', padding: { x: 7, y: 6 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    // Legacy style circular audio mute button at W - 72, 28
+    const muteCircle = this.add.circle(GAME_WIDTH - 72, 28, 15, 0x0a0806, 0.65)
+      .setStrokeStyle(1.6, 0xf5f0e8, 0.85)
+      .setInteractive({ useHandCursor: true });
+    const muteIcon = this.add.text(GAME_WIDTH - 72, 29, muted ? '🔇' : '🔊', {
+      fontSize: '12px',
+    }).setOrigin(0.5);
 
-    muteBtn.on('pointerup', () => {
+    muteCircle.on('pointerup', () => {
       muted = !muted;
-      muteBtn.setText(muted ? '🔇' : '🔊');
+      muteIcon.setText(muted ? '🔇' : '🔊');
       soundManager?.setMuted(muted);
     });
 
-    const pauseBtn = this.add.text(GAME_WIDTH - 30, 30, 'Ⅱ', {
-      backgroundColor: '#0b0a08aa', color: '#f5f0e8', fontSize: '15px', padding: { x: 8, y: 6 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    pauseBtn.on('pointerup', () => this.togglePause());
+    // Legacy style circular pause button at W - 32, 28
+    const pauseCircle = this.add.circle(GAME_WIDTH - 32, 28, 15, 0x0a0806, 0.65)
+      .setStrokeStyle(1.6, 0xf5f0e8, 0.85)
+      .setInteractive({ useHandCursor: true });
+    const pauseIcon = this.add.text(GAME_WIDTH - 32, 29, '⏸', {
+      fontSize: '13px',
+    }).setOrigin(0.5);
+
+    pauseCircle.on('pointerup', () => this.togglePause());
   }
 
   private getActiveGameplayScene(): string {
@@ -317,6 +433,8 @@ export class UIScene extends Phaser.Scene {
     this.promptText = '';
     this.toast = undefined;
     this.inventoryText = undefined;
+    this.inventoryContainer = undefined;
+    this.inventorySlots = [];
     this.run = undefined;
     this.touchObjects = [];
     this.pausePanel = undefined;
@@ -328,6 +446,5 @@ export class UIScene extends Phaser.Scene {
     this.modal = false;
     this.modalOwned = false;
     this.suppressPauseOnce = false;
-    this.pauseKeys = undefined;
   }
 }
