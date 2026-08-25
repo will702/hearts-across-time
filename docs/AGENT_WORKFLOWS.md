@@ -32,9 +32,9 @@ _Resep perubahan minimum untuk runtime produksi Phaser-native._
 1. Trace transisi dari scene era ke mini-game/dialog, lalu operasi `walk`, `vortex`,
    atau `ending` di `storyScript.ts`.
 2. Pertahankan urutan wajib:
-   - 1944: arloji → lampu sorot → dialog Arthur;
-   - 1968: botol mawar → sinyal → buku harian/dialog;
-   - 1999: permata → foto → krio → keputusan akhir.
+   - 1944: arloji → peta evakuasi → dialog Arthur;
+   - 1968: botol mawar → mikrofilm arsip → buku harian/dialog;
+   - 1999: permata → foto → sirkuit pendingin → keputusan akhir.
 3. Scene era tetap owner posisi resume dan autosave sebelum modal/transisi.
 4. Saat mengganti urutan, uji Continue pada setiap era dan kondisi item yang belum/sudah
    selesai.

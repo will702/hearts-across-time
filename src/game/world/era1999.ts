@@ -80,7 +80,7 @@ export const ERA_1999 = {
         bounds: { x: 520, y: 394, width: 120, height: 100 },
       },
       action: { type: 'challenge', era: '1999' },
-      prompt: { keyboard: '▼ STABILISASI KRIO', touch: '▼ STABILISASI KRIO' },
+      prompt: { keyboard: '▼ SIRKUIT PENDINGIN', touch: '▼ SIRKUIT PENDINGIN' },
       priority: 80,
       enabled: () => true,
       completed: state => Boolean(state.challenges['1999']),

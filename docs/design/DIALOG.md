@@ -21,7 +21,7 @@ besar dan tidak muncul sebagai pilihan dialog.
 2. Jalan tertahan sampai pemain memeriksa arloji dengan `Space`, `Enter`, `↓`, `S`, atau sentuhan.
 3. Pemain memutar tiga roda waktu memakai `← →`, lalu mengunci tiap roda dengan `Space` / `Enter`.
 4. Setelah ketiga roda selaras, arloji kembali berdetak dan baru disimpan ke dalam tas.
-5. Elena merekonstruksi rute patroli sambil menghindari lampu sorot dan mengumpulkan tiga bukti di titik perlindungan.
+5. Elena membuka peta garis depan dan menyusun tiga jalur aman untuk mengevakuasi korban menuju pos medis.
 
 ### Node: n_b1 (Pertemuan Arthur Muda)
 
@@ -113,7 +113,7 @@ besar dan tidak muncul sebagai pilihan dialog.
 **ELENA:**
 - Mawar ini masih hidup... tetapi botolnya hancur. Aku harus menyatukan kepingannya sebelum membawanya.
 
-*[GAMEPLAY: Susun delapan kepingan botol, lalu dekripsi tiga potongan transmisi]*
+*[GAMEPLAY: Susun delapan kepingan botol, lalu sejajarkan tiga lapisan mikrofilm arsip]*
 
 *[BARANG: BOTOL MAWAR ABADI disimpan setelah botol utuh]*
 
@@ -417,11 +417,11 @@ besar dan tidak muncul sebagai pilihan dialog.
 ```
 START → Prologue (2088 - pemindaian temporal) 
   ↓
-LOOP 1: 1944 (Perbaiki arloji → rekonstruksi patroli → Pilihan 1→2 Empati/Logika) → Rute A/B
+LOOP 1: 1944 (Perbaiki arloji → peta evakuasi → Pilihan 1→2 Empati/Logika) → Rute A/B
   ↓
-LOOP 1: 1968 (Susun vas mawar → dekripsi transmisi → baca buku harian → Pilihan 3 Kabur/Bunker/Publikasi/Kriogenik)
+LOOP 1: 1968 (Susun vas mawar → mikrofilm arsip → baca buku harian → Pilihan 3 Kabur/Bunker/Publikasi/Kriogenik)
   ↓
-LOOP 1: 1999 (Cocokkan bayangan permata → susun & lem foto → periksa catatan foto dekat Arthur tua → stabilisasi krio → Pilihan 4 Final)
+LOOP 1: 1999 (Cocokkan bayangan permata → susun & lem foto → periksa catatan foto dekat Arthur tua → sirkuit pendingin → Pilihan 4 Final)
   ↓
   ├─→ GAGAL (A1/B1/B2a) → Glitch Loop → Loop Counter +1 → Kembali ke 1944
   │

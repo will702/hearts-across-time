@@ -70,7 +70,7 @@ export const ERA_1968 = {
         bounds: { x: 430, y: 394, width: 120, height: 100 },
       },
       action: { type: 'challenge', era: '1968' },
-      prompt: { keyboard: '▼ DEKRIPSI TRANSMISI', touch: '▼ DEKRIPSI TRANSMISI' },
+      prompt: { keyboard: '▼ PERIKSA MIKROFILM', touch: '▼ PERIKSA MIKROFILM' },
       priority: 90,
       enabled: () => true,
       completed: state => Boolean(state.challenges['1968']),

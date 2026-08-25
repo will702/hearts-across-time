@@ -60,7 +60,7 @@ export const ERA_1944 = {
         bounds: { x: 604, y: 394, width: 108, height: 100 },
       },
       action: { type: 'challenge', era: '1944' },
-      prompt: { keyboard: '▼ REKONSTRUKSI PATROLI', touch: '▼ REKONSTRUKSI PATROLI' },
+      prompt: { keyboard: '▼ BUKA PETA EVAKUASI', touch: '▼ BUKA PETA EVAKUASI' },
       priority: 90,
       enabled: () => true,
       completed: state => Boolean(state.challenges['1944']),
