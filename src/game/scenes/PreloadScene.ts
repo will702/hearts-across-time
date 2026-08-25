@@ -36,7 +36,7 @@ export class PreloadScene extends Phaser.Scene {
       this.load.audio(key, url);
     });
 
-    this.load.video('intro', 'assets/intro.mp4');
+    this.load.video('intro', 'assets/video/intro.mp4');
     this.load.font('Cinzel', 'assets/fonts/cinzel.ttf', 'truetype');
     this.load.font('Poppins', 'assets/fonts/poppins-regular.ttf', 'truetype');
     this.load.font('Patrick Hand', 'assets/fonts/patrick-hand.woff2', 'woff2');

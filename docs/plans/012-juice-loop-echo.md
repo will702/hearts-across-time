@@ -23,10 +23,10 @@
 
 ## Implementasi
 
-- `src/core/runtime.js` — musTick wear, detune voice func, field zoom di `G`.
-- `src/render/world.js` — `eraPostFX` + cache frost/scanline/lens, `LORE_IDS`/`loreFoundCount`, `TOUCH_ACT`, `drawEchoGhost`.
-- `src/game/flow.js` — target zoom & reset, ECHO rekam/arsip, mode challenge, touch zones, toast lore.
-- `src/render/screens.js` — transform zoom dunia, panggilan FX, segel cover, rekap endcard, pad sentuh, potret dialog.
+- `legacy/src/core/runtime.js` — musTick wear, detune voice func, field zoom di `G`.
+- `legacy/src/render/world.js` — `eraPostFX` + cache frost/scanline/lens, `LORE_IDS`/`loreFoundCount`, `TOUCH_ACT`, `drawEchoGhost`.
+- `legacy/src/game/flow.js` — target zoom & reset, ECHO rekam/arsip, mode challenge, touch zones, toast lore.
+- `legacy/src/render/screens.js` — transform zoom dunia, panggilan FX, segel cover, rekap endcard, pad sentuh, potret dialog.
 
 ## Verifikasi
 

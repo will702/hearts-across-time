@@ -36,7 +36,7 @@ screenshot.
 - 2 pose baru: `pose_arthur_muda_vial` (`r1b`), `pose_elena_resolve` (`n_b1`, filter `expr:'angry'` — loop≥3);
   `POSES` kini mendukung filter `expr` + `side:'arthur'`; semua pose **fade-in 250ms** (`poseFade` per-id map).
 - 2 prop strip baru: `prop_flare1944` (x 1330 — penanda titik lore suar), `prop_frost1999` (x 620).
-- `assets/bg1944_mid.png`: strip tepi kiri keabu-abuan disamakan tone-nya ke interior + seam di-blend ulang.
+- `assets/art/backgrounds/bg1944_mid.png`: strip tepi kiri keabu-abuan disamakan tone-nya ke interior + seam di-blend ulang.
 - Skrip: `gen_extra.py poses` kini menerima subset id; prompt batch-3 ditambah ke `gen_props.py`/`gen_extra.py`.
 
 ## QA

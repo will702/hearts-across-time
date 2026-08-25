@@ -13,7 +13,7 @@ _Resep perubahan minimum untuk runtime produksi Phaser-native._
 3. Narasi produksi berada di `src/game/narrative/storyScript.ts` dan dieksekusi oleh
    `DialogueScene`.
 4. State satu siklus berada di `RunState`; persist hanya melalui `SaveSystem`.
-5. `legacy.html` dan classic-script lama hanya dipakai saat tugas secara eksplisit
+5. `legacy/index.html` dan classic-script lama hanya dipakai saat tugas secara eksplisit
    meminta inspeksi historis atau parity regression.
 
 ## 🔍 Menambah object atau interaksi era
@@ -57,7 +57,7 @@ _Resep perubahan minimum untuk runtime produksi Phaser-native._
 
 ## 📖 Mengubah cerita atau ending
 
-1. Baca `FIRST_IDEA.md`, `DIALOG.md`, lalu node aktif di
+1. Baca `docs/design/FIRST_IDEA.md`, `docs/design/DIALOG.md`, lalu node aktif di
    `src/game/narrative/storyScript.ts`.
 2. Pertahankan label pilihan, tujuan `goto`, route, dan key ending yang sudah tersimpan.
 3. `DialogueScene` hanya menafsirkan operasi; teks/cabang baru tetap berada di
@@ -117,7 +117,7 @@ _Resep perubahan minimum untuk runtime produksi Phaser-native._
 5. Periksa jalur aset tersedia dan fallback secara terpisah.
 6. Perbaiki invariant di owner bersama, bukan guard di setiap caller.
 
-Gunakan `/legacy.html?qa=1` hanya untuk membandingkan perilaku referensi. Temuan parity
+Gunakan `/legacy/index.html?qa=1` hanya untuk membandingkan perilaku referensi. Temuan parity
 diterapkan pada owner TypeScript produksi, kecuali tugas memang menargetkan fixture lama.
 
 ## 🧪 Menjalankan QA

@@ -2,6 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<base href="/">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="icon" href="data:,">
 <title>Hearts Across Time — Break The Loop</title>
@@ -22,7 +23,7 @@
 <div id="wrap"><canvas id="game" width="960" height="540"></canvas></div>
 <div id="cinematic" role="dialog" aria-modal="true" aria-label="Intro sinematik">
   <video id="intro-video" preload="auto" playsinline aria-label="Intro Hearts Across Time">
-    <source src="assets/intro.mp4" type="video/mp4">
+    <source src="assets/video/intro.mp4" type="video/mp4">
   </video>
   <button id="intro-start" type="button">PUTAR INTRO</button>
   <button id="intro-skip" type="button">LEWATI</button>
@@ -30,20 +31,20 @@
 
 <!-- Urutan ini adalah dependency graph yang eksplisit. Setiap file tetap classic-script
      agar migrasi tidak mengubah kontrak global game/save dalam satu pass. -->
-<script src="vendor/phaser.min.js"></script>
-<script src="src/core/runtime.js?v=20260823-4"></script>
-<script src="src/core/assets.js?v=20260823-5"></script>
-<script src="src/render/characters.js?v=20260819-6"></script>
-<script src="src/render/world.js?v=20260822-6"></script>
-<script src="src/ui/dialog.js?v=20260819-6"></script>
-<script src="src/data/story.js?v=20260822-7"></script>
-<script src="src/data/worlds.js?v=20260823-1"></script>
-<script src="src/game/world-object.js?v=20260823-1"></script>
-<script src="src/game/surface-system.js?v=20260823-1"></script>
-<script src="src/game/interaction-system.js?v=20260823-1"></script>
-<script src="src/game/player-controller.js?v=20260823-1"></script>
-<script src="src/game/flow.js?v=20260823-10"></script>
-<script src="src/render/screens.js?v=20260823-10"></script>
-<script src="src/game/main.js?v=20260823-1"></script>
+<script src="legacy/vendor/phaser.min.js"></script>
+<script src="legacy/src/core/runtime.js?v=20260823-4"></script>
+<script src="legacy/src/core/assets.js?v=20260823-5"></script>
+<script src="legacy/src/render/characters.js?v=20260819-6"></script>
+<script src="legacy/src/render/world.js?v=20260822-6"></script>
+<script src="legacy/src/ui/dialog.js?v=20260819-6"></script>
+<script src="legacy/src/data/story.js?v=20260822-7"></script>
+<script src="legacy/src/data/worlds.js?v=20260823-1"></script>
+<script src="legacy/src/game/world-object.js?v=20260823-1"></script>
+<script src="legacy/src/game/surface-system.js?v=20260823-1"></script>
+<script src="legacy/src/game/interaction-system.js?v=20260823-1"></script>
+<script src="legacy/src/game/player-controller.js?v=20260823-1"></script>
+<script src="legacy/src/game/flow.js?v=20260823-10"></script>
+<script src="legacy/src/render/screens.js?v=20260823-10"></script>
+<script src="legacy/src/game/main.js?v=20260823-1"></script>
 </body>
 </html>

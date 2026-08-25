@@ -127,7 +127,7 @@ export class RosePuzzleScene extends Phaser.Scene {
       ROSE_TARGET.h + 14,
       0x180f0c,
       0.85,
-    ).setStrokeStyle(2, 0xd97706).setDepth(0);
+    ).setDepth(0);
 
     this.feedbackText = this.add.text(GAME_WIDTH / 2, 425, 'PILIH PECAHAN (1-8) & GESER KE POSISI BOTOL (SPACE UNTUK KUNCI)', {
       color: '#cbd5e1', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',

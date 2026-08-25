@@ -11,17 +11,16 @@ TypeScript/ESM membuat `Phaser.Game` dan mendaftarkan seluruh scene dari
 `game/config.ts`.
 
 Seluruh perjalanan 1944/1968/1999, dialog dan rute, mini-game, loop, enam ending,
-true ending, serta bonus 2088 berjalan di scene TypeScript. `legacy.html` dan
+true ending, serta bonus 2088 berjalan di scene TypeScript. `legacy/index.html` dan
 classic-script `.js` tetap tersedia sebagai referensi/parity regression, tetapi tidak
 diimpor oleh runtime native dan tidak disalin ke `dist/`.
 
 Sumber kebenaran produksi:
 
 - Runtime dan scene: `main.ts` serta file `.ts` di `game/`.
-- Narasi aktif: `game/narrative/storyScript.ts`, dicocokkan dengan `FIRST_IDEA.md`
-  dan `DIALOG.md`.
-- Referensi historis: `legacy.html`, `src/core/`, `src/data/`, file
-  `src/game/*.js`, `src/render/`, dan `src/ui/`.
+- Narasi aktif: `game/narrative/storyScript.ts`, dicocokkan dengan `docs/design/FIRST_IDEA.md`
+  dan `docs/design/DIALOG.md`.
+- Referensi historis: seluruh runtime classic-script di `legacy/`.
 
 ## 🎬 Scene Phaser-native
 

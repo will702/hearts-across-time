@@ -11,12 +11,12 @@
 Animasi jalan Elena sudah memakai fase berbasis jarak, cross-fade frame, bob, lean, dan follow-through. Namun ketika fase mencapai pijakan kaki (`phase = kπ`), tubuh hanya kembali ke posisi dasar tanpa kompresi singkat. Akibatnya siklus masih terbaca ringan/melayang walau telapak tidak lagi selip.
 
 ```js
-// src/core/assets.js:173 — current
+// legacy/src/core/assets.js:173 — current
 else if (moving) { const st = opt.stride === undefined ? 1 : opt.stride; c.rotate(Math.sin(phase) * .03 * st); c.translate(Math.sin(phase * 2 - .4) * (0.6 + 0.5 * st), -Math.abs(Math.sin(phase)) * (1.6 + 1.4 * st)); }
 ```
 
 ```js
-// src/render/characters.js:38-43 — current
+// legacy/src/render/characters.js:38-43 — current
 const st=opt.stride===undefined?1:opt.stride;
 const bob=moving?Math.abs(Math.sin(phase))*(1.6+1.4*st):Math.sin(t*2)*0.9;
 const sw=moving?Math.sin(phase)*(0.75+0.4*st):Math.sin(t*1.4)*.1;
@@ -42,20 +42,20 @@ c.scale(1+impact*.012,1-impact*.018);
 
 ## Repo conventions to follow
 
-- Fase langkah dihitung dari jarak di `src/game/flow.js:478`: `p.phase+=Math.abs(p.vx)*dt*.105`.
-- Footstep SFX memakai lintasan `kπ` di `src/game/flow.js:481`; rumus impact harus memakai fase yang sama, tanpa state/timer baru.
-- Semua transform karakter dilakukan relatif terhadap jangkar tengah-bawah; pertahankan `drawImage(...,-dw/2,-dh,dw,dh)` di `src/core/assets.js`.
+- Fase langkah dihitung dari jarak di `legacy/src/game/flow.js:478`: `p.phase+=Math.abs(p.vx)*dt*.105`.
+- Footstep SFX memakai lintasan `kπ` di `legacy/src/game/flow.js:481`; rumus impact harus memakai fase yang sama, tanpa state/timer baru.
+- Semua transform karakter dilakukan relatif terhadap jangkar tengah-bawah; pertahankan `drawImage(...,-dw/2,-dh,dw,dh)` di `legacy/src/core/assets.js`.
 - Fallback prosedural wajib tetap bekerja ketika PNG tidak tersedia.
 
 ## Steps
 
-1. Di `src/core/assets.js`, dalam cabang `else if (moving)` milik `drawCharSheet`, hitung `impact`, turunkan counter-rock `.03` menjadi `.022`, lalu panggil `c.scale(1+impact*.012,1-impact*.018)` setelah translate.
-2. Di `src/render/characters.js`, dalam `drawElena`, hitung `impact` setelah `st`, lalu terapkan skala yang sama setelah `c.translate(0,-bob)` dan sebelum lean.
+1. Di `legacy/src/core/assets.js`, dalam cabang `else if (moving)` milik `drawCharSheet`, hitung `impact`, turunkan counter-rock `.03` menjadi `.022`, lalu panggil `c.scale(1+impact*.012,1-impact*.018)` setelah translate.
+2. Di `legacy/src/render/characters.js`, dalam `drawElena`, hitung `impact` setelah `st`, lalu terapkan skala yang sama setelah `c.translate(0,-bob)` dan sebelum lean.
 3. Jangan mengubah cadence, frame sequence `[1,2,3,2]`, cross-fade, fisika gerak, atau aset PNG.
 
 ## Boundaries
 
-- Jangan mengubah `assets/elena_sheet.png` atau menjalankan pipeline generasi aset.
+- Jangan mengubah `assets/art/characters/elena_sheet.png` atau menjalankan pipeline generasi aset.
 - Jangan menyentuh Arthur, dialog, kamera, input, kecepatan, partikel, maupun audio.
 - Jangan menimpa perubahan working tree yang sudah ada pada pass 014.
 - Jangan menambah dependency, helper global, atau state baru.
@@ -63,7 +63,7 @@ c.scale(1+impact*.012,1-impact*.018);
 
 ## Verification
 
-- **Mechanical**: developer menjalankan pemeriksaan sintaks untuk `src/core/assets.js` dan `src/render/characters.js` melalui harness game yang sudah ada.
+- **Mechanical**: developer menjalankan pemeriksaan sintaks untuk `legacy/src/core/assets.js` dan `legacy/src/render/characters.js` melalui harness game yang sudah ada.
 - **Feel check**: developer menjalankan game, tahan gerak kanan pada kecepatan jalan dan sprint, lalu konfirmasi:
   - tubuh memadat singkat tepat saat setiap suara langkah berbunyi;
   - telapak tidak menembus atau terangkat dari lantai saat squash;
