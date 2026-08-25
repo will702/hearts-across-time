@@ -1,7 +1,7 @@
 export const IMAGE_ASSETS: Record<string, string> = {
   'title-cover': 'assets/art/ui/title-cover.png',
   'title-plate': 'assets/art/ui/title-start-plate.png',
-  'time-vortex': 'assets/art/backgrounds/time-vortex.png',
+  'time-vortex': 'assets/art/backgrounds/time-vortex-investigation.png',
   'bgnarator': 'assets/art/backgrounds/narrator.png',
   'bg1944-far': 'assets/art/backgrounds/bg1944_far.png',
   'bg1944-mid': 'assets/art/backgrounds/bg1944_mid.png',

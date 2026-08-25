@@ -8,6 +8,8 @@ type Snapshot = {
   stage?: string;
   step?: number;
   band?: number;
+  round?: number;
+  answer?: number | null;
   cursor?: number;
   target?: number | { x: number; y: number; w: number; h: number } | { rx: number; ry: number } | null;
   rx?: number;
@@ -71,6 +73,17 @@ async function walkTo(page: Page, id: string): Promise<void> {
   } finally {
     await page.keyboard.up('ArrowRight');
   }
+}
+
+async function pressUntilState(page: Page, key: string, expected: string): Promise<void> {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    await page.keyboard.down(key);
+    await page.waitForTimeout(50);
+    await page.keyboard.up(key);
+    if ((await snapshot(page)).state === expected) return;
+    await page.waitForTimeout(70);
+  }
+  throw new Error(`State ${expected} tidak tercapai: ${JSON.stringify(await snapshot(page))}`);
 }
 
 async function walkToBonusNode(page: Page, index: number): Promise<void> {
@@ -198,8 +211,7 @@ test.describe('Phaser Native Full Port E2E', () => {
 
     await page.goto('/?qa=1');
     await expect.poll(async () => (await snapshot(page)).state).toBe('title');
-    await page.keyboard.press('Enter');
-    await expect.poll(async () => (await snapshot(page)).state).toBe('era1944');
+    await pressUntilState(page, 'Enter', 'era1944');
     await attachCanvas(page, testInfo, 'era1944-native');
     await walkTo(page, 'watch');
     await page.keyboard.press('Space');
@@ -282,8 +294,7 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).state).toBe('title');
 
     // Press Enter on "LANJUTKAN" to continue into 1968
-    await page.keyboard.press('Enter');
-    await expect.poll(async () => (await snapshot(page)).state).toBe('era1968');
+    await pressUntilState(page, 'Enter', 'era1968');
     await attachCanvas(page, testInfo, 'era1968-native');
 
     await walkTo(page, 'rose');
@@ -298,13 +309,12 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).state).toBe('signaltune');
     await attachCanvas(page, testInfo, 'signal-native');
     await page.keyboard.press('Enter');
-    for (let band = 0; band < 3; band++) {
+    for (let round = 0; round < 3; round++) {
       const state = await snapshot(page);
-      if (typeof state.target !== 'number') throw new Error('Target sinyal tidak tersedia');
-      const point = await canvasPoint(page, 190 + state.target * 580, 220);
-      await page.mouse.click(point.x, point.y);
+      if (typeof state.answer !== 'number') throw new Error('Jawaban intersepsi tidak tersedia');
+      for (let move = 0; move < state.answer; move++) await page.keyboard.press('ArrowRight');
       await page.keyboard.press('Space');
-      if (band < 2) await expect.poll(async () => (await snapshot(page)).band).toBe(band + 1);
+      if (round < 2) await expect.poll(async () => (await snapshot(page)).round).toBe(round + 1);
     }
     await expect.poll(async () => (await snapshot(page)).state).toBe('era1968');
   });
@@ -351,8 +361,7 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).state).toBe('title');
 
     // Press Enter on "LANJUTKAN" to continue into 1999
-    await page.keyboard.press('Enter');
-    await expect.poll(async () => (await snapshot(page)).state).toBe('era1999');
+    await pressUntilState(page, 'Enter', 'era1999');
     await attachCanvas(page, testInfo, 'era1999-native');
 
     await walkTo(page, 'gem');

@@ -29,6 +29,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private graceUntil = 0;
   private feedbackHoldUntil = 0;
   private lastHint = '';
+  private collected = new Set<number>();
 
   private feedbackText?: Phaser.GameObjects.Text;
   private alertBarGraphics?: Phaser.GameObjects.Graphics;
@@ -57,6 +58,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.lastFootstepX = 200;
     this.checkpointX = 200;
     this.lastHint = '';
+    this.collected.clear();
 
     this.createBackground();
     this.createChooseUI();
@@ -118,7 +120,10 @@ export class SpotlightChallengeScene extends Phaser.Scene {
 
       if (inCover) {
         const cover = COVERS.find(cx => Math.abs(this.playerX - cx) < 38);
-        if (cover && cover > this.checkpointX) this.checkpointX = cover;
+        if (cover) {
+          if (cover > this.checkpointX) this.checkpointX = cover;
+          this.collectEvidence(COVERS.indexOf(cover));
+        }
       }
 
       if (this.playerSprite) {
@@ -138,15 +143,18 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       this.drawAlertBar();
       this.updateHint(inCover, inBeam);
 
-      if (this.playerX >= 758) {
+      if (this.playerX >= 758 && this.collected.size === COVERS.length) {
         this.onFinish();
+      } else if (this.playerX >= 758) {
+        this.playerX = 748;
+        this.setHint('BUKTI BELUM LENGKAP — PERIKSA SEMUA PERLINDUNGAN', '#fca5a5');
       }
     }
   }
 
   snapshot(): Record<string, unknown> {
     return {
-      minigame: 'spotlight',
+      minigame: 'patrol_reconstruction',
       stage: this.stage,
       playerX: this.playerX,
       beamX: this.beamX,
@@ -154,6 +162,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       misses: this.misses,
       assisted: this.assisted,
       checkpointX: this.checkpointX,
+      collectedEvidence: [...this.collected].sort(),
     };
   }
 
@@ -162,7 +171,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     if (this.textures.exists('bg1944-mid')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1944-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.22);
     }
-    this.add.text(GAME_WIDTH / 2, 40, 'PENYEBERANGAN LAMPU SOROT', {
+    this.add.text(GAME_WIDTH / 2, 40, 'REKONSTRUKSI RUTE PATROLI — 1944', {
       color: '#f7d984', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
       stroke: '#1a0f08', strokeThickness: 5,
     }).setOrigin(0.5);
@@ -171,9 +180,9 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, 385, 620, 8, 0x3d3025);
 
     // Sandbag Cover Points
-    COVERS.forEach(cx => {
+    COVERS.forEach((cx, index) => {
       this.add.rectangle(cx, 370, 74, 30, 0x5a4838).setStrokeStyle(2, 0x8a7058);
-      this.add.text(cx, 370, 'PERLINDUNGAN', {
+      this.add.text(cx, 370, `BUKTI ${index + 1}`, {
         color: '#f5f0e8cc', fontFamily: 'Poppins, sans-serif', fontSize: '9px', fontStyle: 'bold',
       }).setOrigin(0.5);
     });
@@ -253,7 +262,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private createChooseUI(): void {
     this.chooseContainer = this.add.container(0, 0);
 
-    const sub = this.add.text(GAME_WIDTH / 2, 85, 'PILIH PENDEKATAN STRATEGIS:', {
+    const sub = this.add.text(GAME_WIDTH / 2, 85, 'PILIH CARA MEREKONSTRUKSI KEJADIAN:', {
       color: '#fffbf0', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
     }).setOrigin(0.5);
 
@@ -262,7 +271,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     const btn1Title = this.add.text(GAME_WIDTH / 2 - 170, 165, '1. EMPATI', {
       color: '#100c08', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const btn1Desc = this.add.text(GAME_WIDTH / 2 - 170, 210, 'Alihkan sorot dari medis terluka.\n(Fokus pada perlindungan)', {
+    const btn1Desc = this.add.text(GAME_WIDTH / 2 - 170, 210, 'Ikuti jejak korban dan titik perlindungan.\n(Fokus pada manusia)', {
       color: '#100c08', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
     }).setOrigin(0.5);
 
@@ -271,7 +280,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     const btn2Title = this.add.text(GAME_WIDTH / 2 + 170, 165, '2. LOGIKA', {
       color: '#f5f0e8', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const btn2Desc = this.add.text(GAME_WIDTH / 2 + 170, 210, 'Putus daya dan menyeberang langsung.\n(Fokus pada efisiensi misi)', {
+    const btn2Desc = this.add.text(GAME_WIDTH / 2 + 170, 210, 'Hitung interval sapuan lampu.\n(Fokus pada pola patroli)', {
       color: '#f5f0e8', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
     }).setOrigin(0.5);
 
@@ -306,7 +315,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.chooseContainer?.setVisible(false);
     this.playerSprite?.setVisible(true);
     this.graceUntil = this.time.now + 900;
-    this.setHint('TAHAN KANAN UNTUK MAJU • BERHENTI DI KARUNG SAAT CAHAYA MENDEKAT');
+    this.setHint('KUMPULKAN 3 BUKTI DI PERLINDUNGAN • HINDARI SAPUAN CAHAYA');
     this.soundManager?.playConfirm();
   }
 
@@ -388,7 +397,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.challengeData.save.saveCycle('1944', this.challengeData.run, 765);
 
     this.soundManager?.playSuccessFanfare();
-    this.feedbackText?.setText('PENYEBERANGAN BERHASIL! JALAN MENUJU ARTHUR TERBUKA.').setColor('#86efac');
+    this.feedbackText?.setText('RUTE PATROLI TERPECAHKAN — TIGA BUKTI DITEMUKAN.').setColor('#86efac');
     this.beamGraphics?.clear();
     this.alertBarGraphics?.clear();
 
@@ -407,6 +416,14 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     } else {
       this.setHint('MAJU KE KANAN • KARUNG PASIR ADALAH TITIK AMAN');
     }
+  }
+
+  private collectEvidence(index: number): void {
+    if (index < 0 || this.collected.has(index)) return;
+    this.collected.add(index);
+    this.soundManager?.playChime();
+    this.feedbackHoldUntil = this.time.now + 650;
+    this.setHint(`BUKTI ${index + 1}/3 DIAMANKAN — POLA PATROLI MAKIN JELAS`, '#86efac');
   }
 
   private setHint(text: string, color = '#f6d57b'): void {

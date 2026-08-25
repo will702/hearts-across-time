@@ -21,6 +21,7 @@ besar dan tidak muncul sebagai pilihan dialog.
 2. Jalan tertahan sampai pemain memeriksa arloji dengan `Space`, `Enter`, `↓`, `S`, atau sentuhan.
 3. Pemain memutar tiga roda waktu memakai `← →`, lalu mengunci tiap roda dengan `Space` / `Enter`.
 4. Setelah ketiga roda selaras, arloji kembali berdetak dan baru disimpan ke dalam tas.
+5. Elena merekonstruksi rute patroli sambil menghindari lampu sorot dan mengumpulkan tiga bukti di titik perlindungan.
 
 ### Node: n_b1 (Pertemuan Arthur Muda)
 
@@ -112,7 +113,7 @@ besar dan tidak muncul sebagai pilihan dialog.
 **ELENA:**
 - Mawar ini masih hidup... tetapi botolnya hancur. Aku harus menyatukan kepingannya sebelum membawanya.
 
-*[GAMEPLAY: Susun empat kepingan botol dengan seret-lepas atau kontrol keyboard]*
+*[GAMEPLAY: Susun delapan kepingan botol, lalu dekripsi tiga potongan transmisi]*
 
 *[BARANG: BOTOL MAWAR ABADI disimpan setelah botol utuh]*
 
@@ -191,12 +192,12 @@ besar dan tidak muncul sebagai pilihan dialog.
 **NARRATOR:**
 - Sebuah permata sebening air memantulkan cahaya biru dari lantai laboratorium.
 
-*[BARANG: PERMATA AIR disimpan]*
+*[GAMEPLAY: Cocokkan orientasi permata dengan bayangannya; PERMATA AIR disimpan]*
 
 **NARRATOR:**
-- Di dekatnya tergeletak foto Arthur yang telah memudar, tetapi senyumnya masih jelas.
+- Di dekat Arthur tua tergeletak satu-satunya foto dalam perjalanan ini: foto mereka yang telah memudar, tetapi senyumnya masih jelas.
 
-*[BARANG: FOTO ARTHUR disimpan]*
+*[GAMEPLAY: Susun dan rekatkan foto; catatan di baliknya baru dapat diperiksa setelah foto utuh]*
 
 **ELENA:**
 - Permata ini dan foto Arthur... keduanya akan kusimpan di dalam tas.
@@ -414,13 +415,13 @@ besar dan tidak muncul sebagai pilihan dialog.
 ## PROGRESSION LOOP
 
 ```
-START → Prologue (2088 - detak jantung) 
+START → Prologue (2088 - pemindaian temporal) 
   ↓
-LOOP 1: 1944 (Jalan → temukan & perbaiki arloji → Pilihan 1→2 Empati/Logika) → Rute A/B
+LOOP 1: 1944 (Perbaiki arloji → rekonstruksi patroli → Pilihan 1→2 Empati/Logika) → Rute A/B
   ↓
-LOOP 1: 1968 (Temukan & susun botol mawar → Pilihan 3 Kabur/Bunker/Publikasi/Kriogenik)
+LOOP 1: 1968 (Susun vas mawar → dekripsi transmisi → baca buku harian → Pilihan 3 Kabur/Bunker/Publikasi/Kriogenik)
   ↓
-LOOP 1: 1999 (Selaraskan permata → susun & lem foto → pilih ramuan → Pilihan 4 Final)
+LOOP 1: 1999 (Cocokkan bayangan permata → susun & lem foto → periksa catatan foto dekat Arthur tua → stabilisasi krio → Pilihan 4 Final)
   ↓
   ├─→ GAGAL (A1/B1/B2a) → Glitch Loop → Loop Counter +1 → Kembali ke 1944
   │

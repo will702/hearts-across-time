@@ -107,6 +107,24 @@ export const ERA_1999 = {
       saveKey: 'save.inspected.lore_clip',
     },
     {
+      id: 'lore_photo',
+      type: 'lore',
+      position: { x: 735, y: 444 },
+      visual: { asset: 'elena-arthur-photo', fallbackAsset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
+      depth: 441,
+      sensor: {
+        radius: 48,
+        bounds: { x: 705, y: 394, width: 60, height: 100 },
+      },
+      action: { type: 'lore', id: 'lore_photo' },
+      prompt: { keyboard: 'SPACE — PERIKSA CATATAN DI BALIK FOTO', touch: '▼ PERIKSA FOTO' },
+      priority: 60,
+      enabled: state => Boolean(state.photoRepaired),
+      completed: state => Boolean(state.inspected.lore_photo),
+      surface: 'metal',
+      saveKey: 'save.inspected.lore_photo',
+    },
+    {
       id: 'arthur',
       type: 'exit',
       position: { x: 900, y: 444 },
@@ -126,7 +144,11 @@ export const ERA_1999 = {
       action: { type: 'dialog', node: 'n_b3' },
       priority: 10,
       auto: true,
-      enabled: state => Boolean(state.gemAligned) && Boolean(state.photoRepaired) && Boolean(state.challenges['1999']),
+      enabled: state => Boolean(state.gemAligned)
+        && Boolean(state.photoRepaired)
+        && Boolean(state.challenges['1999'])
+        && Boolean(state.inspected.lore_clip)
+        && Boolean(state.inspected.lore_photo),
       completed: () => false,
       surface: 'metal',
       saveKey: 'save.seen.n_b3',

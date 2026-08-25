@@ -8,8 +8,8 @@ export const LORE_LINES = {
     '[ Elena menghitung: suar bertahan 40 detik. Cukup untuk satu doa — tidak cukup untuk pulang. ]',
   ],
   lore_photo: [
-    '[ Foto sobek di bawah mug enamel: dua sosok muda di parit — hanya separuh wajah tersisa. ]',
-    '[ Di baliknya, tinta pudar: "Andai waktu bisa kuputar... aku akan memilih kalimat yang lebih hangat." ]',
+    '[ Setelah disatukan di laboratorium 1999, sisi belakang foto memperlihatkan tulisan yang sebelumnya terputus. ]',
+    '[ Tinta pudar Arthur: "Andai waktu bisa kuputar... aku akan memilih kalimat yang lebih hangat." ]',
   ],
   lore_tape: [
     '[ Pita mainframe berlabel "АРТУР-1": empat belas ribu jam data kriobiologi. ]',

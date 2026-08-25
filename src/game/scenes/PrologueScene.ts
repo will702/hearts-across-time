@@ -40,8 +40,7 @@ export class PrologueScene extends Phaser.Scene {
   private pageContainer?: Phaser.GameObjects.Container;
   private bgImage?: Phaser.GameObjects.Image;
   private started = false;
-  private pulseTimer?: Phaser.Time.TimerEvent;
-  private pulseOverlay?: Phaser.GameObjects.Arc;
+  private temporalPulse?: Phaser.GameObjects.Container;
 
   constructor() {
     super('PrologueScene');
@@ -275,25 +274,25 @@ export class PrologueScene extends Phaser.Scene {
 
     const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     soundManager?.playConfirm();
-    soundManager?.playHeart();
+    soundManager?.playWaterShimmer();
 
-    // Heartbeat radial vignette pulse overlay
+    // A quiet temporal scan replaces the old red heartbeat vignette.
     if (!this.registry.get('reduceMotion')) {
-      this.pulseOverlay = this.add.circle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_HEIGHT * 0.75, 0x8c1414, 0)
-        .setDepth(10);
-      this.pulseTimer = this.time.addEvent({
-        delay: 2400,
-        loop: true,
-        callback: () => {
-          if (!this.pulseOverlay) return;
-          this.tweens.add({
-            targets: this.pulseOverlay,
-            fillAlpha: 0.22,
-            duration: 300,
-            yoyo: true,
-            ease: 'Sine.easeInOut',
-          });
-        },
+      const outer = this.add.ellipse(0, 0, 760, 330).setStrokeStyle(2, 0x67e8f9, 0.45);
+      const middle = this.add.ellipse(0, 0, 540, 230).setStrokeStyle(2, 0xf7d984, 0.38);
+      const core = this.add.circle(0, 0, 7, 0xe0f2fe, 0.75);
+      this.temporalPulse = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2, [outer, middle, core])
+        .setDepth(10)
+        .setAlpha(0.12);
+      this.tweens.add({
+        targets: this.temporalPulse,
+        alpha: 0.48,
+        scaleX: 1.08,
+        scaleY: 1.08,
+        duration: 1300,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
       });
     }
 
@@ -301,8 +300,7 @@ export class PrologueScene extends Phaser.Scene {
       nodeId: 'prologue',
       run: this.run,
       onComplete: (action?: { type: string; to?: string }) => {
-        this.pulseTimer?.destroy();
-        this.pulseOverlay?.destroy();
+        this.temporalPulse?.destroy();
         if (action?.type === 'vortex' || action?.to === '1944') {
           this.scene.start('VortexScene', { to: '1944', run: this.run });
         } else {
