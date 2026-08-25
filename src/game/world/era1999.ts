@@ -92,7 +92,7 @@ export const ERA_1999 = {
       id: 'lore_clip',
       type: 'lore',
       position: { x: 420, y: 444 },
-      visual: { asset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
+      visual: { asset: 'cryolog-prop', fallbackAsset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
       depth: 441,
       sensor: {
         radius: 48,

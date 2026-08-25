@@ -20,7 +20,6 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
   camera.setZoom(reduced ? 1 : config.startZoom);
   camera.centerOn(config.startFocusX, config.groundY - 120);
 
-  // Era bar color palette matching legacy screens.js
   let barColor = config.barColor ?? 0xa85550;
   if (!config.barColor) {
     if (config.caption.includes('1968') && config.caption.includes('BUNKER')) barColor = 0x6b91a8;

@@ -373,7 +373,7 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     this.soundManager?.playSuccessFanfare();
     this.feedbackText?.setText('FOTO ELENA & ARTHUR UTUH KEMBALI! MASUK KE TAS.').setColor('#a3e635');
 
-    this.time.delayedCall(950, () => {
+    this.time.delayedCall(1800, () => {
       this.scene.stop();
       this.puzzleData.onComplete();
     });

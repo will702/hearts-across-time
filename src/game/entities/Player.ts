@@ -117,7 +117,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       frames: this.scene.anims.generateFrameNumbers(this.walkTexture, this.walkTexture === 'elena-walk'
         ? { start: 0, end: 12 }
         : { frames: [1, 2, 3, 2] }),
-      duration: 500,
+      duration: 650,
       repeat: -1,
     });
   }
@@ -134,7 +134,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return;
     }
     this.play(WALK_ANIMATION, true);
-    this.anims.timeScale = Phaser.Math.Clamp(Math.abs(velocity) / WALK_SPEED, 0.6, 1.5);
+    this.anims.timeScale = Phaser.Math.Clamp(Math.abs(velocity) / WALK_SPEED, 0.75, 1.65);
   }
 
   private updateSteps(moving: boolean, velocity: number, dt: number): void {

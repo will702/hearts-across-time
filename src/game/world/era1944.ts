@@ -32,7 +32,7 @@ export const ERA_1944 = {
       id: 'watch',
       type: 'watch',
       position: { x: 420, y: 444 },
-      visual: { asset: 'watch-fallback', displayHeight: 58, origin: { x: 0.5, y: 1 } },
+      visual: { asset: 'watch-prop', fallbackAsset: 'watch-fallback', displayHeight: 58, origin: { x: 0.5, y: 1 } },
       depth: 444,
       collider: { x: 398, y: 384, width: 44, height: 60 },
       sensor: {
@@ -52,7 +52,7 @@ export const ERA_1944 = {
       id: 'spotlight',
       type: 'challenge',
       position: { x: 700, y: 444 },
-      visual: { asset: 'spotlight-fallback', displayHeight: 78, origin: { x: 0.5, y: 1 } },
+      visual: { asset: 'spotlight-prop', fallbackAsset: 'spotlight-fallback', displayHeight: 78, origin: { x: 0.5, y: 1 } },
       depth: 443,
       collider: { x: 670, y: 370, width: 60, height: 74 },
       sensor: {
@@ -72,7 +72,7 @@ export const ERA_1944 = {
       id: 'lore_crate',
       type: 'lore',
       position: { x: 480, y: 444 },
-      visual: { asset: 'lore-fallback', displayHeight: 70, origin: { x: 0.5, y: 1 } },
+      visual: { asset: 'crate-prop', fallbackAsset: 'lore-fallback', displayHeight: 70, origin: { x: 0.5, y: 1 } },
       depth: 442,
       sensor: {
         radius: 40,

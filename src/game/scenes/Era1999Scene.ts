@@ -165,7 +165,7 @@ export class Era1999Scene extends Phaser.Scene {
     this.createAnimatedProp('prop-frost1999', 720, 444, 88, 2, 439);
 
     if (this.textures.exists('bg1999-fg')) {
-      this.add.image(0, 412, 'bg1999-fg').setOrigin(0).setDisplaySize(1120, 150).setDepth(1000);
+      this.add.image(0, ERA_1999.groundY - 14, 'bg1999-fg').setOrigin(0).setDisplaySize(1120, 152).setDepth(430);
     }
   }
 

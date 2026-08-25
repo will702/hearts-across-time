@@ -19,6 +19,12 @@ export const IMAGE_ASSETS: Record<string, string> = {
   'rose-bottle-broken': 'assets/art/minigames/rose-bottle-broken.png',
   'water-gem-art': 'assets/art/minigames/water-gem.jpg',
   'elena-arthur-photo': 'assets/art/minigames/elena-arthur-photo.png',
+  'watch-prop': 'assets/art/props/prop_watch1944.png',
+  'spotlight-prop': 'assets/art/props/prop_spotlight1944.png',
+  'crate-prop': 'assets/art/props/prop_crate1944.png',
+  'diary-prop': 'assets/art/props/prop_diary1968.png',
+  'tape-prop': 'assets/art/props/prop_tape1968.png',
+  'cryolog-prop': 'assets/art/props/prop_cryolog1999.png',
   'bonus-puzzle-board': 'assets/art/bonus/puzzle-board.jpg',
   'bonus-city-complete': 'assets/art/bonus/city-complete.jpg',
 };

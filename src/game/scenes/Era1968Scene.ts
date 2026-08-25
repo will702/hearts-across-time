@@ -178,7 +178,7 @@ export class Era1968Scene extends Phaser.Scene {
     }
 
     if (this.textures.exists(bgFgKey)) {
-      this.add.image(0, 412, bgFgKey).setOrigin(0).setDisplaySize(1220, 150).setDepth(1000);
+      this.add.image(0, ERA_1968.groundY - 14, bgFgKey).setOrigin(0).setDisplaySize(1220, 165).setDepth(430);
     }
   }
 

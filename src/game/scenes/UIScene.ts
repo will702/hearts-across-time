@@ -273,22 +273,42 @@ export class UIScene extends Phaser.Scene {
   private createTopButtons(): void {
     const soundManager = this.registry.get('soundManager') as { setMuted: (m: boolean) => void; muted: boolean } | undefined;
     let muted = soundManager?.muted ?? false;
+    const makeButton = (x: number, width: number, label: string, onPress: () => void): {
+      bg: Phaser.GameObjects.Rectangle;
+      icon: Phaser.GameObjects.Graphics;
+      label: Phaser.GameObjects.Text;
+      container: Phaser.GameObjects.Container;
+    } => {
+      const bg = this.add.rectangle(0, 0, width, 30, 0x090b10, 0.76).setStrokeStyle(1, 0xf1d58b, 0.58);
+      const icon = this.add.graphics();
+      const buttonLabel = this.add.text(-width / 2 + 29, 0, label, {
+        color: '#f5f0e8', fontFamily: 'Poppins, sans-serif', fontSize: '8px', letterSpacing: 0.5,
+      }).setOrigin(0, 0.5);
+      const container = this.add.container(x, 27, [bg, icon, buttonLabel])
+        .setSize(width, 30)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => bg.setFillStyle(0x36251d, 0.94).setStrokeStyle(1.4, 0xf1d58b, 0.9))
+        .on('pointerout', () => bg.setFillStyle(0x090b10, 0.76).setStrokeStyle(1, 0xf1d58b, 0.58))
+        .on('pointerup', onPress);
+      return { bg, icon, label: buttonLabel, container };
+    };
 
-    const muteButton = this.add.text(GAME_WIDTH - 104, 27, muted ? 'SUARA MATI' : 'SUARA', {
-      color: '#f5f0e8bb', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 0.6,
-      padding: { x: 7, y: 5 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-    muteButton.on('pointerup', () => {
+    const music = makeButton(GAME_WIDTH - 110, 92, 'MUSIK', () => {
       muted = !muted;
-      muteButton.setText(muted ? 'SUARA MATI' : 'SUARA');
       soundManager?.setMuted(muted);
+      drawMusicIcon();
     });
+    const drawMusicIcon = (): void => {
+      music.icon.clear().fillStyle(muted ? 0xb8a898 : 0xf1d58b, 1);
+      music.icon.fillRect(-36, -5, 5, 10).fillTriangle(-31, -7, -31, 7, -23, 0);
+      music.icon.lineStyle(1.5, muted ? 0xb8a898 : 0xf1d58b, 1).strokeCircle(-22, 0, 9);
+      if (muted) music.icon.lineBetween(-31, -9, -14, 9);
+      music.label.setText(muted ? 'MUSIK MATI' : 'MUSIK');
+    };
+    drawMusicIcon();
 
-    this.add.text(GAME_WIDTH - 35, 27, 'JEDA', {
-      color: '#f5f0e8bb', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 0.6,
-      padding: { x: 7, y: 5 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.togglePause());
+    const pause = makeButton(GAME_WIDTH - 33, 56, 'JEDA', () => this.togglePause());
+    pause.icon.fillStyle(0xf1d58b, 1).fillRect(-20, -6, 4, 12).fillRect(-13, -6, 4, 12);
   }
 
   private getActiveGameplayScene(): string {
@@ -324,7 +344,7 @@ export class UIScene extends Phaser.Scene {
   private showPausePanel(): void {
     const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040302, 0.8);
     const paper = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 520, 506, 0xf4ead8, 0.98).setStrokeStyle(3, 0x6a4930);
-    const title = this.add.text(GAME_WIDTH / 2, 43, 'GAME DIJEDA', {
+    const title = this.add.text(GAME_WIDTH / 2, 43, 'WAKTU BERHENTI SEJENAK', {
       color: '#612a25', fontFamily: 'Cinzel, serif', fontSize: '22px', fontStyle: 'bold',
     }).setOrigin(0.5);
     const options = this.registry.get('options') as GameOptions;

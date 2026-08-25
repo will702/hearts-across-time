@@ -82,7 +82,7 @@ export const ERA_1968 = {
       id: 'diary',
       type: 'lore',
       position: { x: 720, y: 444 },
-      visual: { asset: 'lore-fallback', displayHeight: 68, origin: { x: 0.5, y: 1 } },
+      visual: { asset: 'diary-prop', fallbackAsset: 'lore-fallback', displayHeight: 68, origin: { x: 0.5, y: 1 } },
       depth: 442,
       sensor: {
         radius: 55,
@@ -100,7 +100,7 @@ export const ERA_1968 = {
       id: 'lore_photo',
       type: 'lore',
       position: { x: 560, y: 444 },
-      visual: { asset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
+      visual: { asset: 'elena-arthur-photo', fallbackAsset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
       depth: 441,
       sensor: {
         radius: 48,
@@ -118,7 +118,7 @@ export const ERA_1968 = {
       id: 'lore_tape',
       type: 'lore',
       position: { x: 805, y: 444 },
-      visual: { asset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
+      visual: { asset: 'tape-prop', fallbackAsset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
       depth: 441,
       sensor: {
         radius: 48,

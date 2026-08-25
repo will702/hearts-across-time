@@ -5,7 +5,7 @@ import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 const INTRO_PAGES = [
   {
-    title: 'MISI: PUTUSKAN LINGKARAN WAKTU',
+    title: 'SEBELUM WAKTU DIBUKA',
     lead: 'Tahun 2088 di ambang kepunahan. Setiap pilihanmu dapat mengubah takdir dan alur cerita ke depannya.',
     rows: [
       ['WAKTU', 'Jelajahi tahun 1944, 1968, dan 1999 untuk menulis ulang nasib Arthur.'],
@@ -14,7 +14,7 @@ const INTRO_PAGES = [
     ],
   },
   {
-    title: 'BERGERAK MELINTASI WAKTU',
+    title: 'CARA MELANGKAH',
     lead: 'Setiap era menyimpan jalan, petunjuk, dan bahaya berbeda.',
     rows: [
       ['GERAK', 'Gunakan ← → atau A D. Tahan SHIFT untuk berlari.'],
@@ -23,7 +23,7 @@ const INTRO_PAGES = [
     ],
   },
   {
-    title: 'PILIHANMU MEMBENTUK ARTHUR',
+    title: 'YANG ARTHUR INGAT',
     lead: 'Game tidak akan mengatakan pilihan mana yang “benar”.',
     rows: [
       ['PILIHAN', 'Gunakan ↑ ↓ lalu ENTER, atau tekan nomor opsi yang tersedia.'],
@@ -171,7 +171,7 @@ export class PrologueScene extends Phaser.Scene {
     });
 
     // Pagination: HALAMAN X / 3
-    const pageNum = this.add.text(GAME_WIDTH / 2, 411, `HALAMAN ${this.page + 1} / ${INTRO_PAGES.length}`, {
+    const pageNum = this.add.text(GAME_WIDTH / 2, 411, `CATATAN ${this.page + 1} / ${INTRO_PAGES.length}`, {
       color: '#94342e',
       fontFamily: 'Poppins, sans-serif',
       fontSize: '12px',

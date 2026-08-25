@@ -123,7 +123,7 @@ export class TitleScene extends Phaser.Scene {
       { label: 'SIKLUS BARU', action: () => this.newCycle() },
       { label: 'PUTAR ULANG INTRO', action: () => this.scene.start('IntroScene') },
       {
-        label: bonusUnlocked ? 'GAMEPLAY TERAKHIR 2088' : `GAMEPLAY TERAKHIR 2088  ${endingCount}/6 AKHIR`,
+        label: bonusUnlocked ? 'EPILOG 2088' : `EPILOG 2088  ${endingCount}/6 AKHIR`,
         disabled: () => !bonusUnlocked,
         action: () => this.scene.start('Bonus2088Scene'),
       },
@@ -143,7 +143,7 @@ export class TitleScene extends Phaser.Scene {
       button.on('pointerup', () => this.activate(index));
       return button;
     });
-    this.add.text(68, GAME_HEIGHT - 25, '↑ ↓ memilih   ENTER membuka   ESC / P jeda', {
+    this.add.text(68, GAME_HEIGHT - 25, '↑ ↓ memilih   ENTER membuka   ESC / P jeda saat bermain', {
       color: '#d8cfbf88', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 0.4,
     }).setOrigin(0, 0.5);
     this.refreshMenu();

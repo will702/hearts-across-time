@@ -205,7 +205,7 @@ export class Era1944Scene extends Phaser.Scene {
     this.createAnimatedProp('prop-lantern1944', 620, 436, 94, 3.2, 439);
 
     if (this.textures.exists('bg1944-fg')) {
-      this.add.image(0, 412, 'bg1944-fg').setOrigin(0).setDisplaySize(1470, 200).setDepth(1000);
+      this.add.image(0, ERA_1944.groundY - 14, 'bg1944-fg').setOrigin(0).setDisplaySize(1470, 200).setDepth(430);
     }
   }
 
