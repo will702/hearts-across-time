@@ -9,6 +9,8 @@ import {
   type GridPoint,
 } from '../minigames/challengeRules';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
+import { addPaperPanel } from '../ui/paper';
+import { CSS, FONT } from '../ui/theme';
 
 export type SpotlightChallengeData = {
   run: RunState;
@@ -17,7 +19,8 @@ export type SpotlightChallengeData = {
 };
 
 const CELL_SIZE = 62;
-const MAP_TOP = 126;
+const MAP_TOP = 182;
+const PANEL = { x: 150, y: 88, w: 660, h: 380 };
 
 export class SpotlightChallengeScene extends Phaser.Scene {
   private challengeData!: SpotlightChallengeData;
@@ -51,25 +54,24 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.misses = 0;
     this.assisted = false;
 
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x100c08, 0.96);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x04060a, 0.76);
     if (this.textures.exists('bg1944-mid')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1944-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.16);
     }
-    this.add.text(GAME_WIDTH / 2, 34, 'PETA EVAKUASI GARIS DEPAN — 1944', {
-      color: '#f7d984', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
-      stroke: '#1a0f08', strokeThickness: 5,
+    addPaperPanel(this, PANEL.x, PANEL.y, PANEL.w, PANEL.h, { radius: 9 });
+    this.add.text(GAME_WIDTH / 2, 118, 'PETA EVAKUASI GARIS DEPAN — 1944', {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '23px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 70, 'Bawa tiga korban menuju pos medis tanpa memasuki sektor berbahaya.', {
-      color: '#fff8ea', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    this.add.text(GAME_WIDTH / 2, 143, 'Bawa tiga korban menuju pos medis tanpa memasuki sektor berbahaya.', {
+      color: '#5A4A3C', fontFamily: FONT.META, fontSize: '13px',
     }).setOrigin(0.5);
 
     this.boardContainer = this.add.container(0, 0).setVisible(false);
-    this.statusText = this.add.text(GAME_WIDTH / 2, 430, 'Pilih cara membaca medan evakuasi.', {
-      backgroundColor: '#180f0ce8', color: '#f6d57b', fontFamily: 'Poppins, sans-serif',
-      fontSize: '13px', padding: { x: 18, y: 9 }, align: 'center',
+    this.statusText = this.add.text(GAME_WIDTH / 2, 444, 'Pilih cara membaca medan evakuasi.', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
     this.add.text(GAME_WIDTH / 2, 490, 'PANAH / WASD — FOKUS   •   SPACE / ENTER — PILIH   •   BACKSPACE — MUNDUR', {
-      color: '#d6c5ae', fontFamily: 'Poppins, sans-serif', fontSize: '11px',
+      color: '#6A5B4B', fontFamily: FONT.META, fontSize: '11px',
     }).setOrigin(0.5);
 
     this.createChooseUI();
@@ -131,28 +133,32 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     };
   }
 
+  /** Kartu pendekatan kertas legacy: wash merah + gores tinta bila terpilih. */
   private createChooseUI(): void {
     this.chooseContainer = this.add.container(0, 0);
-    const subtitle = this.add.text(GAME_WIDTH / 2, 112, 'PILIH PENDEKATAN EVAKUASI:', {
-      color: '#fffbf0', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    const subtitle = this.add.text(GAME_WIDTH / 2, 168, 'PILIH PENDEKATAN EVAKUASI:', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '17px', fontStyle: 'bold',
     }).setOrigin(0.5);
     const entries = [
-      { x: 310, title: '1. EMPATI', desc: 'Dahulukan korban paling rentan.\n(Fokus pada keselamatan manusia)' },
-      { x: 650, title: '2. LOGIKA', desc: 'Cari jalur tercepat yang masih aman.\n(Fokus pada efisiensi rute)' },
+      { x: 245, title: '1. EMPATI', desc: 'Dahulukan korban paling rentan.\n(Fokus pada keselamatan manusia)' },
+      { x: 565, title: '2. LOGIKA', desc: 'Cari jalur tercepat yang masih aman.\n(Fokus pada efisiensi rute)' },
     ];
     entries.forEach((entry, index) => {
-      const bg = this.add.rectangle(entry.x, 230, 310, 116, index ? 0x181410 : 0xd3a848, 0.96)
-        .setStrokeStyle(2, 0x6a4930).setInteractive({ useHandCursor: true })
+      const bg = this.add.rectangle(entry.x, 265, 290, 130, 0x5a4a3c, 0.06)
+        .setStrokeStyle(1.5, 0x2b211a, 0.4).setInteractive({ useHandCursor: true })
         .on('pointerup', () => { this.selectApproach(index); this.startPlayStage(); });
-      const title = this.add.text(entry.x, 197, entry.title, {
-        color: index ? '#f5f0e8' : '#100c08', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
+      const title = this.add.text(entry.x, 232, entry.title, {
+        color: CSS.body, fontFamily: FONT.UI, fontSize: '17px',
       }).setOrigin(0.5);
-      const desc = this.add.text(entry.x, 244, entry.desc, {
-        color: index ? '#f5f0e8' : '#100c08', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
+      const desc = this.add.text(entry.x, 280, entry.desc, {
+        color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', align: 'center',
       }).setOrigin(0.5);
       this.chooseContainer?.add([bg, title, desc]);
     });
     this.chooseContainer.add(subtitle);
+    this.add.text(GAME_WIDTH / 2, 398, '← → pilih  •  ENTER konfirmasi', {
+      color: '#6A5B4B', fontFamily: FONT.UI, fontSize: '14px',
+    }).setOrigin(0.5);
   }
 
   private selectApproach(index: number): void {
@@ -168,10 +174,9 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       const selected = index === this.selectedChoice;
       const bg = this.chooseContainer?.getAt(childIndex) as Phaser.GameObjects.Rectangle;
       const title = this.chooseContainer?.getAt(childIndex + 1) as Phaser.GameObjects.Text;
-      const desc = this.chooseContainer?.getAt(childIndex + 2) as Phaser.GameObjects.Text;
-      bg.setFillStyle(selected ? 0xd3a848 : 0x181410, 0.96);
-      title.setColor(selected ? '#100c08' : '#f5f0e8');
-      desc.setColor(selected ? '#100c08' : '#f5f0e8');
+      bg.setFillStyle(selected ? 0x94342e : 0x5a4a3c, selected ? 0.13 : 0.06);
+      bg.setStrokeStyle(selected ? 3 : 1.5, 0x94342e, selected ? 1 : 0.4);
+      title.setFontStyle(selected ? 'bold' : 'normal');
     });
   }
 
@@ -189,7 +194,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     const board = EVACUATION_BOARDS[this.round];
     this.path = [{ ...board.start }];
     this.cursor = { ...board.start };
-    this.statusText?.setText(`EVAKUASI ${this.round + 1}/3 — PILIH PETAK BERSEBELAHAN MENUJU POS MEDIS`).setColor('#f6d57b');
+    this.statusText?.setText(`EVAKUASI ${this.round + 1}/3 — PILIH PETAK BERSEBELAHAN MENUJU POS MEDIS`).setColor(CSS.body);
     this.renderBoard();
   }
 
@@ -214,7 +219,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       this.soundManager?.playErrorBuzz();
       this.statusText?.setText(this.assisted
         ? 'JALUR TIDAK AMAN — PETAK SARAN DISOROT EMAS'
-        : 'PILIH PETAK TERBUKA YANG BERSEBELAHAN').setColor('#fca5a5');
+        : 'PILIH PETAK TERBUKA YANG BERSEBELAHAN').setColor(CSS.redBright);
     } else {
       this.cursor = { ...this.path[this.path.length - 1] };
       this.soundManager?.playLockSuccess();
@@ -223,7 +228,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
           this.finish();
           return;
         }
-        this.statusText?.setText('KORBAN TIBA DI POS MEDIS — BUKA PETA BERIKUTNYA').setColor('#86efac');
+        this.statusText?.setText('KORBAN TIBA DI POS MEDIS — BUKA PETA BERIKUTNYA').setColor(CSS.green);
         this.time.delayedCall(420, () => {
           this.round += 1;
           this.startRound();
@@ -240,7 +245,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     const board = EVACUATION_BOARDS[this.round];
     const originX = (GAME_WIDTH - board.width * CELL_SIZE) / 2;
     const graphics = this.add.graphics();
-    graphics.lineStyle(8, 0x86efac, 0.75);
+    graphics.lineStyle(4, 0x567a61, 0.85);
     for (let index = 1; index < this.path.length; index += 1) {
       const from = this.path[index - 1];
       const to = this.path[index];
@@ -265,15 +270,15 @@ export class SpotlightChallengeScene extends Phaser.Scene {
         const isStart = samePoint(board.start, point);
         const isHint = Boolean(hint && samePoint(hint, point));
         const cell = this.add.rectangle(cx, cy, CELL_SIZE - 7, CELL_SIZE - 7,
-          blocked ? 0x4c1d1d : used ? 0x14532d : 0x3b3025, 0.95)
-          .setStrokeStyle(isHint ? 4 : samePoint(this.cursor, point) ? 3 : 1,
-            isHint ? 0xfacc15 : samePoint(this.cursor, point) ? 0xf7d984 : 0x8a7058,
-            1)
+          blocked ? 0x94342e : used ? 0x567a61 : 0xf3eada, blocked ? 0.16 : used ? 0.3 : 1)
+          .setStrokeStyle(isHint ? 4 : samePoint(this.cursor, point) ? 3 : 1.4,
+            isHint ? 0xb98a3d : samePoint(this.cursor, point) ? 0x94342e : 0x2b211a,
+            isHint ? 1 : samePoint(this.cursor, point) ? 1 : 0.35)
           .setInteractive({ useHandCursor: true })
           .on('pointerup', () => { this.cursor = point; this.commit(point); });
         const label = this.add.text(cx, cy, blocked ? '✕' : isGoal ? '✚' : isStart ? '●' : used ? '•' : '', {
-          color: blocked ? '#fca5a5' : isGoal ? '#67e8f9' : isStart ? '#f7d984' : '#bbf7d0',
-          fontFamily: 'Poppins, sans-serif', fontSize: isGoal ? '28px' : '20px', fontStyle: 'bold',
+          color: blocked ? CSS.redBright : isGoal ? CSS.red : isStart ? '#55677A' : CSS.green,
+          fontFamily: FONT.UI, fontSize: isGoal ? '26px' : '19px', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.boardContainer.add([cell, label]);
       }
@@ -286,9 +291,18 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.challengeData.run[this.chosenApproach] += 1;
     this.challengeData.save.saveCycle('1944', this.challengeData.run, 765);
     this.boardContainer?.removeAll(true);
-    this.statusText?.setText('TIGA JALUR EVAKUASI AMAN — SEMUA KORBAN TIBA DI POS MEDIS').setColor('#86efac');
+
+    // kartu sukses kertas legacy
+    this.add.rectangle(GAME_WIDTH / 2, 275, 660, 180, 0xf3eada, 0.96);
+    this.add.text(GAME_WIDTH / 2, 235, 'JALUR EVAKUASI AMAN', {
+      color: CSS.green, fontFamily: FONT.UI, fontSize: '27px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 285, 'Semua korban tiba di pos medis.', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '16px',
+    }).setOrigin(0.5);
+    this.statusText?.setText('').setVisible(false);
     this.soundManager?.playSuccessFanfare();
-    this.time.delayedCall(850, () => {
+    this.time.delayedCall(1000, () => {
       this.scene.stop();
       this.challengeData.onComplete();
     });

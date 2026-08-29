@@ -20,11 +20,28 @@ import {
 } from '../minigames/bonusRules';
 import { InputSystem } from '../systems/InputSystem';
 import type { SaveSystem } from '../systems/SaveSystem';
+import { addPaperPanel } from '../ui/paper';
+import {
+  CSS,
+  FONT,
+  GOLD,
+  GOLD_BRIGHT,
+  GREEN,
+  GREEN_BRIGHT,
+  RED,
+  RED_BRIGHT,
+  RED_DARK,
+} from '../ui/theme';
 import type { UIScene } from './UIScene';
 
 type DisplayRect = { x: number; y: number; width: number; height: number };
 
 const WORLD_WIDTH = 1220;
+
+/* Palet epilog 2088: malam hangat + batu + emas kenangan (bukan neon). */
+const NIGHT = 0x0d0a08;
+const STONE = 0x2a2622;
+const STONE_INK = 0x6a5b4b;
 const BONUS_NODES = [
   { x: 150, label: '1. TEMUKAN PERBEDAAN' },
   { x: 365, label: '2. BUKET MAWAR & KODE' },
@@ -108,7 +125,7 @@ export class Bonus2088Scene extends Phaser.Scene {
     });
 
     const label = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'MEMUAT KENANGAN 2088…', {
-      color: '#f5d0fe', fontFamily: 'Poppins, sans-serif', fontSize: '14px', letterSpacing: 2,
+      color: CSS.gold, fontFamily: FONT.META, fontSize: '14px', letterSpacing: 2,
     }).setOrigin(0.5).setName('bonus-loader');
     this.load.once('complete', () => label.destroy());
   }
@@ -143,9 +160,9 @@ export class Bonus2088Scene extends Phaser.Scene {
     this.ui = this.scene.get('UIScene') as UIScene;
 
     this.statusText = this.add.text(20, 72, '', {
-      backgroundColor: '#110719cc',
-      color: '#f6d57b',
-      fontFamily: 'Poppins, sans-serif',
+      backgroundColor: '#0d0a08cc',
+      color: CSS.gold,
+      fontFamily: FONT.META,
       fontSize: '12px',
       fontStyle: 'bold',
       padding: { x: 10, y: 6 },
@@ -230,7 +247,7 @@ export class Bonus2088Scene extends Phaser.Scene {
   }
 
   private createWorldLayers(): void {
-    this.add.rectangle(WORLD_WIDTH / 2, GAME_HEIGHT / 2, WORLD_WIDTH, GAME_HEIGHT, 0x090510).setDepth(-30);
+    this.add.rectangle(WORLD_WIDTH / 2, GAME_HEIGHT / 2, WORLD_WIDTH, GAME_HEIGHT, NIGHT).setDepth(-30);
 
     if (this.textures.exists('bg2088-far')) {
       this.add.image(0, 92, 'bg2088-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
@@ -240,14 +257,14 @@ export class Bonus2088Scene extends Phaser.Scene {
     }
 
     BONUS_NODES.forEach((node, index) => {
-      const halo = this.add.ellipse(node.x, 442, 80, 20, 0xd946ef, 0.12).setDepth(438);
-      const monolith = this.add.rectangle(node.x, 444, 46, 72, 0x3b0753, 0.92)
+      const halo = this.add.ellipse(node.x, 442, 80, 20, GOLD, 0.12).setDepth(438);
+      const monolith = this.add.rectangle(node.x, 444, 46, 72, STONE, 0.92)
         .setOrigin(0.5, 1)
-        .setStrokeStyle(2, 0xd946ef)
+        .setStrokeStyle(2, STONE_INK)
         .setDepth(439);
       this.add.text(node.x, 382, `${index + 1}`, {
-        color: '#fdf4ff',
-        fontFamily: 'Cinzel, serif',
+        color: CSS.gold,
+        fontFamily: FONT.TITLE,
         fontSize: '17px',
         fontStyle: 'bold',
       }).setOrigin(0.5).setDepth(440);
@@ -264,14 +281,19 @@ export class Bonus2088Scene extends Phaser.Scene {
     if (this.textures.exists('arthur-tua')) {
       this.add.sprite(1160, 444, 'arthur-tua', 0).setOrigin(0.5, 1).setDisplaySize(86, 120).setDepth(444);
       this.add.text(1160, 322, 'ARTHUR', {
-        color: '#f7d984', fontFamily: 'Cinzel, serif', fontSize: '12px', fontStyle: 'bold',
-        stroke: '#120718', strokeThickness: 3,
+        color: CSS.goldBright, fontFamily: FONT.TITLE, fontSize: '12px', fontStyle: 'bold',
+        stroke: '#120c07', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(445);
     }
 
     if (this.textures.exists('bg2088-fg')) {
       this.add.image(0, 412, 'bg2088-fg').setOrigin(0).setDisplaySize(WORLD_WIDTH, 150).setDepth(1000);
     }
+
+    // Grading hangat 2088 (legacy rgba(96,74,52,.14)) di atas dunia, di bawah HUD.
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x604a34, 0.14)
+      .setScrollFactor(0)
+      .setDepth(1001);
   }
 
   private createAnimatedProp(key: string, x: number, y: number, height: number, frameRate: number): void {
@@ -299,19 +321,20 @@ export class Bonus2088Scene extends Phaser.Scene {
     this.ui.setPrompt('');
     this.ui.setModal(true);
 
-    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020104, 0.94);
-    const header = this.add.rectangle(GAME_WIDTH / 2, 28, GAME_WIDTH, 56, 0x160a21, 0.98)
-      .setStrokeStyle(1, 0x7e22ce);
-    const title = this.add.text(GAME_WIDTH / 2, 28, BONUS_NODES[index].label, {
-      color: '#fdf4ff', fontFamily: 'Cinzel, serif', fontSize: '19px', fontStyle: 'bold',
+    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, NIGHT, 0.94);
+    const header = addPaperPanel(this, 20, 8, 920, 52, { radius: 8 });
+    const title = this.add.text(GAME_WIDTH / 2, 34, BONUS_NODES[index].label, {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '22px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const close = this.add.text(832, 28, 'X — TUTUP', {
-      backgroundColor: '#3b163fdd', color: '#f5d0fe', fontFamily: 'Poppins, sans-serif',
-      fontSize: '11px', padding: { x: 10, y: 7 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const close = this.add.rectangle(856, 34, 118, 30, RED, 0.96)
+      .setStrokeStyle(1.5, RED_DARK)
+      .setInteractive({ useHandCursor: true });
+    const closeLabel = this.add.text(856, 34, 'X — TUTUP', {
+      color: '#FFF8EA', fontFamily: FONT.META, fontSize: '11px', fontStyle: 'bold',
+    }).setOrigin(0.5);
     close.on('pointerup', () => this.closeModal());
 
-    this.activeModal = this.add.container(0, 0, [shade, header, title, close])
+    this.activeModal = this.add.container(0, 0, [shade, header, title, close, closeLabel])
       .setScrollFactor(0)
       .setDepth(3000);
 
@@ -333,11 +356,11 @@ export class Bonus2088Scene extends Phaser.Scene {
 
     const markerLayer = this.add.container(0, 0);
     const help = this.add.text(GAME_WIDTH / 2, 474, 'Klik perbedaan asli • Keyboard: ←/→ pilih, Enter tandai', {
-      backgroundColor: '#12091ddd', color: '#f5d0fe', fontFamily: 'Poppins, sans-serif',
+      backgroundColor: '#0d0a08dd', color: CSS.paper, fontFamily: FONT.META,
       fontSize: '11px', padding: { x: 12, y: 5 },
     }).setOrigin(0.5);
     const status = this.add.text(GAME_WIDTH / 2, 510, '', {
-      backgroundColor: '#12091dee', color: '#fde047', fontFamily: 'Poppins, sans-serif',
+      backgroundColor: '#0d0a08ee', color: CSS.brass, fontFamily: FONT.META,
       fontSize: '13px', fontStyle: 'bold', padding: { x: 14, y: 6 },
     }).setOrigin(0.5);
     modal.add([markerLayer, help, status]);
@@ -354,9 +377,9 @@ export class Bonus2088Scene extends Phaser.Scene {
             DIFFERENCE_RECT.x + point[0] * DIFFERENCE_RECT.width,
             DIFFERENCE_RECT.y + point[1] * DIFFERENCE_RECT.height,
             13,
-            0x16a34a,
+            GREEN,
             0.28,
-          ).setStrokeStyle(3, 0x86efac));
+          ).setStrokeStyle(3, GREEN_BRIGHT));
         }
       });
 
@@ -366,16 +389,16 @@ export class Bonus2088Scene extends Phaser.Scene {
           DIFFERENCE_RECT.x + point[0] * DIFFERENCE_RECT.width,
           DIFFERENCE_RECT.y + point[1] * DIFFERENCE_RECT.height,
           20,
-          0xfacc15,
+          GOLD,
           0.12,
-        ).setStrokeStyle(2, 0xfde047));
+        ).setStrokeStyle(2, GOLD));
       }
 
       const count = this.differenceFound.filter(Boolean).length;
       status.setText(count === DIFFERENCE_SPOTS.length
         ? '10 / 10 — SEMUA PERBEDAAN DITEMUKAN'
         : `PERBEDAAN DITEMUKAN: ${count} / ${DIFFERENCE_SPOTS.length}`)
-        .setColor(count === DIFFERENCE_SPOTS.length ? '#86efac' : '#fde047');
+        .setColor(count === DIFFERENCE_SPOTS.length ? CSS.greenBright : CSS.brass);
     };
 
     const mark = (index: number): void => {
@@ -398,7 +421,7 @@ export class Bonus2088Scene extends Phaser.Scene {
       if (index >= 0) mark(index);
       else {
         this.soundManager?.playErrorBuzz();
-        status.setText('Belum tepat — amati kedua panel lebih dekat.').setColor('#fda4af');
+        status.setText('Belum tepat — amati kedua panel lebih dekat.').setColor(CSS.redBright);
       }
     });
 
@@ -463,21 +486,21 @@ export class Bonus2088Scene extends Phaser.Scene {
       if (gathered < ROSE_HOMES.length) {
         this.addArtwork(stage, 'bonus-mawar-art', ROSE_RECT, 'Ilustrasi buket mawar tidak tersedia');
         const target = mapRosePoint(ROSE_TARGET);
-        stage.add(this.add.circle(target.x, target.y, 66, 0xf43f5e, 0.12).setStrokeStyle(3, 0xfda4af));
+        stage.add(this.add.circle(target.x, target.y, 66, RED, 0.12).setStrokeStyle(3, RED_BRIGHT));
         stage.add(this.add.text(target.x, target.y, `BUKET\n${gathered} / ${ROSE_HOMES.length}`, {
-          color: '#fff1f2', fontFamily: 'Cinzel, serif', fontSize: '13px', fontStyle: 'bold', align: 'center',
-          stroke: '#4c0519', strokeThickness: 4,
+          color: CSS.paper, fontFamily: FONT.TITLE, fontSize: '13px', fontStyle: 'bold', align: 'center',
+          stroke: CSS.redDark, strokeThickness: 4,
         }).setOrigin(0.5));
 
         ROSE_HOMES.forEach((homeSource, index) => {
           if (this.roseCollected[index]) return;
           const home = mapRosePoint(homeSource);
-          const token = this.add.circle(home.x, home.y, 22, index === focus ? 0xfacc15 : 0xe11d48, 0.24)
-            .setStrokeStyle(3, index === focus ? 0xfef08a : 0xfda4af)
+          const token = this.add.circle(home.x, home.y, 22, index === focus ? GOLD : RED, 0.24)
+            .setStrokeStyle(3, index === focus ? GOLD_BRIGHT : RED_BRIGHT)
             .setInteractive({ useHandCursor: true, draggable: true });
           const number = this.add.text(home.x, home.y, `${index + 1}`, {
-            color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
-            stroke: '#4c0519', strokeThickness: 3,
+            color: '#FFF8EA', fontFamily: FONT.META, fontSize: '13px', fontStyle: 'bold',
+            stroke: CSS.redDark, strokeThickness: 3,
           }).setOrigin(0.5);
           stage.add([token, number]);
 
@@ -508,23 +531,23 @@ export class Bonus2088Scene extends Phaser.Scene {
         });
 
         stage.add(this.add.text(GAME_WIDTH / 2, 500, 'Seret mawar ke buket atau ketuk • Keyboard: ←/→ lalu Enter', {
-          backgroundColor: '#180a20e8', color: '#fbcfe8', fontFamily: 'Poppins, sans-serif',
+          backgroundColor: '#0d0a08e8', color: CSS.paper, fontFamily: FONT.META,
           fontSize: '12px', padding: { x: 14, y: 7 },
         }).setOrigin(0.5));
         return;
       }
 
       this.addArtwork(stage, 'bonus-mawar2-art', ROSE_RECT, 'Pesan tahun 2088 tidak tersedia');
-      const codePanel = this.add.rectangle(GAME_WIDTH / 2, 116, 260, 82, 0x160a21, 0.9).setStrokeStyle(2, 0xf472b6);
+      const codePanel = addPaperPanel(this, GAME_WIDTH / 2 - 130, 75, 260, 82, { radius: 9 });
       const display = this.add.text(GAME_WIDTH / 2, 116, this.roseCode.padEnd(4, '_'), {
-        color: this.litNodes[1] ? '#86efac' : '#fde047',
-        fontFamily: 'Cinzel, serif', fontSize: '30px', fontStyle: 'bold', letterSpacing: 7,
+        color: this.litNodes[1] ? CSS.green : CSS.brass,
+        fontFamily: FONT.TITLE, fontSize: '30px', fontStyle: 'bold', letterSpacing: 7,
       }).setOrigin(0.5);
       stage.add([codePanel, display]);
 
       if (this.litNodes[1]) {
         stage.add(this.add.text(GAME_WIDTH / 2, 492, '2088 TERBACA — SIMPUL MAWAR LENGKAP', {
-          backgroundColor: '#14532ddd', color: '#bbf7d0', fontFamily: 'Poppins, sans-serif',
+          backgroundColor: '#567a61e6', color: '#FFF8EA', fontFamily: FONT.META,
           fontSize: '13px', fontStyle: 'bold', padding: { x: 16, y: 8 },
         }).setOrigin(0.5));
         return;
@@ -539,7 +562,7 @@ export class Bonus2088Scene extends Phaser.Scene {
       this.addButton(stage, 315, 488, 150, 36, 'HAPUS', () => pressCode('clear'));
       this.addButton(stage, 645, 488, 150, 36, 'BACA KODE', () => pressCode('ok'), true);
       stage.add(this.add.text(GAME_WIDTH / 2, 354, 'Lima mawar membuka pesan. Baca angka pada gambar dan masukkan tahunnya.', {
-        backgroundColor: '#180a20e8', color: '#fbcfe8', fontFamily: 'Poppins, sans-serif',
+        backgroundColor: '#0d0a08e8', color: CSS.paper, fontFamily: FONT.META,
         fontSize: '12px', padding: { x: 14, y: 7 },
       }).setOrigin(0.5));
     };
@@ -605,9 +628,9 @@ export class Bonus2088Scene extends Phaser.Scene {
     const render = (): void => {
       stage.removeAll(true);
       this.addArtwork(stage, 'bonus-dinner-bg', { x: 42, y: 70, width: 560, height: 315 }, 'Ilustrasi meja makan tidak tersedia');
-      stage.add(this.add.rectangle(756, 230, 316, 320, 0x160a21, 0.92).setStrokeStyle(2, 0x7e22ce));
+      stage.add(addPaperPanel(this, 598, 70, 316, 320, { radius: 9 }));
       stage.add(this.add.text(620, 82, 'PETUNJUK', {
-        color: '#fde68a', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
+        color: CSS.red, fontFamily: FONT.UI, fontSize: '16px', fontStyle: 'bold',
       }));
       stage.add(this.add.text(620, 112,
         '1. Kursi 1 menyantap nasi goreng.\n' +
@@ -616,7 +639,7 @@ export class Bonus2088Scene extends Phaser.Scene {
         '4. Adi duduk sebelum kursi steak.\n' +
         '5. Spaghetti bersebelahan dengan Budi.\n' +
         '6. Adi tidak makan udang atau nasi.', {
-          color: '#f5d0fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '15px', lineSpacing: 5,
+          color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', lineSpacing: 5,
         }));
 
       const seatPositions = [
@@ -624,8 +647,8 @@ export class Bonus2088Scene extends Phaser.Scene {
       ];
       seatPositions.forEach((position, index) => {
         const focused = index === this.dinnerFocusSeat;
-        const seat = this.add.rectangle(position.x, position.y, 136, 74, focused ? 0x713f12 : 0x2e1065, 0.9)
-          .setStrokeStyle(focused ? 3 : 2, focused ? 0xfde047 : 0xd946ef)
+        const seat = this.add.rectangle(position.x, position.y, 136, 74, focused ? RED : STONE, 0.9)
+          .setStrokeStyle(focused ? 3 : 2, focused ? GOLD : STONE_INK)
           .setInteractive({ useHandCursor: true });
         seat.on('pointerup', () => {
           this.dinnerFocusSeat = index;
@@ -634,14 +657,14 @@ export class Bonus2088Scene extends Phaser.Scene {
         });
         stage.add(seat);
         stage.add(this.add.text(position.x, position.y - 24, `KURSI ${index + 1}`, {
-          color: focused ? '#fef08a' : '#f5d0fe', fontFamily: 'Poppins, sans-serif',
+          color: focused ? CSS.goldBright : CSS.paper, fontFamily: FONT.META,
           fontSize: '10px', fontStyle: 'bold',
         }).setOrigin(0.5));
         stage.add(this.add.text(position.x, position.y - 3, this.dinnerPeople[index] ?? '— orang —', {
-          color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '12px', fontStyle: 'bold',
+          color: '#FFF8EA', fontFamily: FONT.META, fontSize: '12px', fontStyle: 'bold',
         }).setOrigin(0.5));
         stage.add(this.add.text(position.x, position.y + 20, this.dinnerFoods[index] ? FOOD_LABELS[this.dinnerFoods[index]] : '— hidangan —', {
-          color: '#fbcfe8', fontFamily: 'Patrick Hand, sans-serif', fontSize: '12px',
+          color: CSS.paper, fontFamily: FONT.UI, fontSize: '12px',
         }).setOrigin(0.5));
       });
 
@@ -655,8 +678,8 @@ export class Bonus2088Scene extends Phaser.Scene {
       DINNER_FOODS.forEach((food, index) => {
         const x = 138 + index * 174;
         const selected = this.dinnerFoods[this.dinnerFocusSeat] === food;
-        const background = this.add.rectangle(x, 465, 146, 54, selected ? 0x713f12 : 0x3b0764, 0.95)
-          .setStrokeStyle(selected ? 3 : 2, selected ? 0xfde047 : 0xd946ef)
+        const background = this.add.rectangle(x, 465, 146, 54, selected ? RED : STONE, 0.95)
+          .setStrokeStyle(selected ? 3 : 2, selected ? GOLD : STONE_INK)
           .setInteractive({ useHandCursor: true });
         background.on('pointerup', () => assignFood(food));
         stage.add(background);
@@ -664,14 +687,14 @@ export class Bonus2088Scene extends Phaser.Scene {
           stage.add(this.add.image(x - 46, 465, `food-${food}`).setDisplaySize(52, 38));
         }
         stage.add(this.add.text(x + 18, 465, FOOD_LABELS[food], {
-          color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '10px', fontStyle: 'bold',
+          color: '#FFF8EA', fontFamily: FONT.META, fontSize: '10px', fontStyle: 'bold',
         }).setOrigin(0.5));
       });
 
       stage.add(this.add.text(GAME_WIDTH / 2, 512, this.dinnerMessage, {
-        backgroundColor: this.litNodes[2] ? '#14532ddd' : '#180a20e8',
-        color: this.litNodes[2] ? '#bbf7d0' : '#fef08a',
-        fontFamily: 'Poppins, sans-serif', fontSize: '12px', fontStyle: 'bold', padding: { x: 14, y: 6 },
+        backgroundColor: this.litNodes[2] ? '#567a61e6' : '#0d0a08e8',
+        color: this.litNodes[2] ? '#FFF8EA' : CSS.gold,
+        fontFamily: FONT.META, fontSize: '12px', fontStyle: 'bold', padding: { x: 14, y: 6 },
       }).setOrigin(0.5));
     };
 
@@ -726,11 +749,11 @@ export class Bonus2088Scene extends Phaser.Scene {
     art.setInteractive({ useHandCursor: true });
     const markerLayer = this.add.container(0, 0);
     const help = this.add.text(GAME_WIDTH / 2, 466, 'Temukan semua kucing • Keyboard: ←/→ pilih, Enter tandai', {
-      backgroundColor: '#12091ddd', color: '#f5d0fe', fontFamily: 'Poppins, sans-serif',
+      backgroundColor: '#0d0a08dd', color: CSS.paper, fontFamily: FONT.META,
       fontSize: '11px', padding: { x: 12, y: 5 },
     }).setOrigin(0.5);
     const status = this.add.text(GAME_WIDTH / 2, 505, '', {
-      backgroundColor: '#12091dee', color: '#fde047', fontFamily: 'Poppins, sans-serif',
+      backgroundColor: '#0d0a08ee', color: CSS.brass, fontFamily: FONT.META,
       fontSize: '13px', fontStyle: 'bold', padding: { x: 14, y: 6 },
     }).setOrigin(0.5);
     modal.add([markerLayer, help, status]);
@@ -746,9 +769,9 @@ export class Bonus2088Scene extends Phaser.Scene {
           CAT_RECT.x + spot[0] * CAT_RECT.width,
           CAT_RECT.y + spot[1] * CAT_RECT.height,
           12,
-          0x16a34a,
+          GREEN,
           0.25,
-        ).setStrokeStyle(3, 0x86efac));
+        ).setStrokeStyle(3, GREEN_BRIGHT));
       });
       if (showKeyboardFocus && focus >= 0 && !this.catFound[focus]) {
         const spot = CAT_SPOTS[focus];
@@ -756,15 +779,15 @@ export class Bonus2088Scene extends Phaser.Scene {
           CAT_RECT.x + spot[0] * CAT_RECT.width,
           CAT_RECT.y + spot[1] * CAT_RECT.height,
           19,
-          0xfacc15,
+          GOLD,
           0.12,
-        ).setStrokeStyle(2, 0xfde047));
+        ).setStrokeStyle(2, GOLD));
       }
       const count = this.catFound.filter(Boolean).length;
       status.setText(count === CAT_SPOTS.length
         ? '18 / 18 — SEMUA KUCING DITEMUKAN'
         : `KUCING DITEMUKAN: ${count} / ${CAT_SPOTS.length}`)
-        .setColor(count === CAT_SPOTS.length ? '#86efac' : '#fde047');
+        .setColor(count === CAT_SPOTS.length ? CSS.greenBright : CSS.brass);
     };
 
     const mark = (index: number): void => {
@@ -787,7 +810,7 @@ export class Bonus2088Scene extends Phaser.Scene {
       if (index >= 0) mark(index);
       else {
         this.soundManager?.playErrorBuzz();
-        status.setText('Belum ada kucing di titik itu — periksa siluet dan sudut ruangan.').setColor('#fda4af');
+        status.setText('Belum ada kucing di titik itu — periksa siluet dan sudut ruangan.').setColor(CSS.redBright);
       }
     });
 
@@ -838,16 +861,16 @@ export class Bonus2088Scene extends Phaser.Scene {
       const glassKey = this.litNodes[4] ? 'bonus-love-glass' : 'bonus-chem-glass';
       this.addArtwork(stage, glassKey, { x: 54, y: 92, width: 500, height: 281 }, 'Gelas kimia tidak tersedia');
       stage.add(this.add.text(304, 402, this.litNodes[4] ? 'GELAS CINTA TERBENTUK' : 'GELAS KIMIA KOSONG', {
-        color: this.litNodes[4] ? '#bbf7d0' : '#f5d0fe', fontFamily: 'Cinzel, serif',
-        fontSize: '15px', fontStyle: 'bold', stroke: '#150718', strokeThickness: 4,
+        color: this.litNodes[4] ? CSS.greenBright : CSS.paper, fontFamily: FONT.TITLE,
+        fontSize: '15px', fontStyle: 'bold', stroke: '#120c07', strokeThickness: 4,
       }).setOrigin(0.5));
 
       CHEMISTRY_ITEMS.forEach((item, index) => {
         const selected = this.chemistryOrder.includes(item.id);
         const focused = index === focus;
         const y = 130 + index * 108;
-        const background = this.add.rectangle(738, y, 318, 84, selected ? 0x14532d : focused ? 0x713f12 : 0x3b0764, 0.94)
-          .setStrokeStyle(focused ? 3 : 2, focused ? 0xfde047 : selected ? 0x86efac : 0xd946ef)
+        const background = this.add.rectangle(738, y, 318, 84, selected ? GREEN : focused ? RED : STONE, 0.94)
+          .setStrokeStyle(focused ? 3 : 2, focused ? GOLD : selected ? GREEN_BRIGHT : STONE_INK)
           .setInteractive({ useHandCursor: true });
         background.on('pointerup', () => {
           focus = index;
@@ -858,20 +881,20 @@ export class Bonus2088Scene extends Phaser.Scene {
           stage.add(this.add.image(625, y, item.texture).setDisplaySize(72, 58));
         }
         stage.add(this.add.text(684, y - 13, `${index + 1}. ${item.label}`, {
-          color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
+          color: '#FFF8EA', fontFamily: FONT.META, fontSize: '13px', fontStyle: 'bold',
         }));
         stage.add(this.add.text(684, y + 13, `Kenangan ${item.era}${selected ? '  ✓' : ''}`, {
-          color: selected ? '#bbf7d0' : '#f5d0fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px',
+          color: selected ? CSS.greenBright : CSS.paper, fontFamily: FONT.UI, fontSize: '14px',
         }));
       });
 
       stage.add(this.add.text(GAME_WIDTH / 2, 474, message, {
-        backgroundColor: this.litNodes[4] ? '#14532ddd' : '#180a20e8',
-        color: this.litNodes[4] ? '#bbf7d0' : '#fef08a',
-        fontFamily: 'Poppins, sans-serif', fontSize: '12px', fontStyle: 'bold', padding: { x: 14, y: 7 },
+        backgroundColor: this.litNodes[4] ? '#567a61e6' : '#0d0a08e8',
+        color: this.litNodes[4] ? '#FFF8EA' : CSS.gold,
+        fontFamily: FONT.META, fontSize: '12px', fontStyle: 'bold', padding: { x: 14, y: 7 },
       }).setOrigin(0.5));
       stage.add(this.add.text(GAME_WIDTH / 2, 515, 'Klik bahan • Keyboard: ↑/↓ pilih, Enter campurkan', {
-        color: '#e9d5ff', fontFamily: 'Poppins, sans-serif', fontSize: '11px',
+        color: CSS.paper, fontFamily: FONT.META, fontSize: '11px',
       }).setOrigin(0.5));
     };
 
@@ -901,11 +924,11 @@ export class Bonus2088Scene extends Phaser.Scene {
       return image;
     }
 
-    const fallback = this.add.rectangle(rect.x, rect.y, rect.width, rect.height, 0x24122f, 1)
+    const fallback = this.add.rectangle(rect.x, rect.y, rect.width, rect.height, STONE, 1)
       .setOrigin(0)
-      .setStrokeStyle(2, 0x7e22ce);
+      .setStrokeStyle(2, STONE_INK);
     const label = this.add.text(rect.x + rect.width / 2, rect.y + rect.height / 2, fallbackLabel, {
-      color: '#f5d0fe', fontFamily: 'Poppins, sans-serif', fontSize: '16px', align: 'center',
+      color: CSS.paper, fontFamily: FONT.META, fontSize: '16px', align: 'center',
       wordWrap: { width: rect.width - 60 },
     }).setOrigin(0.5);
     container.add([fallback, label]);
@@ -922,11 +945,11 @@ export class Bonus2088Scene extends Phaser.Scene {
     onPress: () => void,
     selected = false,
   ): Phaser.GameObjects.Rectangle {
-    const background = this.add.rectangle(x, y, width, height, selected ? 0x713f12 : 0x3b0764, 0.96)
-      .setStrokeStyle(selected ? 3 : 2, selected ? 0xfde047 : 0xd946ef)
+    const background = this.add.rectangle(x, y, width, height, RED, 0.96)
+      .setStrokeStyle(selected ? 3 : 2, selected ? GOLD : RED_DARK)
       .setInteractive({ useHandCursor: true });
     const text = this.add.text(x, y, label, {
-      color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '11px', fontStyle: 'bold',
+      color: '#FFF8EA', fontFamily: FONT.META, fontSize: '11px', fontStyle: 'bold',
     }).setOrigin(0.5);
     background.on('pointerup', onPress);
     container.add([background, text]);
@@ -945,7 +968,7 @@ export class Bonus2088Scene extends Phaser.Scene {
   private completeNode(index: number): void {
     if (this.litNodes[index]) return;
     this.litNodes[index] = true;
-    this.nodeLights[index]?.setFillStyle(0x166534, 0.96).setStrokeStyle(3, 0x86efac);
+    this.nodeLights[index]?.setFillStyle(GREEN, 0.96).setStrokeStyle(3, GOLD);
     this.rewards.push(index);
     this.soundManager?.playSuccessFanfare();
     this.ui?.showToast(`${BONUS_REWARDS[index].label} menjadi bagian dari kenangan ini.`, 3000);
@@ -999,30 +1022,32 @@ export class Bonus2088Scene extends Phaser.Scene {
     const elements: Phaser.GameObjects.GameObject[] = [];
     if (this.textures.exists('bonus-city-complete')) {
       elements.push(this.add.image(0, 0, 'bonus-city-complete').setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT));
-      elements.push(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050208, 0.52));
+      elements.push(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, NIGHT, 0.52));
     } else {
-      elements.push(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050208, 1));
+      elements.push(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, NIGHT, 1));
     }
 
-    const title = this.add.text(GAME_WIDTH / 2, 168, 'HEARTS ACROSS TIME • EPILOG LENGKAP', {
-      color: '#f6d57b', fontFamily: 'Cinzel, serif', fontSize: '25px', fontStyle: 'bold',
-      stroke: '#1b0718', strokeThickness: 5,
+    elements.push(addPaperPanel(this, 230, 128, 500, 290, { radius: 9 }));
+    const title = this.add.text(GAME_WIDTH / 2, 180, 'HEARTS ACROSS TIME • EPILOG LENGKAP', {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '26px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const copy = this.add.text(GAME_WIDTH / 2, 255,
+    const copy = this.add.text(GAME_WIDTH / 2, 262,
       'Seluruh kenangan, cinta, dan penantian 55 tahun telah abadi.\n' +
       'Arthur dan Elena akhirnya berjalan menuju masa depan yang sama.', {
-        color: '#fdf4ff', fontFamily: 'Patrick Hand, sans-serif', fontSize: '21px',
-        align: 'center', lineSpacing: 8, stroke: '#1b0718', strokeThickness: 4,
+        color: CSS.body, fontFamily: FONT.UI, fontSize: '19px',
+        align: 'center', lineSpacing: 8,
       }).setOrigin(0.5);
-    const button = this.add.text(GAME_WIDTH / 2, 385, 'ENTER / SPACE — KEMBALI KE JUDUL', {
-      backgroundColor: '#94342edd', color: '#fff', fontFamily: 'Poppins, sans-serif',
-      fontSize: '13px', padding: { x: 20, y: 11 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const button = this.add.rectangle(GAME_WIDTH / 2, 372, 330, 40, RED, 0.96)
+      .setStrokeStyle(1.5, RED_DARK)
+      .setInteractive({ useHandCursor: true });
+    const buttonLabel = this.add.text(GAME_WIDTH / 2, 372, 'ENTER / SPACE — KEMBALI KE JUDUL', {
+      color: '#FFF8EA', fontFamily: FONT.META, fontSize: '13px', fontStyle: 'bold',
+    }).setOrigin(0.5);
     const leave = (): void => {
       this.scene.start('TitleScene');
     };
     button.on('pointerup', leave);
-    elements.push(title, copy, button);
+    elements.push(title, copy, button, buttonLabel);
     this.endingOverlay = this.add.container(0, 0, elements).setScrollFactor(0).setDepth(4000);
 
     this.clearModalBindings();

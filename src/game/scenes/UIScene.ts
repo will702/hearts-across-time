@@ -4,6 +4,8 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { saveOptions, type GameOptions } from '../options';
 import type { InputSystem } from '../systems/InputSystem';
 import type { RunState } from '../systems/SaveSystem';
+import { addPaperPanel, measureText } from '../ui/paper';
+import { CSS, FONT, RED } from '../ui/theme';
 
 type UIData = { input: InputSystem; eraTitle?: string; run?: RunState };
 type PauseMenuItem = { label: () => string; action?: () => void; adjust?: (direction: number) => void };
@@ -25,15 +27,17 @@ const STORY_ITEMS_DEF = [
 
 export class UIScene extends Phaser.Scene {
   private controls?: InputSystem;
-  private eraTitleText?: Phaser.GameObjects.Text;
+  private eraCaption?: Phaser.GameObjects.Container;
+  private loopText?: Phaser.GameObjects.Text;
   private prompt?: Phaser.GameObjects.Text;
+  private touchPromptPaper?: Phaser.GameObjects.Container;
   private promptText = '';
   private toast?: Phaser.GameObjects.Container;
   private inventoryContainer?: Phaser.GameObjects.Container;
   private inventorySlots: Array<{ bg: Phaser.GameObjects.Arc; glyph: Phaser.GameObjects.Graphics }> = [];
   private inventorySignature = '';
   private run?: RunState;
-  private touchObjects: Phaser.GameObjects.Text[] = [];
+  private touchObjects: Array<Phaser.GameObjects.GameObject & { setVisible(value: boolean): unknown }> = [];
   private pausePanel?: Phaser.GameObjects.Container;
   private pauseMenuItems: PauseMenuItem[] = [];
   private pauseButtons: Phaser.GameObjects.Text[] = [];
@@ -53,15 +57,11 @@ export class UIScene extends Phaser.Scene {
     this.resetRuntimeState();
     this.controls = data.input;
     this.run = data.run;
-    const title = data.eraTitle || 'HEARTS ACROSS TIME';
 
-    this.eraTitleText = this.add.text(20, 18, title, {
-      color: '#f4d98d', fontFamily: 'Cinzel, serif', fontSize: '13px', letterSpacing: 0.8,
-      stroke: '#140d08', strokeThickness: 4,
-    });
-    this.add.rectangle(20, 43, 46, 1, 0xf4d98d, 0.65).setOrigin(0, 0.5);
+    this.createEraCaption(data.eraTitle || 'HEARTS ACROSS TIME');
+    this.createLoopCounter();
     this.prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 62, '', {
-      backgroundColor: '#100c09dd', color: '#fff4d1', fontFamily: 'Patrick Hand, sans-serif',
+      backgroundColor: '#100c09dd', color: '#fff4d1', fontFamily: FONT.UI,
       fontSize: '18px', padding: { x: 18, y: 10 }, align: 'center',
     }).setOrigin(0.5).setVisible(false);
 
@@ -73,6 +73,68 @@ export class UIScene extends Phaser.Scene {
     this.createTopButtons();
     this.pauseKeys = this.input.keyboard?.addKeys('ESC,P,R,M,UP,DOWN,LEFT,RIGHT,W,A,S,D,ENTER,SPACE') as typeof this.pauseKeys;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.resetRuntimeState, this);
+  }
+
+  /** Caption babak: kotak caption komik kertas + goresan tinta merah (screens.js). */
+  private createEraCaption(title: string): void {
+    const font = `bold 21px ${FONT.UI}`;
+    const tw = Math.ceil(measureText(title, font));
+    const x = 22, y = 56, w = tw + 36, h = 38;
+    const container = this.add.container(0, 0);
+    const paper = addPaperPanel(this, x, y, w, h, { radius: 4, shadow: false });
+    const underline = this.add.graphics();
+    underline.lineStyle(2, RED, 1);
+    underline.beginPath();
+    underline.moveTo(x + 14, y + h - 8);
+    for (let i = 1; i <= 6; i++) {
+      const t = i / 6;
+      const mt = 1 - t;
+      underline.lineTo(
+        mt * mt * (x + 14) + 2 * mt * t * (x + w / 2) + t * t * (x + w - 14),
+        mt * mt * (y + h - 8) + 2 * mt * t * (y + h - 5.5) + t * t * (y + h - 8),
+      );
+    }
+    underline.strokePath();
+    const text = this.add.text(x + 18, y + h / 2 - 2, title, {
+      color: CSS.body,
+      fontFamily: FONT.UI,
+      fontStyle: 'bold',
+      fontSize: '21px',
+    }).setOrigin(0, 0.5);
+    container.add([paper, underline, text]);
+    this.eraCaption = container;
+
+    // tampil 3.2 detik lalu memudar (alpha legacy: min(1,T) * min(1,(3.2-T)*2))
+    if (!this.registry.get('reduceMotion')) {
+      container.setAlpha(0);
+      this.tweens.add({ targets: container, alpha: 1, duration: 300, ease: 'Sine.easeOut' });
+    }
+    this.tweens.add({
+      targets: container,
+      alpha: 0,
+      delay: 2900,
+      duration: 300,
+      ease: 'Sine.easeIn',
+      onComplete: () => { this.eraCaption?.destroy(); this.eraCaption = undefined; },
+    });
+  }
+
+  /** Penghitung loop: ⟲ LOOP n merah monospace + subjudul lari otomatis. */
+  private createLoopCounter(): void {
+    const loop = this.run?.loop ?? 0;
+    if (loop <= 0) return;
+    const isTouch = this.sys.game.device.input.touch;
+    this.loopText = this.add.text(18, 20, `⟲ LOOP ${loop}`, {
+      color: 'rgba(194,59,59,.9)',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      fontSize: '13px',
+    });
+    this.add.text(18, 36, `lari otomatis — tahan ${isTouch ? '≫' : 'SHIFT'} untuk jalan pelan`, {
+      color: CSS.body,
+      fontFamily: FONT.UI,
+      fontSize: '12px',
+    }).setAlpha(0.62);
   }
 
   update(): void {
@@ -103,6 +165,11 @@ export class UIScene extends Phaser.Scene {
     const changed = text !== this.promptText;
     this.promptText = text;
     this.prompt.setText(text).setVisible(Boolean(text) && !this.paused && !this.modal);
+    if (this.touchPromptPaper) {
+      const label = this.touchPromptPaper.getAt(1) as Phaser.GameObjects.Text;
+      label.setText(text || '▼ PERIKSA');
+      this.touchPromptPaper.setVisible(Boolean(text) && !this.paused && !this.modal);
+    }
     if (!changed || !text || this.registry.get('reduceMotion')) return;
     this.tweens.killTweensOf(this.prompt);
     this.prompt.setScale(0.92);
@@ -120,30 +187,39 @@ export class UIScene extends Phaser.Scene {
     if (on) this.prompt?.setVisible(false);
   }
 
-  showToast(text: string, duration = 2200): void {
+  showToast(text: string, duration = 2200, opts?: { title?: string }): void {
     this.toast?.destroy();
     const isReduced = Boolean(this.registry.get('reduceMotion'));
-    const toastCard = this.add.rectangle(0, 0, 430, 58, 0x18120e, 0.94)
-      .setStrokeStyle(2, 0x6a4930);
-    const toastInner = this.add.graphics();
-    toastInner.lineStyle(1, 0xd7b45c, 0.35);
-    toastInner.lineBetween(-207, 23, 207, 23);
+    const cardW = 430;
+    const cardH = opts?.title ? 74 : 58;
+    const paper = addPaperPanel(this, GAME_WIDTH / 2 - cardW / 2, 78, cardW, cardH, { radius: 7 });
 
-    const toastBody = this.add.text(0, 0, text, {
-      color: '#f4eadb',
-      fontFamily: 'Patrick Hand, sans-serif',
+    const parts: Phaser.GameObjects.GameObject[] = [paper];
+    let bodyY = 78 + cardH / 2;
+    if (opts?.title) {
+      parts.push(this.add.text(GAME_WIDTH / 2, 78 + 24, opts.title, {
+        color: CSS.red,
+        fontFamily: FONT.META,
+        fontStyle: 'bold',
+        fontSize: '12px',
+      }).setOrigin(0.5));
+      bodyY = 78 + 50;
+    }
+    parts.push(this.add.text(GAME_WIDTH / 2, bodyY, text, {
+      color: CSS.body,
+      fontFamily: FONT.UI,
+      fontStyle: 'bold',
       fontSize: '18px',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5));
 
-    this.toast = this.add.container(GAME_WIDTH / 2, 88, [toastCard, toastInner, toastBody])
-      .setDepth(3000);
+    this.toast = this.add.container(0, 0, parts).setDepth(3000);
 
     if (!isReduced) {
-      this.toast.setAlpha(0).setY(102);
+      this.toast.setAlpha(0).setY(14);
       this.tweens.add({
         targets: this.toast,
         alpha: 1,
-        y: 88,
+        y: 0,
         duration: 200,
         ease: 'Sine.easeOut',
       });
@@ -155,7 +231,7 @@ export class UIScene extends Phaser.Scene {
           this.tweens.add({
             targets: this.toast,
             alpha: 0,
-            y: 76,
+            y: -14,
             duration: 200,
             onComplete: () => { this.toast?.destroy(); this.toast = undefined; },
           });
@@ -171,45 +247,85 @@ export class UIScene extends Phaser.Scene {
     return this.paused;
   }
 
+  /** Pad sentuh kertas-tinta legacy: lingkaran gosok ganda + chevron digambar. */
   private createTouchControls(): void {
-    const hold = (x: number, label: string, key: 'left' | 'right'): void => {
-      const button = this.add.text(x, GAME_HEIGHT - 56, label, {
-        backgroundColor: '#071018aa', color: '#f5f0e8', fontSize: '24px',
-        padding: { x: 18, y: 12 },
-      }).setOrigin(0.5).setInteractive();
-      button.on('pointerdown', () => this.controls?.setTouch(key, true));
-      button.on('pointerup', () => this.controls?.setTouch(key, false));
-      button.on('pointerout', () => this.controls?.setTouch(key, false));
-      this.touchObjects.push(button);
+    const pad = (x: number, y: number, r: number, direction: 'left' | 'right' | 'run'): void => {
+      const container = this.add.container(x, y);
+      const icon = this.add.graphics();
+      const drawIcon = (on: boolean): void => {
+        icon.clear();
+        icon.fillStyle(0x0a0806, on ? 0.8 : 0.45);
+        icon.fillCircle(0, 0, r);
+        icon.lineStyle(1.6, on ? 0xe8c88a : 0xf5f0e8, on ? 1 : 0.8);
+        icon.strokeCircle(0, 0, r);
+        icon.lineStyle(0.8, 0xf5f0e8, 0.22);
+        icon.strokeCircle(0, 0, r - 3.5);
+        icon.fillStyle(on ? 0xffe2ac : 0xf5f0e8, on ? 1 : 0.85);
+        const s = direction === 'run' ? 5 : 7;
+        if (direction === 'left') {
+          icon.fillTriangle(s, -8, s, 8, -s, 0);
+        } else if (direction === 'right') {
+          icon.fillTriangle(-s, -8, -s, 8, s, 0);
+        } else {
+          icon.fillTriangle(-6, -7, -6, 7, 0, 0);
+          icon.fillTriangle(1, -7, 1, 7, 7, 0);
+        }
+      };
+      drawIcon(false);
+      container.add(icon);
+      container.setSize(r * 2, r * 2).setInteractive({ useHandCursor: true });
+      container.on('pointerdown', () => {
+        drawIcon(true);
+        if (direction === 'run') this.controls?.setTouchSprint(true);
+        else this.controls?.setTouch(direction, true);
+      });
+      const release = (): void => {
+        drawIcon(false);
+        if (direction === 'run') this.controls?.setTouchSprint(false);
+        else this.controls?.setTouch(direction, false);
+      };
+      container.on('pointerup', release);
+      container.on('pointerout', release);
+      this.touchObjects.push(container);
     };
-    hold(62, 'KIRI', 'left');
-    hold(132, 'KANAN', 'right');
-    const action = this.add.text(GAME_WIDTH - 78, GAME_HEIGHT - 58, 'PERIKSA', {
-      backgroundColor: '#94342ecc', color: '#fff8ea', fontFamily: 'Poppins, sans-serif',
-      fontSize: '12px', padding: { x: 16, y: 14 },
-    }).setOrigin(0.5).setInteractive();
-    action.on('pointerdown', () => this.controls?.triggerTouch('interact'));
+    pad(70, GAME_HEIGHT - 65, 31, 'left');
+    pad(GAME_WIDTH - 70, GAME_HEIGHT - 65, 31, 'right');
+    pad(GAME_WIDTH - 36, GAME_HEIGHT - 162, 27, 'run');
+
+    // tombol kontekstual kertas — label mengikuti prompt dunia
+    const actW = 138, actH = 44;
+    const paper = addPaperPanel(this, GAME_WIDTH / 2 - actW / 2, GAME_HEIGHT - 64 - actH / 2, actW, actH, { radius: 9, shadow: false });
+    const label = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 64, '', {
+      color: CSS.red,
+      fontFamily: FONT.UI,
+      fontStyle: 'bold',
+      fontSize: '13px',
+    }).setOrigin(0.5);
+    const action = this.add.container(0, 0, [paper, label])
+      .setSize(actW, actH)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.controls?.triggerTouch('interact'));
+    this.touchPromptPaper = action;
     this.touchObjects.push(action);
     this.input.on('pointerup', () => this.controls?.clearTouchMovement());
   }
 
   private createInventoryHUD(): void {
-    const w = 194, h = 38, x = GAME_WIDTH - w - 18, y = 52;
+    const w = 176, h = 38, x = GAME_WIDTH - w - 18, y = 52;
     const bg = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x07090c, 0.72)
       .setStrokeStyle(1.2, 0xf1d58b, 0.55);
-    const tasLabel = this.add.text(x + 10, y + h / 2, 'KENANGAN', {
-      color: '#f1d58b',
-      fontFamily: 'Poppins, sans-serif',
-      fontSize: '9px',
+    const tasLabel = this.add.text(x + 10, y + h / 2, 'TAS', {
+      color: '#F1D58B',
+      fontFamily: FONT.META,
+      fontSize: '11px',
       fontStyle: 'bold',
-      letterSpacing: 1,
     }).setOrigin(0, 0.5);
 
     this.inventorySlots = [];
     const slotObjects: Phaser.GameObjects.GameObject[] = [bg, tasLabel];
 
     STORY_ITEMS_DEF.forEach((it, idx) => {
-      const cx = x + 82 + idx * 25;
+      const cx = x + 66 + idx * 25;
       const cy = y + h / 2;
       const slotBg = this.add.circle(cx, cy, 11, 0xf5f0e8, 0.05)
         .setStrokeStyle(1.1, 0xf5f0e8, 0.18);
@@ -270,45 +386,57 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
+  /** Tombol lingkar tinta legacy (drawPauseBtn): #0a0806 + goresan ganda. */
   private createTopButtons(): void {
     const soundManager = this.registry.get('soundManager') as { setMuted: (m: boolean) => void; muted: boolean } | undefined;
     let muted = soundManager?.muted ?? false;
-    const makeButton = (x: number, width: number, label: string, onPress: () => void): {
-      bg: Phaser.GameObjects.Rectangle;
-      icon: Phaser.GameObjects.Graphics;
-      label: Phaser.GameObjects.Text;
+
+    const makeCircle = (x: number, onPress: () => void): {
       container: Phaser.GameObjects.Container;
+      icon: Phaser.GameObjects.Graphics;
     } => {
-      const bg = this.add.rectangle(0, 0, width, 30, 0x090b10, 0.76).setStrokeStyle(1, 0xf1d58b, 0.58);
       const icon = this.add.graphics();
-      const buttonLabel = this.add.text(-width / 2 + 29, 0, label, {
-        color: '#f5f0e8', fontFamily: 'Poppins, sans-serif', fontSize: '8px', letterSpacing: 0.5,
-      }).setOrigin(0, 0.5);
-      const container = this.add.container(x, 27, [bg, icon, buttonLabel])
-        .setSize(width, 30)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerover', () => bg.setFillStyle(0x36251d, 0.94).setStrokeStyle(1.4, 0xf1d58b, 0.9))
-        .on('pointerout', () => bg.setFillStyle(0x090b10, 0.76).setStrokeStyle(1, 0xf1d58b, 0.58))
+      const container = this.add.container(x, 26, [icon])
+        .setSize(30, 30)
+        .setInteractive({ useHandCursor: true, pixelPerfect: false })
         .on('pointerup', onPress);
-      return { bg, icon, label: buttonLabel, container };
+      return { container, icon };
     };
 
-    const music = makeButton(GAME_WIDTH - 110, 92, 'MUSIK', () => {
+    const drawFrame = (icon: Phaser.GameObjects.Graphics, on: boolean): void => {
+      icon.clear();
+      icon.fillStyle(0x0a0806, on ? 0.85 : 0.65);
+      icon.fillCircle(0, 0, 15);
+      icon.lineStyle(1.6, 0xf5f0e8, 1);
+      icon.strokeCircle(0, 0, 15);
+      icon.lineStyle(0.8, 0xf5f0e8, 0.22);
+      icon.strokeCircle(0, 0, 11.5);
+    };
+
+    const pause = makeCircle(GAME_WIDTH - 72, () => this.togglePause());
+    drawFrame(pause.icon, false);
+    pause.icon.fillStyle(0xf5f0e8, 1).fillRect(-5, -5, 3.6, 10).fillRect(1.4, -5, 3.6, 10);
+    pause.container.on('pointerover', () => { drawFrame(pause.icon, true); pause.icon.fillStyle(0xf5f0e8, 1).fillRect(-5, -5, 3.6, 10).fillRect(1.4, -5, 3.6, 10); });
+    pause.container.on('pointerout', () => { drawFrame(pause.icon, false); pause.icon.fillStyle(0xf5f0e8, 1).fillRect(-5, -5, 3.6, 10).fillRect(1.4, -5, 3.6, 10); });
+    this.touchObjects.push(pause.container);
+
+    const mute = makeCircle(GAME_WIDTH - 34, () => {
       muted = !muted;
       soundManager?.setMuted(muted);
-      drawMusicIcon();
+      drawMuteIcon();
     });
-    const drawMusicIcon = (): void => {
-      music.icon.clear().fillStyle(muted ? 0xb8a898 : 0xf1d58b, 1);
-      music.icon.fillRect(-36, -5, 5, 10).fillTriangle(-31, -7, -31, 7, -23, 0);
-      music.icon.lineStyle(1.5, muted ? 0xb8a898 : 0xf1d58b, 1).strokeCircle(-22, 0, 9);
-      if (muted) music.icon.lineBetween(-31, -9, -14, 9);
-      music.label.setText(muted ? 'MUSIK MATI' : 'MUSIK');
+    const drawMuteIcon = (): void => {
+      drawFrame(mute.icon, false);
+      mute.icon.fillStyle(muted ? 0xb8a898 : 0xf5f0e8, 1);
+      mute.icon.fillRect(-8, -2.5, 3, 5);
+      mute.icon.fillTriangle(-5, -4, -5, 4, -1, 0);
+      if (muted) mute.icon.lineStyle(1.6, 0xb8a898, 1).lineBetween(-1, -6, 8, 6);
+      else mute.icon.lineStyle(1.4, 0xf5f0e8, 1).strokeCircle(1, 0, 5.5);
     };
-    drawMusicIcon();
-
-    const pause = makeButton(GAME_WIDTH - 33, 56, 'JEDA', () => this.togglePause());
-    pause.icon.fillStyle(0xf1d58b, 1).fillRect(-20, -6, 4, 12).fillRect(-13, -6, 4, 12);
+    drawMuteIcon();
+    mute.container.on('pointerover', () => { drawFrame(mute.icon, true); drawMuteIcon(); });
+    mute.container.on('pointerout', () => drawMuteIcon());
+    this.touchObjects.push(mute.container);
   }
 
   private getActiveGameplayScene(): string {
@@ -343,9 +471,10 @@ export class UIScene extends Phaser.Scene {
 
   private showPausePanel(): void {
     const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040302, 0.8);
-    const paper = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 520, 506, 0xf4ead8, 0.98).setStrokeStyle(3, 0x6a4930);
-    const title = this.add.text(GAME_WIDTH / 2, 43, 'WAKTU BERHENTI SEJENAK', {
-      color: '#612a25', fontFamily: 'Cinzel, serif', fontSize: '22px', fontStyle: 'bold',
+    const panelW = 520, panelH = 506;
+    const paper = addPaperPanel(this, GAME_WIDTH / 2 - panelW / 2, GAME_HEIGHT / 2 - panelH / 2, panelW, panelH, { radius: 8 });
+    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - panelH / 2 + 38, '— JEDA —', {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '24px', fontStyle: 'bold',
     }).setOrigin(0.5);
     const options = this.registry.get('options') as GameOptions;
     const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
@@ -370,9 +499,10 @@ export class UIScene extends Phaser.Scene {
       { label: () => 'M — MENU UTAMA', action: () => this.leaveGameplay('TitleScene') },
     ];
     this.pauseSelection = 0;
+    const top = GAME_HEIGHT / 2 - panelH / 2;
     this.pauseButtons = this.pauseMenuItems.map((item, index) => {
-      const button = this.add.text(GAME_WIDTH / 2, 82 + index * 48, item.label(), {
-        backgroundColor: '#5a4a3c10', color: '#2b211a', fontFamily: 'Poppins, sans-serif',
+      const button = this.add.text(GAME_WIDTH / 2, top + 76 + index * 46, item.label(), {
+        backgroundColor: '#5a4a3c10', color: '#2b211a', fontFamily: FONT.META,
         fontSize: '12px', align: 'center', fixedWidth: 460, padding: { x: 10, y: 9 },
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
       button.on('pointerover', () => { this.pauseSelection = index; this.refreshPauseMenu(); });
@@ -384,7 +514,10 @@ export class UIScene extends Phaser.Scene {
       });
       return button;
     });
-    this.pausePanel = this.add.container(0, 0, [shade, paper, title, ...this.pauseButtons]);
+    const footer = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + panelH / 2 - 24, 'ESC: lanjut • ↑↓: pilih • ←→: ubah • ENTER: oke', {
+      color: 'rgba(43,33,26,.6)', fontFamily: FONT.UI, fontSize: '12.5px',
+    }).setOrigin(0.5);
+    this.pausePanel = this.add.container(0, 0, [shade, paper, title, ...this.pauseButtons, footer]);
     this.refreshPauseMenu();
   }
 
@@ -444,8 +577,10 @@ export class UIScene extends Phaser.Scene {
   private resetRuntimeState(): void {
     this.controls?.clearTouch();
     this.controls = undefined;
-    this.eraTitleText = undefined;
+    this.eraCaption = undefined;
+    this.loopText = undefined;
     this.prompt = undefined;
+    this.touchPromptPaper = undefined;
     this.promptText = '';
     this.toast = undefined;
     this.inventoryContainer = undefined;

@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { LORE_IDS } from '../narrative/lore';
 import { allEndingsUnlocked, type RunState, type SaveSystem } from '../systems/SaveSystem';
+import { addPaperPanel } from '../ui/paper';
+import { CSS, FONT, GOLD, GOLD_PALE, RED } from '../ui/theme';
 
 type MenuItem = {
   label: string;
@@ -9,15 +12,28 @@ type MenuItem = {
   action: () => void;
 };
 
+const ENDING_TOTAL = 6;
+const CYCLE_SECONDS = 6.4;
+
+/** Goresan glitch hanya saat lapisan warna/monokrom bertukar (titleSignalState legacy). */
+function titleSignalState(t: number): { mono: boolean; glitch: number } {
+  const ph = t % CYCLE_SECONDS;
+  const edge = Math.min(ph, Math.abs(ph - CYCLE_SECONDS / 2), CYCLE_SECONDS - ph);
+  return { mono: ph >= CYCLE_SECONDS / 2, glitch: Phaser.Math.Clamp(1 - edge / 0.18, 0, 1) };
+}
+
 export class TitleScene extends Phaser.Scene {
   private save!: SaveSystem;
   private items: MenuItem[] = [];
-  private buttons: Phaser.GameObjects.Text[] = [];
-  private selectionMark?: Phaser.GameObjects.Rectangle;
+  private bgLayer?: Phaser.GameObjects.Container;
+  private bgImages: Phaser.GameObjects.Image[] = [];
+  private signalFx?: Phaser.GameObjects.Graphics;
+  private wordmarkGlow?: Phaser.GameObjects.Graphics;
+  private menuRows: Array<{ bg: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text; row: Phaser.GameObjects.Container }> = [];
   private selected = 0;
   private confirmPanel?: Phaser.GameObjects.Container;
-  private confirmYes?: Phaser.GameObjects.Text;
-  private confirmNo?: Phaser.GameObjects.Text;
+  private confirmYes?: Phaser.GameObjects.Rectangle;
+  private confirmNo?: Phaser.GameObjects.Rectangle;
   private confirmChoice: 'yes' | 'no' = 'no';
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private enter?: Phaser.Input.Keyboard.Key;
@@ -45,7 +61,9 @@ export class TitleScene extends Phaser.Scene {
     this.noKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.N);
   }
 
-  update(): void {
+  update(time: number): void {
+    this.animateCover(time / 1000);
+
     if (this.confirmPanel) {
       this.updateConfirmation();
       return;
@@ -76,44 +94,108 @@ export class TitleScene extends Phaser.Scene {
     };
   }
 
+  /** Sampul legacy: swap warna/monokrom + glitch + Ken Burns pelan + wordmark emas. */
   private drawCover(): void {
-    const coverKey = this.textures.exists('title-cover') ? 'title-cover' : 'title-bg-color';
-    const background = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, coverKey)
-      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
-    if (!this.registry.get('reduceMotion')) {
-      this.tweens.add({
-        targets: background,
-        scaleX: background.scaleX * 1.025,
-        scaleY: background.scaleY * 1.025,
-        duration: 7000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.inOut',
-      });
+    this.bgLayer = this.add.container(0, 0);
+
+    const keys = ['title-bg-color', 'title-bg-mono', 'title-cover'];
+    for (const key of keys) {
+      if (this.textures.exists(key)) {
+        const image = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, key);
+        this.bgLayer.add(image);
+        this.bgImages.push(image);
+      }
     }
-    const veil = this.add.graphics();
-    veil.fillGradientStyle(0x02050d, 0x02050d, 0x02050d, 0x02050d, 0.92, 0.18, 0.92, 0.18);
-    veil.fillRect(0, 0, 610, GAME_HEIGHT);
-    this.add.rectangle(67, 61, 38, 2, 0xd7b45c, 0.9).setOrigin(0, 0.5);
-    this.add.text(66, 79, 'HEARTS\nACROSS TIME', {
-      color: '#f4d98d', fontFamily: 'Cinzel, serif', fontSize: '39px', fontStyle: 'bold',
-      lineSpacing: -8, stroke: '#130d0a', strokeThickness: 5,
-    }).setOrigin(0, 0);
-    this.add.text(69, 171, 'BREAK THE LOOP', {
-      color: '#fffaf0', fontFamily: 'Poppins, sans-serif', fontSize: '11px', letterSpacing: 5,
-    }).setOrigin(0, 0.5);
-    this.add.text(68, 207, 'Sebuah kisah tentang cinta yang menolak dilupakan.', {
-      color: '#e8dfd0cc', fontFamily: 'Patrick Hand, sans-serif', fontSize: '17px',
-    }).setOrigin(0, 0.5);
-    this.add.text(68, 232, '1944  /  1968  /  1999  /  2088', {
-      color: '#cbbda699', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 2,
-    }).setOrigin(0, 0.5);
+    if (!this.bgImages.length) {
+      const fallback = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x1a1410);
+      this.bgLayer.add(fallback);
+    }
+
+    // lapisan gelap Figma: judul kontras, footer menyatu
+    const gradients = this.add.graphics();
+    gradients.fillGradientStyle(0x02050d, 0x02050d, 0x02050d, 0x02050d, 0.72, 0.72, 0.12, 0);
+    gradients.fillRect(0, 0, GAME_WIDTH, 210);
+    gradients.fillGradientStyle(0x02040a, 0x02040a, 0x010207, 0x010207, 0, 0, 0.7, 0.96);
+    gradients.fillRect(0, 330, GAME_WIDTH, GAME_HEIGHT - 330);
+
+    // glow emas di belakang wordmark (radial legacy 250,150)
+    this.wordmarkGlow = this.add.graphics();
+    this.wordmarkGlow.fillStyle(0xffd76e, 0.15);
+    this.wordmarkGlow.fillCircle(250, 150, 210);
+    this.wordmarkGlow.fillStyle(0xffd76e, 0.08);
+    this.wordmarkGlow.fillCircle(250, 150, 140);
+
+    if (this.textures.exists('title-wordmark')) {
+      const mark = this.add.image(15, 80, 'title-wordmark').setOrigin(0, 0);
+      const scale = 500 / mark.width;
+      mark.setScale(scale);
+      this.add.container(0, 0, mark); // keep above glow
+    }
+
+    this.signalFx = this.add.graphics();
+  }
+
+  private animateCover(t: number): void {
+    const reduce = Boolean(this.registry.get('reduceMotion'));
+    const sig = titleSignalState(t);
+    const mot = reduce ? 0 : 1;
+    const zoom = 1.015 + mot * 0.012 * Math.sin(t * 0.18);
+    const panX = mot * Math.sin(t * 0.13) * 5;
+    const panY = mot * Math.cos(t * 0.16) * 3;
+
+    const showMono = !reduce && sig.mono && this.bgImages.length > 1;
+    this.bgImages.forEach((image) => {
+      const key = image.texture.key;
+      const isColor = key === 'title-bg-color' || (key === 'title-cover' && this.bgImages.length === 1);
+      const visible = this.bgImages.length === 1 || (showMono ? key === 'title-bg-mono' : isColor);
+      image.setVisible(visible);
+      if (!image.width) return;
+      const base = Math.max(GAME_WIDTH / image.width, GAME_HEIGHT / image.height);
+      image.setScale(base * zoom);
+      image.setPosition(GAME_WIDTH / 2 + panX, GAME_HEIGHT / 2 + panY);
+    });
+
+    // denyut glow wordmark
+    const pul = mot ? 0.5 + 0.5 * Math.sin(t * 1.6) : 0.5;
+    this.wordmarkGlow?.setAlpha(0.7 + pul * 0.5 + sig.glitch * 0.3);
+
+    // pita glitch pada tepi pergantian warna/mono (drawTitleSignal)
+    this.drawTitleSignal(t, reduce ? 0 : sig.glitch);
+
+    // detak menu aktif (heartbeat scale) — hanya baris terpilih
+    const beat = mot ? 1 + 0.024 * (0.5 + 0.5 * Math.sin(t * 2.05)) : 1;
+    this.menuRows.forEach((row, index) => {
+      const isSelected = index === this.selected && !this.items[index]?.disabled?.();
+      row.row.setScale(isSelected ? beat : 1);
+    });
+  }
+
+  private drawTitleSignal(t: number, glitch: number): void {
+    const g = this.signalFx;
+    if (!g) return;
+    g.clear();
+    if (glitch <= 0) return;
+    const bands = [[24, 10, -9], [79, 7, 12], [126, 16, -15], [183, 8, 10], [248, 11, -7], [337, 6, 13], [421, 13, -11], [487, 7, 8]];
+    bands.forEach((band, i) => {
+      const y = band[0], h = band[1], dx = band[2] * glitch;
+      g.fillStyle(i % 2 ? 0xe64d76 : 0x47d9de, 0.2 * glitch);
+      g.fillRect(dx, y, GAME_WIDTH, h);
+    });
+    g.fillStyle(0xe9c66b, 0.16 * glitch);
+    g.fillRect(0, 116 + Math.sin(t * 31) * 14, GAME_WIDTH, 2 + 4 * glitch);
+    g.fillStyle(0x07101f, 0.2 * glitch);
+    g.fillRect(0, 276 + Math.cos(t * 23) * 38, GAME_WIDTH, 3);
   }
 
   private isBonusUnlocked(): boolean {
     return allEndingsUnlocked(this.save.data.endings || {});
   }
 
+  private loreFoundCount(): number {
+    return LORE_IDS.filter(id => Boolean(this.save.data.inspected?.[id])).length;
+  }
+
+  /** Menu legacy: kolom kiri + panel bonus terpisah kanan-bawah. */
   private createMenu(): void {
     const bonusUnlocked = this.isBonusUnlocked();
     const endingCount = Object.keys(this.save.data.endings || {}).length;
@@ -121,32 +203,82 @@ export class TitleScene extends Phaser.Scene {
     this.items = [
       { label: 'LANJUTKAN', disabled: () => !this.save.data.game, action: () => this.continueGame() },
       { label: 'SIKLUS BARU', action: () => this.newCycle() },
-      { label: 'PUTAR ULANG INTRO', action: () => this.scene.start('IntroScene') },
+      { label: 'PUTAR ULANG INTRO', action: () => this.scene.start('IntroScene', { replay: true }) },
       {
-        label: bonusUnlocked ? 'EPILOG 2088' : `EPILOG 2088  ${endingCount}/6 AKHIR`,
+        label: bonusUnlocked ? 'GAMEPLAY TERAKHIR' : `GAMEPLAY TERAKHIR  TERTUTUP ${endingCount}/${ENDING_TOTAL}`,
         disabled: () => !bonusUnlocked,
         action: () => this.scene.start('Bonus2088Scene'),
       },
     ];
 
     if (!this.save.data.game) this.selected = 1;
-    this.add.text(68, 277, 'PILIH BABAK', {
-      color: '#d7b45c', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 2,
+
+    const leftX = 132, leftY = 320, leftW = 250, leftH = 34;
+    const bonusX = 754, bonusY = 440, bonusW = 188, bonusH = 40;
+    this.menuRows = this.items.map((item, index) => {
+      const bonus = index === 3;
+      const x = bonus ? bonusX : leftX;
+      const y = bonus ? bonusY : leftY + index * 39;
+      const w = bonus ? bonusW : leftW;
+      const h = bonus ? bonusH : leftH;
+
+      const row = this.add.container(x + w / 2, y + h / 2);
+      const bg = this.add.rectangle(0, 0, w, h, 0x080a12, 0.72).setStrokeStyle(1, GOLD, 0.48)
+        .setInteractive({ useHandCursor: true });
+      const label = this.add.text(0, 0, item.label, {
+        color: '#FFFDF2',
+        fontFamily: FONT.TITLE,
+        fontSize: bonus ? '10px' : '13px',
+        align: 'center',
+        fixedWidth: w - 12,
+      }).setOrigin(0.5);
+      row.add([bg, label]);
+
+      bg.on('pointerover', () => {
+        if (!item.disabled?.()) {
+          this.selected = index;
+          this.refreshMenu();
+        }
+      });
+      bg.on('pointerup', () => this.activate(index));
+      return { bg, label, row };
     });
-    this.selectionMark = this.add.rectangle(68, 310, 3, 28, 0xd7b45c).setOrigin(0, 0.5);
-    this.buttons = this.items.map((item, index) => {
-      const button = this.add.text(82, 310 + index * 43, item.label, {
-        color: '#fffdf2', fontFamily: 'Cinzel, serif', fontSize: '13px', fixedWidth: 360,
-        padding: { x: 0, y: 7 },
-      }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
-      button.on('pointerover', () => { if (!item.disabled?.()) { this.selected = index; this.refreshMenu(); } });
-      button.on('pointerup', () => this.activate(index));
-      return button;
-    });
-    this.add.text(68, GAME_HEIGHT - 25, '↑ ↓ memilih   ENTER membuka   ESC / P jeda saat bermain', {
-      color: '#d8cfbf88', fontFamily: 'Poppins, sans-serif', fontSize: '9px', letterSpacing: 0.4,
-    }).setOrigin(0, 0.5);
+
+    this.createProgressReadouts(endingCount);
     this.refreshMenu();
+  }
+
+  /** Baris progres kanan + autosave kiri + hint bawah (copy legacy). */
+  private createProgressReadouts(endingCount: number): void {
+    const endings = this.save.data.endings || {};
+    const trueFound = Boolean(endings.true);
+    const loreCount = this.loreFoundCount();
+
+    this.add.text(GAME_WIDTH - 22, 397, `ENDING ${endingCount}/${ENDING_TOTAL}${trueFound ? '  * SEJATI' : ''}`, {
+      color: endingCount >= ENDING_TOTAL ? '#F7D984' : 'rgba(247,242,226,.76)',
+      fontFamily: FONT.META,
+      fontSize: '13px',
+    }).setOrigin(1, 0.5);
+    this.add.text(GAME_WIDTH - 22, 424, `✦ KISAH LENKAP ${loreCount}/${LORE_IDS.length}`, {
+      color: loreCount >= LORE_IDS.length ? '#F1D58B' : 'rgba(247,242,226,.58)',
+      fontFamily: FONT.META,
+      fontSize: '11px',
+    }).setOrigin(1, 0.5);
+
+    if (this.save.data.game?.era) {
+      this.add.text(54, 516, `AUTOSAVE • ${this.save.data.game.era}`, {
+        color: '#F1D58B', fontFamily: FONT.META, fontSize: '12px',
+      });
+    } else {
+      this.add.text(54, 516, `PUZZLE WAKTU ${endingCount}/${ENDING_TOTAL}`, {
+        color: endingCount >= ENDING_TOTAL ? '#F7D984' : 'rgba(247,242,226,.66)',
+        fontFamily: FONT.META, fontSize: '12px',
+      });
+    }
+    const isTouch = this.sys.game.device.input.touch;
+    this.add.text(GAME_WIDTH / 2, 522, isTouch ? 'KETUK MENU UNTUK MEMILIH' : '↑ ↓ pilih  •  ENTER konfirmasi', {
+      color: 'rgba(247,242,226,.72)', fontFamily: FONT.META, fontSize: '12px',
+    }).setOrigin(0.5);
   }
 
   private moveSelection(direction: number): void {
@@ -164,14 +296,16 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private refreshMenu(): void {
-    this.selectionMark?.setY(310 + this.selected * 43);
-    this.buttons.forEach((button, index) => {
+    this.menuRows.forEach((row, index) => {
       const disabled = Boolean(this.items[index]?.disabled?.());
       const selected = index === this.selected && !disabled;
-      button.setStyle({
-        color: disabled ? '#c9c0b050' : (selected ? '#f4d98d' : '#e9e2d8c0'),
-      });
-      button.setX(selected ? 88 : 82).setText(this.items[index]?.label ?? '');
+      row.bg.setFillStyle(selected ? 0xd3a848 : 0x080a12, selected ? 0.9 : 0.72);
+      row.bg.setStrokeStyle(selected ? 2 : 1, selected ? GOLD_PALE : GOLD, selected ? 1 : 0.48);
+      const item = this.items[index];
+      const prefix = selected ? '▸ ' : '';
+      row.label.setText(prefix + (item?.label ?? ''));
+      row.label.setColor(disabled ? 'rgba(245,240,232,.3)' : '#FFFDF2');
+      row.label.setFontStyle(selected ? 'bold' : 'normal');
     });
   }
 
@@ -194,19 +328,22 @@ export class TitleScene extends Phaser.Scene {
       this.scene.start('PrologueScene');
       return;
     }
-    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x010207, 0.82);
-    const paper = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 500, 190, 0xf4ead8).setStrokeStyle(3, 0x6a4930);
-    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, 'TIMPA AUTOSAVE SIKLUS AKTIF?', {
-      color: '#7a2925', fontFamily: 'Cinzel, serif', fontSize: '20px', fontStyle: 'bold',
+    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020308, 0.82);
+    const paper = addPaperPanel(this, 250, 235, 460, 170, { radius: 8 });
+    const title = this.add.text(GAME_WIDTH / 2, 278, 'TIMPA AUTOSAVE SIKLUS AKTIF?', {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '20px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const yes = this.confirmButton(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 + 38, 'YA, MULAI BARU', () => this.closeConfirmation(true));
-    const no = this.confirmButton(GAME_WIDTH / 2 + 120, GAME_HEIGHT / 2 + 38, 'BATAL', () => this.closeConfirmation(false));
+    const body = this.add.text(GAME_WIDTH / 2, 308, 'Progres siklus saat ini akan dimulai ulang dari 1944.', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '15px',
+    }).setOrigin(0.5);
+    const yes = this.confirmButton(320, 338, 160, 38, 'YA, MULAI BARU', () => this.closeConfirmation(true));
+    const no = this.confirmButton(530, 338, 160, 38, 'BATAL', () => this.closeConfirmation(false));
     yes.on('pointerover', () => { this.confirmChoice = 'yes'; this.refreshConfirmation(); });
     no.on('pointerover', () => { this.confirmChoice = 'no'; this.refreshConfirmation(); });
     this.confirmChoice = 'no';
     this.confirmYes = yes;
     this.confirmNo = no;
-    this.confirmPanel = this.add.container(0, 0, [shade, paper, title, yes, no]);
+    this.confirmPanel = this.add.container(0, 0, [shade, paper, title, body, yes, no]);
     this.refreshConfirmation();
   }
 
@@ -243,14 +380,8 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private refreshConfirmation(): void {
-    this.confirmYes?.setStyle({
-      backgroundColor: this.confirmChoice === 'yes' ? '#d3a848' : '#94342e',
-      color: '#fff8ea',
-    });
-    this.confirmNo?.setStyle({
-      backgroundColor: this.confirmChoice === 'no' ? '#d3a848' : '#94342e',
-      color: '#fff8ea',
-    });
+    this.confirmYes?.setFillStyle(this.confirmChoice === 'yes' ? RED : 0x6a5b4b, 1);
+    this.confirmNo?.setFillStyle(this.confirmChoice === 'no' ? RED : 0x6a5b4b, 1);
   }
 
   private closeConfirmation(startNewCycle: boolean): void {
@@ -261,11 +392,14 @@ export class TitleScene extends Phaser.Scene {
     if (startNewCycle) this.scene.start('PrologueScene');
   }
 
-  private confirmButton(x: number, y: number, label: string, action: () => void): Phaser.GameObjects.Text {
-    return this.add.text(x, y, label, {
-      backgroundColor: '#94342e', color: '#fff8ea', fontFamily: 'Poppins, sans-serif',
-      fontSize: '12px', padding: { x: 16, y: 11 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', action);
+  private confirmButton(x: number, y: number, w: number, h: number, label: string, action: () => void): Phaser.GameObjects.Rectangle {
+    const rect = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x6a5b4b)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerup', action);
+    this.add.text(x + w / 2, y + h / 2, label, {
+      color: '#FFF8EA', fontFamily: FONT.UI, fontSize: '13px',
+    }).setOrigin(0.5);
+    return rect;
   }
 
   private start1944(run: RunState, playerX?: number): void {

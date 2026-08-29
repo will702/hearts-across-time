@@ -1,34 +1,34 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
-import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { GAME_HEIGHT, GAME_WIDTH, GROUND_Y } from '../config';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 const INTRO_PAGES = [
   {
-    title: 'SEBELUM WAKTU DIBUKA',
+    title: 'MISI: PUTUSKAN LINGKARAN WAKTU',
     lead: 'Tahun 2088 di ambang kepunahan. Setiap pilihanmu dapat mengubah takdir dan alur cerita ke depannya.',
     rows: [
       ['WAKTU', 'Jelajahi tahun 1944, 1968, dan 1999 untuk menulis ulang nasib Arthur.'],
-      ['PENAWAR', 'Racik formula sebelum Virus Crimson melenyapkan masa depan.'],
-      ['SIKLUS', 'Jika garis waktu runtuh, perjalanan berulang—namun ingatanmu tetap ada.'],
+      ['PENAWAR', 'Racik formula penawar sebelum Virus Crimson melenyapkan masa depan.'],
+      ['SIKLUS', 'Jika garis waktu runtuh, siklus akan berulang—namun ingatan dan pengetahuanmu tetap abadi.'],
     ],
   },
   {
-    title: 'CARA MELANGKAH',
+    title: 'BERGERAK MELINTASI WAKTU',
     lead: 'Setiap era menyimpan jalan, petunjuk, dan bahaya berbeda.',
     rows: [
-      ['GERAK', 'Gunakan ← → atau A D. Tahan SHIFT untuk berlari.'],
-      ['PERIKSA', 'Tekan ↓, S, ENTER, atau SPACE di dekat benda.'],
-      ['DIALOG', 'Lanjutkan dengan ENTER, SPACE, klik, atau sentuhan.'],
+      ['← →', 'Bergerak dengan ← → atau A D. Tahan SHIFT untuk berlari.'],
+      ['PERIKSA', 'Tekan ↓, S, atau ENTER untuk benda; SPACE juga membuka buku harian.'],
+      ['ENTER', 'Lanjutkan dialog dengan ENTER, SPACE, klik, atau sentuhan.'],
     ],
   },
   {
-    title: 'YANG ARTHUR INGAT',
+    title: 'PILIHANMU MEMBENTUK ARTHUR',
     lead: 'Game tidak akan mengatakan pilihan mana yang “benar”.',
     rows: [
-      ['PILIHAN', 'Gunakan ↑ ↓ lalu ENTER, atau tekan nomor opsi yang tersedia.'],
-      ['KARAKTER', 'Ucapan dan caramu menyelesaikan tantangan diam-diam mengubah Arthur.'],
-      ['JEJAK', 'Baca buku harian dan temukan jejak cerita untuk mengungkap akhir sejati.'],
+      ['1 / 2 / 3', 'Pilih dengan ↑ ↓ lalu ENTER, atau tekan nomor opsi yang tersedia.'],
+      ['HATI / NALAR', 'Ucapan dan cara menyelesaikan tantangan diam-diam mengubah Arthur.'],
+      ['AKHIR', 'Baca buku harian, temukan jejak cerita, dan ungkap akhir sejati.'],
     ],
   },
 ] as const;
@@ -114,11 +114,11 @@ export class PrologueScene extends Phaser.Scene {
     innerBorder.lineStyle(1, 0x2b211a, 0.38);
     innerBorder.strokeRoundedRect(115, 63, 730, 414, 8);
 
-    // Title: MISI / TUTORIAL
+    // Title (legacy: bold 25px Patrick Hand merah tinta)
     const titleText = this.add.text(GAME_WIDTH / 2, 108, page.title, {
       color: '#94342e',
-      fontFamily: 'Cinzel, Patrick Hand, serif',
-      fontSize: '24px',
+      fontFamily: 'Patrick Hand, sans-serif',
+      fontSize: '25px',
       fontStyle: 'bold',
       align: 'center',
     }).setOrigin(0.5);
@@ -133,7 +133,7 @@ export class PrologueScene extends Phaser.Scene {
     );
     curve.draw(lineGfx, 32);
 
-    // Lead text
+    // Lead text (legacy: Georgia italic)
     const leadText = this.add.text(GAME_WIDTH / 2, 163, page.lead, {
       color: '#2b211a',
       fontFamily: 'Georgia, serif',
@@ -145,32 +145,36 @@ export class PrologueScene extends Phaser.Scene {
 
     objects.push(cardShadow, cardBg, innerBorder, titleText, lineGfx, leadText);
 
-    // 3 Content Rows
+    // 3 baris konten (legacy: wash + ikon #55677A + teks Patrick Hand 15)
     page.rows.forEach(([icon, text], index) => {
       const y = 208 + index * 63;
-      const rowRule = this.add.rectangle(174, y + 25, 2, 39, 0x94342e, 0.6);
+      const wash = this.add.graphics();
+      wash.fillStyle(0x5a4a3c, 0.055);
+      wash.fillRoundedRect(165, y, 630, 51, 7);
+      wash.lineStyle(1, 0x2b211a, 0.24);
+      wash.strokeRoundedRect(165, y, 630, 51, 7);
 
-      const iconText = this.add.text(205, y + 26, icon, {
-        color: '#94342e',
-        fontFamily: 'Poppins, sans-serif',
-        fontSize: '9px',
+      const iconText = this.add.text(205, y + 31, icon, {
+        color: '#55677a',
+        fontFamily: 'Patrick Hand, sans-serif',
+        fontSize: '15px',
         fontStyle: 'bold',
         align: 'center',
-        fixedWidth: 70,
+        fixedWidth: 80,
       }).setOrigin(0.5);
 
-      const rowText = this.add.text(240, y + 26, text, {
+      const rowText = this.add.text(240, y + 23, text, {
         color: '#2b211a',
-        fontFamily: 'Poppins, sans-serif',
-        fontSize: '14.5px',
+        fontFamily: 'Patrick Hand, sans-serif',
+        fontSize: '15px',
         wordWrap: { width: 535, useAdvancedWrap: true },
-      }).setOrigin(0, 0.5);
+      }).setOrigin(0, 0);
 
-      objects.push(rowRule, iconText, rowText);
+      objects.push(wash, iconText, rowText);
     });
 
-    // Pagination: HALAMAN X / 3
-    const pageNum = this.add.text(GAME_WIDTH / 2, 411, `CATATAN ${this.page + 1} / ${INTRO_PAGES.length}`, {
+    // Pagination: HALAMAN X / 3 (copy legacy)
+    const pageNum = this.add.text(GAME_WIDTH / 2, 411, `HALAMAN ${this.page + 1} / ${INTRO_PAGES.length}`, {
       color: '#94342e',
       fontFamily: 'Poppins, sans-serif',
       fontSize: '12px',
@@ -179,14 +183,14 @@ export class PrologueScene extends Phaser.Scene {
     }).setOrigin(0.5);
     objects.push(pageNum);
 
-    // Back Button (x: 180, w: 210, center: 285, y: 445)
+    // Back Button (legacy: 180, 426, 210×38, ‹ KEMBALI)
     const isBackActive = this.page > 0;
     const backBtnBg = this.add.rectangle(285, 445, 210, 38, isBackActive ? 0x94342e : 0x5a4a3c, isBackActive ? 1 : 0.1)
       .setStrokeStyle(1.5, isBackActive ? 0x6d211d : 0x2b211a, isBackActive ? 1 : 0.38)
       .setInteractive({ useHandCursor: isBackActive });
-    const backBtnText = this.add.text(285, 445, 'KEMBALI', {
+    const backBtnText = this.add.text(285, 445, '‹ KEMBALI', {
       color: isBackActive ? '#fff8ea' : '#4f4236',
-      fontFamily: 'Poppins, sans-serif',
+      fontFamily: 'Patrick Hand, sans-serif',
       fontSize: '14px',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -197,14 +201,14 @@ export class PrologueScene extends Phaser.Scene {
     }
     objects.push(backBtnBg, backBtnText);
 
-    // Next / Start Button (x: 570, w: 220, center: 680, y: 445)
+    // Next / Start Button (legacy: 570, 426, 220×38, LANJUT › / MULAI PERJALANAN ›)
     const isLastPage = this.page === INTRO_PAGES.length - 1;
     const nextBtnBg = this.add.rectangle(680, 445, 220, 38, 0x94342e, 1)
       .setStrokeStyle(1.5, 0x6d211d, 1)
       .setInteractive({ useHandCursor: true });
-    const nextBtnText = this.add.text(680, 445, isLastPage ? 'MULAI PERJALANAN' : 'LANJUT', {
+    const nextBtnText = this.add.text(680, 445, isLastPage ? 'MULAI PERJALANAN ›' : 'LANJUT ›', {
       color: '#fff8ea',
-      fontFamily: 'Poppins, sans-serif',
+      fontFamily: 'Patrick Hand, sans-serif',
       fontSize: '14px',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -274,27 +278,8 @@ export class PrologueScene extends Phaser.Scene {
 
     const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     soundManager?.playConfirm();
-    soundManager?.playWaterShimmer();
 
-    // A quiet temporal scan replaces the old red heartbeat vignette.
-    if (!this.registry.get('reduceMotion')) {
-      const outer = this.add.ellipse(0, 0, 760, 330).setStrokeStyle(2, 0x67e8f9, 0.45);
-      const middle = this.add.ellipse(0, 0, 540, 230).setStrokeStyle(2, 0xf7d984, 0.38);
-      const core = this.add.circle(0, 0, 7, 0xe0f2fe, 0.75);
-      this.temporalPulse = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2, [outer, middle, core])
-        .setDepth(10)
-        .setAlpha(0.12);
-      this.tweens.add({
-        targets: this.temporalPulse,
-        alpha: 0.48,
-        scaleX: 1.08,
-        scaleY: 1.08,
-        duration: 1300,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
+    this.stagePrologueScene();
 
     this.scene.launch('DialogueScene', {
       nodeId: 'prologue',
@@ -308,5 +293,101 @@ export class PrologueScene extends Phaser.Scene {
         }
       },
     });
+  }
+
+  /** Adegan prolog legacy: latar narator zoom-out, Elena setengah badan,
+      gradasi gelap, denyut jantung merah tiap 2.4 detik. */
+  private stagePrologueScene(): void {
+    const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
+    const reduce = Boolean(this.registry.get('reduceMotion'));
+
+    // kamera dimulai besar lalu perlahan mundur (zoom 1.16 → 1, pan -18/+12 → 0)
+    if (this.bgImage && !reduce) {
+      this.tweens.killTweensOf(this.bgImage);
+      this.bgImage.setAlpha(1);
+      const baseScale = Math.max(GAME_WIDTH / this.bgImage.width, GAME_HEIGHT / this.bgImage.height);
+      this.bgImage.setScale(baseScale * 1.16);
+      this.bgImage.setPosition(GAME_WIDTH / 2 - 18, GAME_HEIGHT / 2 + 12);
+      this.tweens.add({
+        targets: this.bgImage,
+        scaleX: baseScale,
+        scaleY: baseScale,
+        x: GAME_WIDTH / 2,
+        y: GAME_HEIGHT / 2,
+        duration: 7500,
+        ease: 'Sine.easeOut',
+      });
+    } else if (this.bgImage) {
+      this.bgImage.setAlpha(1);
+    }
+
+    // Elena setengah badan (crop legacy .345/.03/.31/.48, tinggi 270)
+    const elenaKey = this.textures.exists('elena-dialog-sad') ? 'elena-dialog-sad' : 'elena-dialog';
+    if (this.textures.exists(elenaKey)) {
+      const frame = this.textures.getFrame(elenaKey);
+      const cw = frame.width * 0.31;
+      const ch = frame.height * 0.48;
+      const dh = 270;
+      const dw = dh * (cw / ch);
+      const elena = this.add.image(GAME_WIDTH / 2, GROUND_Y - dh + 20, elenaKey)
+        .setOrigin(0, 0)
+        .setCrop(frame.width * 0.345, frame.height * 0.03, cw, ch)
+        .setDisplaySize(dw, dh)
+        .setDepth(5);
+      if (!reduce) {
+        this.tweens.add({
+          targets: elena,
+          y: `-=${1.4 * 2}`,
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+      // bayang lembut di kaki
+      const shadow = this.add.ellipse(GAME_WIDTH / 2, GROUND_Y + 2, dw * 0.84, 18, 0x090706, 0.25).setDepth(4);
+      void shadow;
+    }
+
+    // gradasi bawah + atas (drawPrologueScene legacy)
+    const gradients = this.add.graphics().setDepth(6);
+    gradients.fillGradientStyle(0x080605, 0x080605, 0x080605, 0x080605, 0, 0, 0.64, 0.64);
+    gradients.fillRect(0, GAME_HEIGHT * 0.56, GAME_WIDTH, GAME_HEIGHT * 0.44);
+    gradients.fillGradientStyle(0x040405, 0x040405, 0x050506, 0x050506, 0.82, 0.82, 0, 0);
+    gradients.fillRect(0, 0, GAME_WIDTH, 210);
+
+    // vignette denyut merah + SFX jantung tiap 2.4 detik
+    const vignette = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, this.ensureRedVignette())
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setDepth(7)
+      .setAlpha(0.12);
+    this.temporalPulse = this.add.container(0, 0, [vignette]).setDepth(7);
+    const beat = (): void => {
+      soundManager?.playHeart();
+      if (reduce) return;
+      this.tweens.killTweensOf(vignette);
+      vignette.setAlpha(0.34);
+      this.tweens.add({ targets: vignette, alpha: 0.12, duration: 620, ease: 'Sine.easeOut' });
+    };
+    this.time.addEvent({ delay: 2400, loop: true, callback: beat });
+    beat();
+  }
+
+  /** Tekstur vignette merah radial (pusat transparan → tepi rgba(190,30,30)). */
+  private ensureRedVignette(): string {
+    const key = 'ui-red-vignette';
+    if (!this.textures.exists(key)) {
+      const ct = this.textures.createCanvas(key, GAME_WIDTH, GAME_HEIGHT);
+      if (ct) {
+        const c = ct.getContext() as unknown as CanvasRenderingContext2D;
+        const g = c.createRadialGradient(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_HEIGHT * 0.2, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_HEIGHT * 0.72);
+        g.addColorStop(0, 'rgba(190,30,30,0)');
+        g.addColorStop(1, 'rgba(190,30,30,.42)');
+        c.fillStyle = g;
+        c.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        ct.refresh();
+      }
+    }
+    return key;
   }
 }

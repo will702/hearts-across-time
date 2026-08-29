@@ -76,6 +76,10 @@ export class InputSystem {
       : this.touchDirections.left ? -1 : 1;
   }
 
+  setTouchSprint(pressed: boolean): void {
+    this.touchSprint = pressed;
+  }
+
   triggerTouch(action: 'interact'): void {
     if (action === 'interact') this.pressTouchInteract();
   }
