@@ -31,6 +31,7 @@ type Snapshot = {
     width: number;
     height: number;
     start: { x: number; y: number };
+    patient: { x: number; y: number };
     goal: { x: number; y: number };
     blocked: Array<{ x: number; y: number }>;
   } | null;
@@ -40,6 +41,7 @@ type Snapshot = {
   locked?: boolean[];
   selectedLayer?: number;
   assisted?: boolean;
+  carryingPatient?: boolean;
   system?: number;
   rotations?: number[];
   tiles?: Array<{
@@ -188,15 +190,19 @@ async function solveAssembly(page: Page, expectedPieces: number): Promise<void> 
   }
 }
 
-function shortestEvacuationPath(board: NonNullable<Snapshot['board']>): Array<{ x: number; y: number }> {
+function shortestEvacuationPath(
+  board: NonNullable<Snapshot['board']>,
+  start = board.start,
+  goal = board.goal,
+): Array<{ x: number; y: number }> {
   const key = (point: { x: number; y: number }): string => `${point.x},${point.y}`;
   const blocked = new Set(board.blocked.map(key));
-  const queue: Array<Array<{ x: number; y: number }>> = [[board.start]];
-  const seen = new Set([key(board.start)]);
+  const queue: Array<Array<{ x: number; y: number }>> = [[start]];
+  const seen = new Set([key(start)]);
   while (queue.length) {
     const route = queue.shift()!;
     const current = route[route.length - 1];
-    if (current.x === board.goal.x && current.y === board.goal.y) return route;
+    if (current.x === goal.x && current.y === goal.y) return route;
     for (const [dx, dy] of [[1, 0], [0, -1], [0, 1], [-1, 0]]) {
       const next = { x: current.x + dx, y: current.y + dy };
       const nextKey = key(next);
@@ -211,12 +217,17 @@ function shortestEvacuationPath(board: NonNullable<Snapshot['board']>): Array<{ 
 
 async function solveEvacuation(page: Page): Promise<void> {
   const cellSize = 62;
-  const top = 126;
+  const top = 182;
   for (let round = 0; round < 3; round += 1) {
     const state = await snapshot(page);
     if (!state.board) throw new Error('Snapshot peta evakuasi tidak lengkap');
     const originX = (GAME_WIDTH - state.board.width * cellSize) / 2;
-    for (const cell of shortestEvacuationPath(state.board).slice(1)) {
+    for (const cell of shortestEvacuationPath(state.board, state.board.start, state.board.patient).slice(1)) {
+      const point = await canvasPoint(page, originX + cell.x * cellSize + cellSize / 2, top + cell.y * cellSize + cellSize / 2);
+      await page.mouse.click(point.x, point.y);
+    }
+    await expect.poll(async () => (await snapshot(page)).carryingPatient).toBe(true);
+    for (const cell of shortestEvacuationPath(state.board, state.board.patient, state.board.goal).slice(1)) {
       const point = await canvasPoint(page, originX + cell.x * cellSize + cellSize / 2, top + cell.y * cellSize + cellSize / 2);
       await page.mouse.click(point.x, point.y);
     }
@@ -315,7 +326,7 @@ test.describe('Phaser Native Full Port E2E', () => {
     if (!evacuation.board) throw new Error('Peta evakuasi tidak tersedia');
     const invalid = evacuation.board.blocked[0];
     const evacuationOriginX = (GAME_WIDTH - evacuation.board.width * 62) / 2;
-    const invalidPoint = await canvasPoint(page, evacuationOriginX + invalid.x * 62 + 31, 126 + invalid.y * 62 + 31);
+    const invalidPoint = await canvasPoint(page, evacuationOriginX + invalid.x * 62 + 31, 182 + invalid.y * 62 + 31);
     await page.mouse.click(invalidPoint.x, invalidPoint.y);
     await page.mouse.click(invalidPoint.x, invalidPoint.y);
     await expect.poll(async () => (await snapshot(page)).assisted).toBe(true);

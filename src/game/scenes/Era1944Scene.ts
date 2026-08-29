@@ -16,13 +16,32 @@ import type { WorldAction, WorldState } from '../world/worldTypes';
 import type { DialogueSceneData } from './DialogueScene';
 import { EraSpeakerRig } from './eraSpeakerRig';
 import type { UIScene } from './UIScene';
-import { playArrivalSequence } from './playArrivalSequence';
+import { playArrivalSequence, type ArrivalBackdropFrame } from './playArrivalSequence';
 
 type EraData = { run: RunState; playerX?: number; intro?: boolean };
 
 const WATCH_BLOCKER_X = 398;
 const WATCH_RESUME_X = 478;
 const AUTOSAVE_MS = 750;
+const BOMB_FLASH_MIN_MS = 4_500;
+const BOMB_FLASH_MAX_MS = 8_500;
+const VIEW_WIDTH = 960;
+const VIEW_HEIGHT = 540;
+const TRENCH_WALKWAY_TEXTURE = 'world-1944-trench-walkway';
+const FIGMA_FRAME_SCALE = VIEW_WIDTH / 3233;
+const FIGMA_FRAME_TOP = (VIEW_HEIGHT - 2102 * FIGMA_FRAME_SCALE) / 2;
+const figmaFrame = (x: number, y: number, width: number, height: number): ArrivalBackdropFrame => ({
+  x: x * FIGMA_FRAME_SCALE,
+  y: y * FIGMA_FRAME_SCALE + FIGMA_FRAME_TOP,
+  width: width * FIGMA_FRAME_SCALE,
+  height: height * FIGMA_FRAME_SCALE,
+});
+const FIGMA_1944_INTRO_FRAMES: ArrivalBackdropFrame[] = [
+  figmaFrame(0, -2951, 9053, 5053),
+  figmaFrame(-1956, -1451, 8393, 4684),
+  figmaFrame(-1395, 0, 4628, 2583),
+];
+const FIGMA_1944_ELENA = figmaFrame(-557, 229, 4348, 2492);
 
 export class Era1944Scene extends Phaser.Scene {
   private run!: RunState;
@@ -42,6 +61,10 @@ export class Era1944Scene extends Phaser.Scene {
   private echo?: LoopEchoTrail;
   private grade?: EraGradeSystem;
   private arrivalActive = false;
+  private entryCinematicObjects: Phaser.GameObjects.GameObject[] = [];
+  private entryElena?: Phaser.GameObjects.Image;
+  private bombFlash?: Phaser.GameObjects.Rectangle;
+  private nextBombFlashAt = Number.POSITIVE_INFINITY;
 
   constructor() {
     super('Era1944Scene');
@@ -63,6 +86,7 @@ export class Era1944Scene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, ERA_1944.width, ERA_1944.height);
     this.createWorldLayers();
     this.grade = new EraGradeSystem(this, '1944');
+    this.createBattleAtmosphere();
 
     this.surfaces = new SurfaceSystem(this);
     const spawnX = this.validSpawnX(data.playerX);
@@ -103,6 +127,9 @@ export class Era1944Scene extends Phaser.Scene {
       startFocusX: 210,
       endFocusX: 575,
       groundY: ERA_1944.groundY,
+      backdrop: 'bg1944-mid',
+      backdropFrames: FIGMA_1944_INTRO_FRAMES,
+      showChrome: false,
       onComplete: () => this.launchEntryDialogue(),
     });
   }
@@ -111,13 +138,69 @@ export class Era1944Scene extends Phaser.Scene {
     this.arrivalActive = false;
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
-    this.ui.setModal(false);
-    this.scene.launch('DialogueScene', this.dialoguePayload('war_intro', () => {
+    this.createEntryDialogueBackdrop();
+    const payload = this.dialoguePayload('war_intro', () => {
+      this.destroyEntryDialogueBackdrop();
+      this.ui.setModal(false);
       this.scene.resume();
       this.controls.setEnabled(true);
       this.registry.set('nativeState', 'era1944');
-    }));
+    });
+    payload.cinematicSpeaker = true;
+    payload.speakerAnchor = who => who === 'elena'
+      ? { x: VIEW_WIDTH / 2, headY: 120 }
+      : null;
+    payload.speakerVisual = who => who === 'elena' ? this.entryElena ?? null : null;
+    payload.setSpeakerExpression = (who: CharacterId, expr: Expression) => {
+      const arthur = this.objects.find(object => object.definition.id === 'arthur');
+      const rig = new EraSpeakerRig(this.cameras.main, this.player, arthur?.visual, 'muda');
+      rig.setExpression(who, expr);
+      if ((who === 'elena' || who === 'narrator') && this.entryElena) {
+        const key = (expr === 'sad' || expr === 'shock') && this.textures.exists('elena-dialog-sad')
+          ? 'elena-dialog-sad'
+          : 'elena-dialog';
+        if (this.textures.exists(key)) this.entryElena.setTexture(key);
+      }
+    };
+    this.scene.launch('DialogueScene', payload);
     this.scene.pause();
+  }
+
+  /** Komposisi frame Figma 68:54: crop ledakan, vignette, dan Elena besar di tengah. */
+  private createEntryDialogueBackdrop(): void {
+    this.destroyEntryDialogueBackdrop();
+    const frame = FIGMA_1944_INTRO_FRAMES[FIGMA_1944_INTRO_FRAMES.length - 1];
+    if (frame && this.textures.exists('bg1944-mid')) {
+      const background = this.add.image(frame.x, frame.y, 'bg1944-mid')
+        .setOrigin(0)
+        .setDisplaySize(frame.width, frame.height)
+        .setScrollFactor(0)
+        .setDepth(2998);
+      this.entryCinematicObjects.push(background);
+    }
+
+    const shade = this.add.graphics().setScrollFactor(0).setDepth(2999);
+    shade.fillGradientStyle(0x090504, 0x090504, 0x090504, 0x090504, 0.42, 0.42, 0, 0);
+    shade.fillRect(0, 0, VIEW_WIDTH, 180);
+    shade.fillGradientStyle(0x080403, 0x080403, 0x080403, 0x080403, 0, 0, 0.5, 0.5);
+    shade.fillRect(0, 300, VIEW_WIDTH, VIEW_HEIGHT - 300);
+    this.entryCinematicObjects.push(shade);
+
+    const elenaKey = this.textures.exists('elena-dialog-sad') ? 'elena-dialog-sad' : 'elena-dialog';
+    if (this.textures.exists(elenaKey)) {
+      this.entryElena = this.add.image(FIGMA_1944_ELENA.x, FIGMA_1944_ELENA.y, elenaKey)
+        .setOrigin(0)
+        .setDisplaySize(FIGMA_1944_ELENA.width, FIGMA_1944_ELENA.height)
+        .setScrollFactor(0)
+        .setDepth(3000);
+      this.entryCinematicObjects.push(this.entryElena);
+    }
+  }
+
+  private destroyEntryDialogueBackdrop(): void {
+    this.entryCinematicObjects.forEach(object => object.destroy());
+    this.entryCinematicObjects = [];
+    this.entryElena = undefined;
   }
 
   /** Payload DialogueScene lengkap dengan jangkar balon komik era ini. */
@@ -140,6 +223,7 @@ export class Era1944Scene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     this.grade?.update(time);
+    this.updateBattleAtmosphere(time);
     const input = this.controls.read();
     this.player.updatePlayer(input, delta);
     if (this.arrivalActive) return;
@@ -206,7 +290,7 @@ export class Era1944Scene extends Phaser.Scene {
       .setDepth(-30);
 
     if (this.textures.exists('bg1944-far')) {
-      this.add.image(0, 92, 'bg1944-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
+      this.add.image(0, 0, 'bg1944-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
     }
     const hasPaintedGround = this.textures.exists('bg1944-mid');
     if (hasPaintedGround) {
@@ -222,12 +306,77 @@ export class Era1944Scene extends Phaser.Scene {
       for (let x = 95; x < ERA_1944.width; x += 230) ground.fillEllipse(x, 493 + (x % 3) * 5, 72, 13);
     }
 
+    this.createTrenchWalkway();
     this.createAnimatedProp('prop-flag1944', 390, 444, 132, 5, 438);
     this.createAnimatedProp('prop-lantern1944', 620, 436, 94, 3.2, 439);
 
     if (this.textures.exists('bg1944-fg')) {
       this.add.image(0, ERA_1944.groundY - 14, 'bg1944-fg').setOrigin(0).setDisplaySize(1470, 200).setDepth(430);
     }
+  }
+
+  /** Jalur papan parit memberi bidang pijak yang jelas tanpa mengubah collider tanah. */
+  private createTrenchWalkway(): void {
+    const textureHeight = 58;
+    if (!this.textures.exists(TRENCH_WALKWAY_TEXTURE)) {
+      const walkway = this.add.graphics();
+
+      // Dasar lumpur tidak rata agar menyatu dengan sapuan watercolor latar.
+      walkway.fillStyle(0x2a211b, 0.68);
+      walkway.beginPath();
+      walkway.moveTo(0, 15);
+      for (let x = 0; x <= ERA_1944.width; x += 70) {
+        walkway.lineTo(x, 16 + Math.sin(x * 0.031) * 4);
+      }
+      for (let x = ERA_1944.width; x >= 0; x -= 85) {
+        walkway.lineTo(x, 49 + Math.sin(x * 0.024) * 4);
+      }
+      walkway.closePath();
+      walkway.fillPath();
+
+      walkway.fillStyle(0x68503d, 0.32);
+      for (let x = 28; x < ERA_1944.width; x += 113) {
+        walkway.fillEllipse(x, 24 + (x % 5), 62 + (x % 23), 10);
+      }
+
+      // Papan pijak yang jarang dan patah, bukan deretan pagar yang menutup layar.
+      for (let x = 42, index = 0; x < ERA_1944.width; x += 205, index += 1) {
+        const top = 19 + (index % 3) * 3;
+        const bottom = top + 16;
+        const skew = index % 2 === 0 ? 3 : -2;
+        const color = [0x594337, 0x47372f, 0x654c3d][index % 3];
+        walkway.fillStyle(color, 0.62);
+        walkway.lineStyle(1, 0x211915, 0.62);
+        const points = [
+          new Phaser.Math.Vector2(x, top),
+          new Phaser.Math.Vector2(x + 112, top + skew),
+          new Phaser.Math.Vector2(x + 108, bottom + skew),
+          new Phaser.Math.Vector2(x + 2, bottom),
+        ];
+        walkway.fillPoints(points, true);
+        walkway.strokePoints(points, true, true);
+        walkway.lineStyle(1, 0xb08a6b, 0.12);
+        walkway.lineBetween(x + 10, top + 5, x + 100, top + 5 + skew);
+      }
+
+      // Genangan dan noda lumpur menurunkan kesan bentuk vektor yang terlalu bersih.
+      walkway.fillStyle(0x101716, 0.34);
+      for (let x = 74; x < ERA_1944.width; x += 211) {
+        walkway.fillEllipse(x, 43 + (x % 3), 72, 7);
+      }
+      walkway.fillStyle(0x967257, 0.14);
+      for (let x = 31; x < ERA_1944.width; x += 137) {
+        walkway.fillEllipse(x, 19 + (x % 4), 17, 4);
+      }
+
+      walkway.generateTexture(TRENCH_WALKWAY_TEXTURE, ERA_1944.width, textureHeight);
+      walkway.destroy();
+    }
+
+    this.add.image(0, ERA_1944.groundY - 29, TRENCH_WALKWAY_TEXTURE)
+      .setName('trench-walkway')
+      .setOrigin(0)
+      .setDepth(420);
   }
 
   private createAnimatedProp(key: string, x: number, y: number, height: number, fps: number, depth: number): void {
@@ -362,13 +511,69 @@ export class Era1944Scene extends Phaser.Scene {
     this.soundManager?.playFootstep(surface, this.player.x);
   }
 
+  /** Kilatan ledakan jauh: singkat, hangat, dan tidak mengganggu HUD atau input. */
+  private createBattleAtmosphere(): void {
+    this.bombFlash = this.add.rectangle(
+      VIEW_WIDTH / 2,
+      VIEW_HEIGHT / 2,
+      VIEW_WIDTH,
+      VIEW_HEIGHT,
+      0xffd58a,
+    )
+      .setAlpha(0)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScrollFactor(0)
+      .setDepth(850);
+
+    // Kilatan pertama segera terasa setelah intro/dialog selesai.
+    this.nextBombFlashAt = this.time.now + 2_500;
+  }
+
+  private updateBattleAtmosphere(time: number): void {
+    if (
+      !this.bombFlash
+      || this.arrivalActive
+      || this.registry.get('reduceMotion')
+      || time < this.nextBombFlashAt
+    ) return;
+
+    this.triggerBombFlash();
+    this.scheduleNextBombFlash(time);
+  }
+
+  private scheduleNextBombFlash(fromTime: number): void {
+    this.nextBombFlashAt = fromTime + Phaser.Math.Between(BOMB_FLASH_MIN_MS, BOMB_FLASH_MAX_MS);
+  }
+
+  private triggerBombFlash(): void {
+    if (!this.bombFlash) return;
+    this.tweens.killTweensOf(this.bombFlash);
+    this.bombFlash
+      .setFillStyle(Phaser.Math.RND.pick([0xffe2a8, 0xffc66d, 0xfff0ca]), 1)
+      .setAlpha(0.3);
+    this.tweens.add({
+      targets: this.bombFlash,
+      alpha: 0,
+      duration: 520,
+      ease: 'Cubic.easeOut',
+    });
+    this.cameras.main.shake(180, 0.0025);
+    this.soundManager?.playBoom();
+  }
+
   private shutdown(): void {
+    this.destroyEntryDialogueBackdrop();
     if (this.player?.active) this.save.saveCycle('1944', this.run, this.player.x);
     this.scene.stop('WatchRepairScene');
     this.scene.stop('SpotlightChallengeScene');
     this.scene.stop('DialogueScene');
     this.scene.stop('UIScene');
     this.controls?.destroy();
+    if (this.bombFlash) {
+      this.tweens.killTweensOf(this.bombFlash);
+      this.bombFlash.destroy();
+      this.bombFlash = undefined;
+    }
     this.grade?.destroy();
     this.grade = undefined;
     this.surfaces?.destroy();

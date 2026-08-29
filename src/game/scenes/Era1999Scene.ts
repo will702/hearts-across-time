@@ -20,6 +20,17 @@ import { playArrivalSequence } from './playArrivalSequence';
 
 type EraData = { run: RunState; playerX?: number; intro?: boolean };
 
+const VIEW_WIDTH = 960;
+const VIEW_HEIGHT = 540;
+const FIGMA_FRAME_SCALE = VIEW_WIDTH / 3233;
+const FIGMA_FRAME_TOP = (VIEW_HEIGHT - 2102 * FIGMA_FRAME_SCALE) / 2;
+const figmaFrame = (x: number, y: number, width: number, height: number) => ({
+  x: x * FIGMA_FRAME_SCALE,
+  y: y * FIGMA_FRAME_SCALE + FIGMA_FRAME_TOP,
+  width: width * FIGMA_FRAME_SCALE,
+  height: height * FIGMA_FRAME_SCALE,
+});
+const FIGMA_1999_ELENA = figmaFrame(-557, 229, 4348, 2492);
 const AUTOSAVE_MS = 750;
 
 export class Era1999Scene extends Phaser.Scene {
@@ -40,6 +51,8 @@ export class Era1999Scene extends Phaser.Scene {
   private endingCommitted = false;
   private echo?: LoopEchoTrail;
   private arrivalActive = false;
+  private entryCinematicObjects: Phaser.GameObjects.GameObject[] = [];
+  private entryElena?: Phaser.GameObjects.Image;
 
   constructor() {
     super('Era1999Scene');
@@ -158,7 +171,7 @@ export class Era1999Scene extends Phaser.Scene {
     this.add.rectangle(ERA_1999.width / 2, ERA_1999.height / 2, ERA_1999.width, ERA_1999.height, 0x091424).setDepth(-30);
 
     if (this.textures.exists('bg1999-far')) {
-      this.add.image(0, 92, 'bg1999-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
+      this.add.image(0, 0, 'bg1999-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
     }
     if (this.textures.exists('bg1999-mid')) {
       this.add.image(0, ERA_1999.groundY, 'bg1999-mid').setOrigin(0, 1).setScrollFactor(0.45).setDepth(-20);
@@ -316,13 +329,78 @@ export class Era1999Scene extends Phaser.Scene {
     this.arrivalActive = false;
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
-    this.ui.setModal(false);
-    this.scene.launch('DialogueScene', this.dialoguePayload('final_lab_intro', () => {
+    this.createEntryDialogueBackdrop();
+
+    const payload = this.dialoguePayload('final_lab_intro', () => {
+      this.destroyEntryDialogueBackdrop();
+      this.ui.setModal(false);
       this.scene.resume();
       this.controls.setEnabled(true);
       this.registry.set('nativeState', 'era1999');
-    }));
+    });
+    payload.cinematicSpeaker = true;
+    payload.speakerAnchor = speaker => speaker === 'elena'
+      ? { x: VIEW_WIDTH / 2, headY: 120 }
+      : null;
+    payload.speakerVisual = speaker => speaker === 'elena' ? this.entryElena ?? null : null;
+    payload.setSpeakerExpression = (who: CharacterId, expr: Expression) => {
+      const arthur = this.objects.find(object => object.definition.id === 'arthur');
+      const rig = new EraSpeakerRig(this.cameras.main, this.player, arthur?.visual, 'tua');
+      rig.setExpression(who, expr);
+      if ((who === 'elena' || who === 'narrator') && this.entryElena) {
+        const key = (expr === 'sad' || expr === 'shock') && this.textures.exists('elena-dialog-sad')
+          ? 'elena-dialog-sad'
+          : 'elena-dialog';
+        if (this.textures.exists(key)) this.entryElena.setTexture(key);
+      }
+    };
+    this.scene.launch('DialogueScene', payload);
     this.scene.pause();
+  }
+
+  /** Komposisi frame Figma 72:128 untuk dialog pembuka laboratorium 1999. */
+  private createEntryDialogueBackdrop(): void {
+    this.destroyEntryDialogueBackdrop();
+    const bgKey = this.textures.exists('lab-final')
+      ? 'lab-final'
+      : this.textures.exists('bg1999-mid')
+        ? 'bg1999-mid'
+        : undefined;
+
+    if (bgKey) {
+      const background = this.add.image(0, 0, bgKey)
+        .setOrigin(0)
+        .setDisplaySize(VIEW_WIDTH, VIEW_HEIGHT)
+        .setScrollFactor(0)
+        .setDepth(2998);
+      this.entryCinematicObjects.push(background);
+    }
+
+    const shade = this.add.rectangle(
+      VIEW_WIDTH / 2,
+      VIEW_HEIGHT / 2,
+      VIEW_WIDTH,
+      VIEW_HEIGHT,
+      0x000000,
+      0.34,
+    ).setScrollFactor(0).setDepth(2999);
+    this.entryCinematicObjects.push(shade);
+
+    const elenaKey = this.textures.exists('elena-dialog-sad') ? 'elena-dialog-sad' : 'elena-dialog';
+    if (this.textures.exists(elenaKey)) {
+      this.entryElena = this.add.image(FIGMA_1999_ELENA.x, FIGMA_1999_ELENA.y, elenaKey)
+        .setOrigin(0)
+        .setDisplaySize(FIGMA_1999_ELENA.width, FIGMA_1999_ELENA.height)
+        .setScrollFactor(0)
+        .setDepth(3000);
+      this.entryCinematicObjects.push(this.entryElena);
+    }
+  }
+
+  private destroyEntryDialogueBackdrop(): void {
+    this.entryCinematicObjects.forEach(object => object.destroy());
+    this.entryCinematicObjects = [];
+    this.entryElena = undefined;
   }
 
   private openLore(id: string): void {

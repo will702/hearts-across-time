@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
-import { GAME_HEIGHT, GAME_WIDTH, GROUND_Y } from '../config';
+import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import type { CharacterId, Expression } from '../narrative/storyScript';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 const INTRO_PAGES = [
@@ -39,6 +40,7 @@ export class PrologueScene extends Phaser.Scene {
   private page = 0;
   private pageContainer?: Phaser.GameObjects.Container;
   private bgImage?: Phaser.GameObjects.Image;
+  private elenaImage?: Phaser.GameObjects.Image;
   private started = false;
   private temporalPulse?: Phaser.GameObjects.Container;
 
@@ -284,6 +286,7 @@ export class PrologueScene extends Phaser.Scene {
     this.scene.launch('DialogueScene', {
       nodeId: 'prologue',
       run: this.run,
+      setSpeakerExpression: (_who: CharacterId, expr: Expression) => this.setElenaExpression(expr),
       onComplete: (action?: { type: string; to?: string }) => {
         this.temporalPulse?.destroy();
         if (action?.type === 'vortex' || action?.to === '1944') {
@@ -293,6 +296,16 @@ export class PrologueScene extends Phaser.Scene {
         }
       },
     });
+  }
+
+  private setElenaExpression(expr: string): void {
+    if (!this.elenaImage) return;
+    const targetKey = (expr === 'sad' || expr === 'shock') && this.textures.exists('elena-dialog-sad')
+      ? 'elena-dialog-sad'
+      : 'elena-dialog';
+    if (this.textures.exists(targetKey) && this.elenaImage.texture.key !== targetKey) {
+      this.elenaImage.setTexture(targetKey);
+    }
   }
 
   /** Adegan prolog legacy: latar narator zoom-out, Elena setengah badan,
@@ -321,32 +334,31 @@ export class PrologueScene extends Phaser.Scene {
       this.bgImage.setAlpha(1);
     }
 
-    // Elena setengah badan (crop legacy .345/.03/.31/.48, tinggi 270)
+    // Elena setengah badan (skala frame Figma -557, 229, 4348, 2492)
     const elenaKey = this.textures.exists('elena-dialog-sad') ? 'elena-dialog-sad' : 'elena-dialog';
     if (this.textures.exists(elenaKey)) {
-      const frame = this.textures.getFrame(elenaKey);
-      const cw = frame.width * 0.31;
-      const ch = frame.height * 0.48;
-      const dh = 270;
-      const dw = dh * (cw / ch);
-      const elena = this.add.image(GAME_WIDTH / 2, GROUND_Y - dh + 20, elenaKey)
-        .setOrigin(0, 0)
-        .setCrop(frame.width * 0.345, frame.height * 0.03, cw, ch)
-        .setDisplaySize(dw, dh)
+      const fScale = GAME_WIDTH / 3233;
+      const fTop = (GAME_HEIGHT - 2102 * fScale) / 2;
+      const ex = -557 * fScale;
+      const ey = 229 * fScale + fTop;
+      const ew = 4348 * fScale;
+      const eh = 2492 * fScale;
+
+      this.elenaImage = this.add.image(ex, ey, elenaKey)
+        .setOrigin(0)
+        .setDisplaySize(ew, eh)
         .setDepth(5);
+
       if (!reduce) {
         this.tweens.add({
-          targets: elena,
-          y: `-=${1.4 * 2}`,
-          duration: 2000,
+          targets: this.elenaImage,
+          y: `+=4`,
+          duration: 2200,
           yoyo: true,
           repeat: -1,
           ease: 'Sine.easeInOut',
         });
       }
-      // bayang lembut di kaki
-      const shadow = this.add.ellipse(GAME_WIDTH / 2, GROUND_Y + 2, dw * 0.84, 18, 0x090706, 0.25).setDepth(4);
-      void shadow;
     }
 
     // gradasi bawah + atas (drawPrologueScene legacy)

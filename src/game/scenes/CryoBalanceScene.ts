@@ -141,8 +141,8 @@ export class CryoBalanceScene extends Phaser.Scene {
       color: CSS.body, fontFamily: FONT.UI, fontSize: '17px', fontStyle: 'bold',
     }).setOrigin(0.5);
     const entries = [
-      { x: 245, title: '1. EMPATI', desc: 'Pulihkan jalur penunjang hidup dahulu.\n(Menjaga Arthur tetap aman)' },
-      { x: 565, title: '2. LOGIKA', desc: 'Pulihkan sistem sesuai dependensi.\n(Menjaga formula tetap murni)' },
+      { x: 320, title: '1. EMPATI', desc: 'Pulihkan jalur penunjang hidup dahulu.\n(Menjaga Arthur tetap aman)' },
+      { x: 640, title: '2. LOGIKA', desc: 'Pulihkan sistem sesuai dependensi.\n(Menjaga formula tetap murni)' },
     ];
     entries.forEach((entry, index) => {
       const bg = this.add.rectangle(entry.x, 250, 290, 130, 0x5a4a3c, 0.06)

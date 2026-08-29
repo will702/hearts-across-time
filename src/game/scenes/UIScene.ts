@@ -18,12 +18,49 @@ const GAMEPLAY_SCENES = [
 
 const MODAL_SCENES = GAMEPLAY_SCENES.slice(0, 9);
 
-const STORY_ITEMS_DEF = [
-  { id: 'watch', label: 'Jam Saku' },
-  { id: 'flower', label: 'Mawar Kering' },
-  { id: 'water_gem', label: 'Permata Air' },
-  { id: 'arthur_photo', label: 'Foto Arthur' },
-] as const;
+export type InventoryItemDef = {
+  id: 'watch' | 'flower' | 'water_gem' | 'arthur_photo';
+  label: string;
+  era: string;
+  asset: string;
+  desc: string;
+  foundHint: string;
+};
+
+const STORY_ITEMS_DEF: readonly InventoryItemDef[] = [
+  {
+    id: 'watch',
+    label: 'Jam Saku Perang',
+    era: 'BABAK 1 — 1944',
+    asset: 'watch-prop',
+    desc: 'Jam saku perak tua pemberian Arthur di masa Perang Dunia II. Berdetak secara misterius walau bagian mekanis di dalamnya pernah mengalami kerusakan parah.',
+    foundHint: 'Dapatkan dari membetulkan jam tangan di Parit 1944.',
+  },
+  {
+    id: 'flower',
+    label: 'Botol Mawar Abadi',
+    era: 'BABAK 2 — 1968',
+    asset: 'rose-bottle-broken',
+    desc: 'Kelopak mawar merah yang diawetkan dalam botol kaca spesimen. Bukti janji dan rasa cinta Arthur di tengah dinginnya bunker bawah tanah.',
+    foundHint: 'Dapatkan dari menyusun pecahan botol mawar di Bunker 1968.',
+  },
+  {
+    id: 'water_gem',
+    label: 'Permata Kristal Air',
+    era: 'BABAK 2/3 — 1968-1999',
+    asset: 'water-gem-art',
+    desc: 'Kristal penyeimbang suhu dan radiasi yang diselaraskan untuk menahan pembekuan kapsul kriogenik dan formula penawar.',
+    foundHint: 'Dapatkan dari tantangan arsip mikrofilm atau penyelarasan kristal.',
+  },
+  {
+    id: 'arthur_photo',
+    label: 'Foto Kenangan Arthur',
+    era: 'BABAK 3 — 1999',
+    asset: 'elena-arthur-photo',
+    desc: 'Foto potret perpisahan Elena dan Arthur sebelum eksperimen kapsul waktu. Menyimpan petunjuk penting penyelesaian formula penawar.',
+    foundHint: 'Dapatkan dari memulihkan foto kenangan di Laboratorium 1999.',
+  },
+];
 
 export class UIScene extends Phaser.Scene {
   private controls?: InputSystem;
@@ -36,8 +73,11 @@ export class UIScene extends Phaser.Scene {
   private inventoryContainer?: Phaser.GameObjects.Container;
   private inventorySlots: Array<{ bg: Phaser.GameObjects.Arc; glyph: Phaser.GameObjects.Graphics }> = [];
   private inventorySignature = '';
+  private inventoryModalPanel?: Phaser.GameObjects.Container;
+  private selectedInventoryIndex = 0;
   private run?: RunState;
   private touchObjects: Array<Phaser.GameObjects.GameObject & { setVisible(value: boolean): unknown }> = [];
+  private topHUDObjects: Array<Phaser.GameObjects.GameObject & { setVisible(value: boolean): unknown }> = [];
   private pausePanel?: Phaser.GameObjects.Container;
   private pauseMenuItems: PauseMenuItem[] = [];
   private pauseButtons: Phaser.GameObjects.Text[] = [];
@@ -147,6 +187,13 @@ export class UIScene extends Phaser.Scene {
       return;
     }
 
+    if (this.inventoryModalPanel) {
+      if (Phaser.Input.Keyboard.JustDown(this.pauseKeys.ESC) || Phaser.Input.Keyboard.JustDown(this.pauseKeys.P)) {
+        this.closeInventoryModal();
+      }
+      return;
+    }
+
     if (Phaser.Input.Keyboard.JustDown(this.pauseKeys.ESC) || Phaser.Input.Keyboard.JustDown(this.pauseKeys.P)) {
       this.togglePause();
     } else if (this.paused) {
@@ -184,6 +231,7 @@ export class UIScene extends Phaser.Scene {
     this.modalOwned = owned && on;
     this.modal = on;
     this.touchObjects.forEach((object) => object.setVisible(!on && !this.paused));
+    this.topHUDObjects.forEach((object) => object.setVisible(!this.paused));
     if (on) this.prompt?.setVisible(false);
   }
 
@@ -310,6 +358,17 @@ export class UIScene extends Phaser.Scene {
     this.input.on('pointerup', () => this.controls?.clearTouchMovement());
   }
 
+  private isOwnedItem(it: InventoryItemDef): boolean {
+    if (!this.run) return false;
+    return Boolean(
+      this.run.inventory[it.id] ||
+      (it.id === 'watch' && this.run.watchRepaired) ||
+      (it.id === 'flower' && this.run.roseRepaired) ||
+      (it.id === 'water_gem' && this.run.gemAligned) ||
+      (it.id === 'arthur_photo' && this.run.photoRepaired)
+    );
+  }
+
   private createInventoryHUD(): void {
     const w = 176, h = 38, x = GAME_WIDTH - w - 18, y = 52;
     const bg = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x07090c, 0.72)
@@ -321,8 +380,20 @@ export class UIScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0, 0.5);
 
+    const hitArea = this.add.rectangle(x + w / 2, y + h / 2, w + 8, h + 8, 0x000000, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', () => {
+        bg.setStrokeStyle(1.8, 0xfff0a0, 0.95);
+        tasLabel.setColor('#FFF0A0');
+      })
+      .on('pointerout', () => {
+        bg.setStrokeStyle(1.2, 0xf1d58b, 0.55);
+        tasLabel.setColor('#F1D58B');
+      })
+      .on('pointerdown', () => this.toggleInventoryModal());
+
     this.inventorySlots = [];
-    const slotObjects: Phaser.GameObjects.GameObject[] = [bg, tasLabel];
+    const slotObjects: Phaser.GameObjects.GameObject[] = [bg, tasLabel, hitArea];
 
     STORY_ITEMS_DEF.forEach((it, idx) => {
       const cx = x + 66 + idx * 25;
@@ -341,23 +412,183 @@ export class UIScene extends Phaser.Scene {
 
   private refreshInventory(): void {
     if (!this.run) return;
-    const signature = STORY_ITEMS_DEF.map(it => this.run?.inventory[it.id] ? '1' : '0').join('');
+    const signature = STORY_ITEMS_DEF.map(it => this.isOwnedItem(it) ? '1' : '0').join('');
     if (signature === this.inventorySignature) return;
     this.inventorySignature = signature;
-    const ownedCount = STORY_ITEMS_DEF.filter(it => Boolean(this.run?.inventory[it.id])).length;
-    const hasItems = ownedCount > 0;
+    const ownedCount = STORY_ITEMS_DEF.filter(it => this.isOwnedItem(it)).length;
 
     if (this.inventoryContainer) {
-      this.inventoryContainer.setVisible(hasItems);
+      this.inventoryContainer.setVisible(ownedCount > 0);
       STORY_ITEMS_DEF.forEach((it, idx) => {
         const slot = this.inventorySlots[idx];
         if (!slot) return;
-        const has = Boolean(this.run?.inventory[it.id]);
+        const has = this.isOwnedItem(it);
         slot.bg.setFillStyle(has ? 0xf7d984 : 0xf5f0e8, has ? 0.22 : 0.05);
         slot.bg.setStrokeStyle(1.1, has ? 0xf7d984 : 0xf5f0e8, has ? 1 : 0.18);
         this.drawInventoryGlyph(slot.glyph, it.id, slot.bg.x, slot.bg.y, has ? 0xfff0a0 : 0xf5f0e8, has ? 1 : 0.18);
       });
     }
+  }
+
+  private toggleInventoryModal(): void {
+    if (this.inventoryModalPanel) {
+      this.closeInventoryModal();
+    } else {
+      this.openInventoryModal();
+    }
+  }
+
+  private openInventoryModal(): void {
+    if (this.inventoryModalPanel) return;
+    const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
+    soundManager?.playConfirm();
+
+    this.controls?.clearTouch();
+    this.touchObjects.forEach((object) => object.setVisible(false));
+    this.selectedInventoryIndex = 0;
+    this.renderInventoryModal();
+  }
+
+  private closeInventoryModal(): void {
+    if (!this.inventoryModalPanel) return;
+    const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
+    soundManager?.playSelect();
+
+    this.inventoryModalPanel.destroy();
+    this.inventoryModalPanel = undefined;
+    this.touchObjects.forEach((object) => object.setVisible(!this.modal));
+  }
+
+  private renderInventoryModal(): void {
+    if (this.inventoryModalPanel) {
+      this.inventoryModalPanel.destroy();
+      this.inventoryModalPanel = undefined;
+    }
+
+    const modalW = 680;
+    const modalH = 430;
+    const modalX = (GAME_WIDTH - modalW) / 2;
+    const modalY = (GAME_HEIGHT - modalH) / 2;
+
+    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040302, 0.8)
+      .setInteractive()
+      .on('pointerdown', () => this.closeInventoryModal());
+
+    const paper = addPaperPanel(this, modalX, modalY, modalW, modalH, { radius: 10 });
+    const headerTitle = this.add.text(GAME_WIDTH / 2, modalY + 30, '— TAS ELENA : BARANG SEJARAH —', {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '20px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const subTitle = this.add.text(GAME_WIDTH / 2, modalY + 54, 'Klik barang di bawah untuk memperbesar dan melihat catatan sejarahnya.', {
+      color: '#5A4A3C', fontFamily: FONT.META, fontSize: '12px',
+    }).setOrigin(0.5);
+
+    const elements: Phaser.GameObjects.GameObject[] = [shade, paper, headerTitle, subTitle];
+
+    const listX = modalX + 24;
+    const listTopY = modalY + 82;
+    const itemW = 270;
+    const itemH = 68;
+
+    STORY_ITEMS_DEF.forEach((it, idx) => {
+      const isOwned = this.isOwnedItem(it);
+      const isSelected = idx === this.selectedInventoryIndex;
+      const cardY = listTopY + idx * 74;
+
+      const cardBg = this.add.rectangle(listX + itemW / 2, cardY + itemH / 2, itemW, itemH, isSelected ? 0x94342e : 0x5a4a3c, isSelected ? 0.16 : 0.06)
+        .setStrokeStyle(isSelected ? 2.5 : 1.2, isSelected ? 0x94342e : 0x4a3b2c, isSelected ? 0.95 : 0.4)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => {
+          this.selectedInventoryIndex = idx;
+          this.renderInventoryModal();
+        });
+
+      const iconCircle = this.add.circle(listX + 26, cardY + itemH / 2, 17, isOwned ? 0xf7d984 : 0x3a3028, isOwned ? 0.25 : 0.15)
+        .setStrokeStyle(1.4, isOwned ? 0xf7d984 : 0x7a6b5c, isOwned ? 1 : 0.3);
+
+      const glyph = this.add.graphics();
+      this.drawInventoryGlyph(glyph, it.id, listX + 26, cardY + itemH / 2, isOwned ? 0xfff0a0 : 0x9a8b7c, isOwned ? 1 : 0.4);
+
+      const nameText = this.add.text(listX + 54, cardY + 15, it.label, {
+        color: isSelected ? CSS.red : CSS.body,
+        fontFamily: FONT.UI,
+        fontSize: '14px',
+        fontStyle: isSelected ? 'bold' : 'normal',
+      });
+
+      const statusTag = this.add.text(listX + 54, cardY + 37, isOwned ? `[OK] ${it.era}` : `[TERKUNCI] ${it.era}`, {
+        color: isOwned ? CSS.green : '#7A6A5A',
+        fontFamily: FONT.META,
+        fontSize: '11px',
+      });
+
+      elements.push(cardBg, iconCircle, glyph, nameText, statusTag);
+    });
+
+    const detailX = modalX + 314;
+    const detailY = modalY + 82;
+    const detailW = 342;
+    const detailH = 288;
+
+    const detailBg = addPaperPanel(this, detailX, detailY, detailW, detailH, { radius: 6 });
+    elements.push(detailBg);
+
+    const selectedItem = STORY_ITEMS_DEF[this.selectedInventoryIndex];
+    const isSelectedOwned = this.isOwnedItem(selectedItem);
+
+    const artFrameX = detailX + detailW / 2;
+    const artFrameY = detailY + 68;
+    const artBox = this.add.rectangle(artFrameX, artFrameY, 110, 100, 0x1a1410, 0.08)
+      .setStrokeStyle(1.2, 0x5a4a3c, 0.4);
+    elements.push(artBox);
+
+    if (this.textures.exists(selectedItem.asset)) {
+      const img = this.add.image(artFrameX, artFrameY, selectedItem.asset)
+        .setDisplaySize(90, 85)
+        .setAlpha(isSelectedOwned ? 1 : 0.25);
+      if (!isSelectedOwned) img.setTint(0x443322);
+      elements.push(img);
+    } else {
+      const fallbackGlyph = this.add.graphics();
+      this.drawInventoryGlyph(fallbackGlyph, selectedItem.id, artFrameX, artFrameY, isSelectedOwned ? 0xfff0a0 : 0x7a6b5c, 1);
+      fallbackGlyph.setScale(2.5);
+      elements.push(fallbackGlyph);
+    }
+
+    const detailTitle = this.add.text(detailX + detailW / 2, detailY + 132, selectedItem.label.toUpperCase(), {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', fontStyle: 'bold', align: 'center',
+    }).setOrigin(0.5);
+
+    const badgeText = isSelectedOwned ? '[TERKUMPUL & SELARAS]' : '[BELUM DITEMUKAN]';
+    const badgeColor = isSelectedOwned ? CSS.green : CSS.red;
+    const badge = this.add.text(detailX + detailW / 2, detailY + 152, badgeText, {
+      color: badgeColor, fontFamily: FONT.META, fontSize: '11px', fontStyle: 'bold', align: 'center',
+    }).setOrigin(0.5);
+
+    const descText = isSelectedOwned ? selectedItem.desc : selectedItem.foundHint;
+    const desc = this.add.text(detailX + 18, detailY + 172, descText, {
+      color: '#3A2A1C',
+      fontFamily: FONT.UI,
+      fontSize: '12.5px',
+      wordWrap: { width: detailW - 36 },
+      lineSpacing: 3,
+    });
+
+    elements.push(detailTitle, badge, desc);
+
+    const closeBtnX = GAME_WIDTH / 2;
+    const closeBtnY = modalY + modalH - 26;
+    const closeBtnBg = this.add.rectangle(closeBtnX, closeBtnY, 150, 32, 0x94342e, 0.95)
+      .setStrokeStyle(1.5, 0x6d211d, 1)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.closeInventoryModal());
+    const closeBtnText = this.add.text(closeBtnX, closeBtnY, 'TUTUP (ESC)', {
+      color: '#FFF8EA', fontFamily: FONT.UI, fontSize: '13px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    elements.push(closeBtnBg, closeBtnText);
+
+    this.inventoryModalPanel = this.add.container(0, 0, elements);
   }
 
   private drawInventoryGlyph(
@@ -391,52 +622,62 @@ export class UIScene extends Phaser.Scene {
     const soundManager = this.registry.get('soundManager') as { setMuted: (m: boolean) => void; muted: boolean } | undefined;
     let muted = soundManager?.muted ?? false;
 
-    const makeCircle = (x: number, onPress: () => void): {
+    const makeButton = (x: number, w: number, onPress: () => void): {
       container: Phaser.GameObjects.Container;
+      bg: Phaser.GameObjects.Rectangle;
       icon: Phaser.GameObjects.Graphics;
     } => {
+      const bg = this.add.rectangle(0, 0, w, 32, 0x07090c, 0.88)
+        .setStrokeStyle(1.4, 0xf1d58b, 0.75);
       const icon = this.add.graphics();
-      const container = this.add.container(x, 26, [icon])
-        .setSize(30, 30)
-        .setInteractive({ useHandCursor: true, pixelPerfect: false })
-        .on('pointerup', onPress);
-      return { container, icon };
+      const container = this.add.container(x, 26, [bg, icon])
+        .setSize(w, 32)
+        .setDepth(2000)
+        .setScrollFactor(0)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', onPress);
+      return { container, bg, icon };
     };
 
-    const drawFrame = (icon: Phaser.GameObjects.Graphics, on: boolean): void => {
-      icon.clear();
-      icon.fillStyle(0x0a0806, on ? 0.85 : 0.65);
-      icon.fillCircle(0, 0, 15);
-      icon.lineStyle(1.6, 0xf5f0e8, 1);
-      icon.strokeCircle(0, 0, 15);
-      icon.lineStyle(0.8, 0xf5f0e8, 0.22);
-      icon.strokeCircle(0, 0, 11.5);
+    const pause = makeButton(GAME_WIDTH - 116, 82, () => this.togglePause());
+    const pauseLabel = this.add.text(-3, 0, 'JEDA', {
+      color: '#F1D58B',
+      fontFamily: FONT.META,
+      fontSize: '11px',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+    pause.container.add(pauseLabel);
+
+    const drawPauseIcon = (on: boolean): void => {
+      pause.bg.setStrokeStyle(on ? 1.8 : 1.4, on ? 0xfff0a0 : 0xf1d58b, on ? 0.95 : 0.75);
+      pauseLabel.setColor(on ? '#FFF0A0' : '#F1D58B');
+      pause.icon.clear().fillStyle(on ? 0xfff0a0 : 0xf5f0e8, 1)
+        .fillRect(-22, -5, 3.5, 10)
+        .fillRect(-16, -5, 3.5, 10);
     };
+    drawPauseIcon(false);
+    pause.container.on('pointerover', () => drawPauseIcon(true));
+    pause.container.on('pointerout', () => drawPauseIcon(false));
+    this.topHUDObjects.push(pause.container);
 
-    const pause = makeCircle(GAME_WIDTH - 72, () => this.togglePause());
-    drawFrame(pause.icon, false);
-    pause.icon.fillStyle(0xf5f0e8, 1).fillRect(-5, -5, 3.6, 10).fillRect(1.4, -5, 3.6, 10);
-    pause.container.on('pointerover', () => { drawFrame(pause.icon, true); pause.icon.fillStyle(0xf5f0e8, 1).fillRect(-5, -5, 3.6, 10).fillRect(1.4, -5, 3.6, 10); });
-    pause.container.on('pointerout', () => { drawFrame(pause.icon, false); pause.icon.fillStyle(0xf5f0e8, 1).fillRect(-5, -5, 3.6, 10).fillRect(1.4, -5, 3.6, 10); });
-    this.touchObjects.push(pause.container);
-
-    const mute = makeCircle(GAME_WIDTH - 34, () => {
+    const mute = makeButton(GAME_WIDTH - 36, 40, () => {
       muted = !muted;
       soundManager?.setMuted(muted);
-      drawMuteIcon();
+      drawMuteIcon(false);
     });
-    const drawMuteIcon = (): void => {
-      drawFrame(mute.icon, false);
-      mute.icon.fillStyle(muted ? 0xb8a898 : 0xf5f0e8, 1);
+    const drawMuteIcon = (on: boolean): void => {
+      mute.bg.setStrokeStyle(on ? 1.8 : 1.4, on ? 0xfff0a0 : 0xf1d58b, on ? 0.95 : 0.75);
+      mute.icon.clear();
+      mute.icon.fillStyle(muted ? 0xb8a898 : (on ? 0xfff0a0 : 0xf5f0e8), 1);
       mute.icon.fillRect(-8, -2.5, 3, 5);
       mute.icon.fillTriangle(-5, -4, -5, 4, -1, 0);
       if (muted) mute.icon.lineStyle(1.6, 0xb8a898, 1).lineBetween(-1, -6, 8, 6);
-      else mute.icon.lineStyle(1.4, 0xf5f0e8, 1).strokeCircle(1, 0, 5.5);
+      else mute.icon.lineStyle(1.4, on ? 0xfff0a0 : 0xf5f0e8, 1).strokeCircle(1, 0, 5.5);
     };
-    drawMuteIcon();
-    mute.container.on('pointerover', () => { drawFrame(mute.icon, true); drawMuteIcon(); });
-    mute.container.on('pointerout', () => drawMuteIcon());
-    this.touchObjects.push(mute.container);
+    drawMuteIcon(false);
+    mute.container.on('pointerover', () => drawMuteIcon(true));
+    mute.container.on('pointerout', () => drawMuteIcon(false));
+    this.topHUDObjects.push(mute.container);
   }
 
   private getActiveGameplayScene(): string {
@@ -455,6 +696,7 @@ export class UIScene extends Phaser.Scene {
       this.scene.pause(gameplay);
       this.controls?.clearTouch();
       this.touchObjects.forEach((object) => object.setVisible(false));
+      this.topHUDObjects.forEach((object) => object.setVisible(false));
       this.prompt?.setVisible(false);
       this.showPausePanel();
       this.registry.set('nativeState', 'paused');
@@ -465,6 +707,7 @@ export class UIScene extends Phaser.Scene {
       this.pauseMenuItems = [];
       this.pauseButtons = [];
       this.touchObjects.forEach((object) => object.setVisible(!this.modal));
+      this.topHUDObjects.forEach((object) => object.setVisible(true));
       this.registry.set('nativeState', this.stateBeforePause);
     }
   }

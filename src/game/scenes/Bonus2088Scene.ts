@@ -60,7 +60,7 @@ const BONUS_REWARDS = [
 
 const DIFFERENCE_RECT: DisplayRect = { x: 40, y: 62, width: 880, height: 400 };
 const CAT_RECT: DisplayRect = { x: 135, y: 68, width: 690, height: 386 };
-const ROSE_RECT: DisplayRect = { x: 80, y: 64, width: 800, height: 450 };
+const ROSE_RECT: DisplayRect = { x: 105, y: 68, width: 750, height: 380 };
 const ROSE_SOURCE_SIZE = { width: 960, height: 540 };
 const ROSE_HOMES = [
   [160, 180], [190, 320], [770, 180], [740, 320], [480, 380],
@@ -80,10 +80,10 @@ const CHEMISTRY_ITEMS: ReadonlyArray<{
   era: string;
   texture: string;
 }> = [
-  { id: 'watch', label: 'Arloji Arthur', era: '1944', texture: 'watch-repair-art' },
-  { id: 'rose', label: 'Mawar abadi', era: '1968', texture: 'rose-bottle-broken' },
-  { id: 'gem', label: 'Permata air', era: '1999', texture: 'water-gem-art' },
-];
+    { id: 'rose', label: 'Mawar abadi', era: '1968', texture: 'rose-bottle-broken' },
+    { id: 'watch', label: 'Arloji Arthur', era: '1944', texture: 'watch-repair-art' },
+    { id: 'gem', label: 'Permata air', era: '1999', texture: 'water-gem-art' },
+  ];
 
 export class Bonus2088Scene extends Phaser.Scene {
   private save!: SaveSystem;
@@ -95,6 +95,8 @@ export class Bonus2088Scene extends Phaser.Scene {
   private nodeLights: Phaser.GameObjects.Rectangle[] = [];
   private statusText?: Phaser.GameObjects.Text;
   private activeModal?: Phaser.GameObjects.Container;
+  private modalCloseBtn?: Phaser.GameObjects.Rectangle;
+  private modalCloseTxt?: Phaser.GameObjects.Text;
   private endingOverlay?: Phaser.GameObjects.Container;
   private modalCleanups: Array<() => void> = [];
   private ending = false;
@@ -156,7 +158,11 @@ export class Bonus2088Scene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.08, 0.12);
     this.cameras.main.setDeadzone(250, 150);
 
+    if (this.scene.isActive('UIScene')) {
+      this.scene.stop('UIScene');
+    }
     this.scene.launch('UIScene', { input: this.controls, eraTitle: 'EPILOG — 2088' });
+    this.scene.bringToTop('UIScene');
     this.ui = this.scene.get('UIScene') as UIScene;
 
     this.statusText = this.add.text(20, 72, '', {
@@ -247,13 +253,16 @@ export class Bonus2088Scene extends Phaser.Scene {
   }
 
   private createWorldLayers(): void {
-    this.add.rectangle(WORLD_WIDTH / 2, GAME_HEIGHT / 2, WORLD_WIDTH, GAME_HEIGHT, NIGHT).setDepth(-30);
+    this.add.rectangle(WORLD_WIDTH / 2, GAME_HEIGHT / 2, WORLD_WIDTH, GAME_HEIGHT, 0x90c4e8).setDepth(-30);
 
-    if (this.textures.exists('bg2088-far')) {
+    if (this.textures.exists('bonus-city-complete')) {
+      this.add.image(0, 0, 'bonus-city-complete')
+        .setOrigin(0, 0)
+        .setDisplaySize(WORLD_WIDTH, GAME_HEIGHT)
+        .setScrollFactor(0.25)
+        .setDepth(-25);
+    } else if (this.textures.exists('bg2088-far')) {
       this.add.image(0, 92, 'bg2088-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
-    }
-    if (this.textures.exists('bg2088-near')) {
-      this.add.image(0, 444, 'bg2088-near').setOrigin(0, 1).setScale(0.75).setScrollFactor(0.45).setDepth(-20);
     }
 
     BONUS_NODES.forEach((node, index) => {
@@ -275,9 +284,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       }
     });
 
-    this.createAnimatedProp('prop-poster2088', 270, 444, 94, 3);
-    this.createAnimatedProp('prop-barrel2088', 890, 444, 82, 2.4);
-
     if (this.textures.exists('arthur-tua')) {
       this.add.sprite(1160, 444, 'arthur-tua', 0).setOrigin(0.5, 1).setDisplaySize(86, 120).setDepth(444);
       this.add.text(1160, 322, 'ARTHUR', {
@@ -285,15 +291,6 @@ export class Bonus2088Scene extends Phaser.Scene {
         stroke: '#120c07', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(445);
     }
-
-    if (this.textures.exists('bg2088-fg')) {
-      this.add.image(0, 412, 'bg2088-fg').setOrigin(0).setDisplaySize(WORLD_WIDTH, 150).setDepth(1000);
-    }
-
-    // Grading hangat 2088 (legacy rgba(96,74,52,.14)) di atas dunia, di bawah HUD.
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x604a34, 0.14)
-      .setScrollFactor(0)
-      .setDepth(1001);
   }
 
   private createAnimatedProp(key: string, x: number, y: number, height: number, frameRate: number): void {
@@ -321,22 +318,35 @@ export class Bonus2088Scene extends Phaser.Scene {
     this.ui.setPrompt('');
     this.ui.setModal(true);
 
-    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, NIGHT, 0.94);
+    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, NIGHT, 0.94)
+      .setInteractive({ useHandCursor: false });
     const header = addPaperPanel(this, 20, 8, 920, 52, { radius: 8 });
     const title = this.add.text(GAME_WIDTH / 2, 34, BONUS_NODES[index].label, {
       color: CSS.red, fontFamily: FONT.UI, fontSize: '22px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const close = this.add.rectangle(856, 34, 118, 30, RED, 0.96)
-      .setStrokeStyle(1.5, RED_DARK)
-      .setInteractive({ useHandCursor: true });
-    const closeLabel = this.add.text(856, 34, 'X — TUTUP', {
-      color: '#FFF8EA', fontFamily: FONT.META, fontSize: '11px', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    close.on('pointerup', () => this.closeModal());
 
-    this.activeModal = this.add.container(0, 0, [shade, header, title, close, closeLabel])
+    this.activeModal = this.add.container(0, 0, [shade, header, title])
       .setScrollFactor(0)
       .setDepth(3000);
+
+    const doClose = (pointer?: Phaser.Input.Pointer): void => {
+      pointer?.event?.stopPropagation();
+      this.soundManager?.playSelect();
+      this.closeModal();
+    };
+
+    this.modalCloseBtn = this.add.rectangle(856, 34, 118, 30, RED, 0.96)
+      .setStrokeStyle(1.5, RED_DARK)
+      .setScrollFactor(0)
+      .setDepth(5000)
+      .setInteractive({ useHandCursor: true });
+
+    this.modalCloseTxt = this.add.text(856, 34, 'X — TUTUP', {
+      color: '#FFF8EA', fontFamily: FONT.META, fontSize: '11px', fontStyle: 'bold',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(5001).setInteractive({ useHandCursor: true });
+
+    this.modalCloseBtn.on('pointerdown', doClose).on('pointerup', doClose);
+    this.modalCloseTxt.on('pointerdown', doClose).on('pointerup', doClose);
 
     this.clearModalBindings();
     this.bindModalKey((event) => {
@@ -355,7 +365,7 @@ export class Bonus2088Scene extends Phaser.Scene {
     art.setInteractive({ useHandCursor: true });
 
     const markerLayer = this.add.container(0, 0);
-    const help = this.add.text(GAME_WIDTH / 2, 474, 'Klik perbedaan asli • Keyboard: ←/→ pilih, Enter tandai', {
+    const help = this.add.text(GAME_WIDTH / 2, 474, 'Klik atau sentuh setiap perbedaan pada gambar foto di atas.', {
       backgroundColor: '#0d0a08dd', color: CSS.paper, fontFamily: FONT.META,
       fontSize: '11px', padding: { x: 12, y: 5 },
     }).setOrigin(0.5);
@@ -364,9 +374,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       fontSize: '13px', fontStyle: 'bold', padding: { x: 14, y: 6 },
     }).setOrigin(0.5);
     modal.add([markerLayer, help, status]);
-
-    let focus = this.nextOpenIndex(this.differenceFound, -1, 1);
-    let showKeyboardFocus = false;
 
     const render = (): void => {
       markerLayer.removeAll(true);
@@ -383,34 +390,28 @@ export class Bonus2088Scene extends Phaser.Scene {
         }
       });
 
-      if (showKeyboardFocus && focus >= 0 && !this.differenceFound[focus]) {
-        const point = DIFFERENCE_SPOTS[focus].b;
-        markerLayer.add(this.add.circle(
-          DIFFERENCE_RECT.x + point[0] * DIFFERENCE_RECT.width,
-          DIFFERENCE_RECT.y + point[1] * DIFFERENCE_RECT.height,
-          20,
-          GOLD,
-          0.12,
-        ).setStrokeStyle(2, GOLD));
-      }
-
       const count = this.differenceFound.filter(Boolean).length;
-      status.setText(count === DIFFERENCE_SPOTS.length
-        ? '10 / 10 — SEMUA PERBEDAAN DITEMUKAN'
+      const isDone = count === DIFFERENCE_SPOTS.length;
+      status.setText(isDone
+        ? '10 / 10 — SEMUA PERBEDAAN DITEMUKAN (TEKAN SPACE / ENTER UNTUK TUTUP)'
         : `PERBEDAAN DITEMUKAN: ${count} / ${DIFFERENCE_SPOTS.length}`)
-        .setColor(count === DIFFERENCE_SPOTS.length ? CSS.greenBright : CSS.brass);
+        .setColor(isDone ? CSS.greenBright : CSS.brass);
     };
 
     const mark = (index: number): void => {
       if (index < 0 || this.differenceFound[index]) return;
       this.differenceFound[index] = true;
       this.soundManager?.playLockSuccess();
-      focus = this.nextOpenIndex(this.differenceFound, index, 1);
       if (this.differenceFound.every(Boolean)) this.completeNode(0);
       render();
     };
 
     art.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.y <= 60) return;
+      if (this.litNodes[0]) {
+        this.closeModal();
+        return;
+      }
       const index = findDifferenceAt(
         pointer.x - DIFFERENCE_RECT.x,
         pointer.y - DIFFERENCE_RECT.y,
@@ -426,15 +427,16 @@ export class Bonus2088Scene extends Phaser.Scene {
     });
 
     this.bindModalKey((event) => {
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (this.litNodes[0] || this.differenceFound.every(Boolean)) {
+        if (event.code === 'Space' || event.key === 'Enter' || event.key === 'Escape' || event.code === 'KeyX') {
+          event.preventDefault();
+          this.closeModal();
+          return;
+        }
+      }
+      if (event.key === 'Escape' || event.code === 'KeyX') {
         event.preventDefault();
-        showKeyboardFocus = true;
-        focus = this.nextOpenIndex(this.differenceFound, focus, event.key === 'ArrowLeft' ? -1 : 1);
-        render();
-      } else if (event.key === 'Enter' || event.code === 'Space') {
-        event.preventDefault();
-        showKeyboardFocus = true;
-        mark(focus);
+        this.closeModal();
       }
     });
 
@@ -504,17 +506,12 @@ export class Bonus2088Scene extends Phaser.Scene {
           }).setOrigin(0.5);
           stage.add([token, number]);
 
-          let dragged = false;
-          token.on('dragstart', () => {
-            dragged = false;
-          });
           token.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
-            dragged = true;
             token.setPosition(dragX, dragY);
             number.setPosition(dragX, dragY);
           });
           token.on('dragend', () => {
-            if (Phaser.Math.Distance.Between(token.x, token.y, target.x, target.y) <= 75) {
+            if (Phaser.Math.Distance.Between(token.x, token.y, target.x, target.y) <= 85) {
               collectRose(index);
               return;
             }
@@ -525,62 +522,74 @@ export class Bonus2088Scene extends Phaser.Scene {
               this.tweens.add({ targets: [token, number], x: home.x, y: home.y, duration: 180, ease: 'Sine.Out' });
             }
           });
-          token.on('pointerup', () => {
-            if (!dragged) collectRose(index);
-          });
         });
 
-        stage.add(this.add.text(GAME_WIDTH / 2, 500, 'Seret mawar ke buket atau ketuk • Keyboard: ←/→ lalu Enter', {
+        stage.add(this.add.text(GAME_WIDTH / 2, 500, 'Geser (Drag) buletan nomor 1-5 ke lingkar merah BUKET mawar di tengah.', {
           backgroundColor: '#0d0a08e8', color: CSS.paper, fontFamily: FONT.META,
           fontSize: '12px', padding: { x: 14, y: 7 },
         }).setOrigin(0.5));
         return;
       }
 
-      this.addArtwork(stage, 'bonus-mawar2-art', ROSE_RECT, 'Pesan tahun 2088 tidak tersedia');
-      const codePanel = addPaperPanel(this, GAME_WIDTH / 2 - 130, 75, 260, 82, { radius: 9 });
-      const display = this.add.text(GAME_WIDTH / 2, 116, this.roseCode.padEnd(4, '_'), {
+      // Left side artwork: 100% clear rose picture showing hidden year numbers
+      this.addArtwork(stage, 'bonus-mawar2-art', { x: 42, y: 70, width: 540, height: 380 }, 'Pesan tahun 2088 tidak tersedia');
+
+      // Right side panel for 4-digit code display and numpad controls
+      stage.add(addPaperPanel(this, 598, 70, 316, 380, { radius: 9 }));
+      stage.add(this.add.text(756, 92, 'KODE TAHUN 2088', {
+        color: CSS.red, fontFamily: FONT.UI, fontSize: '16px', fontStyle: 'bold',
+      }).setOrigin(0.5));
+
+      const codePanel = addPaperPanel(this, 636, 116, 240, 52, { radius: 8 });
+      const display = this.add.text(756, 142, this.roseCode.padEnd(4, '_'), {
         color: this.litNodes[1] ? CSS.green : CSS.brass,
-        fontFamily: FONT.TITLE, fontSize: '30px', fontStyle: 'bold', letterSpacing: 7,
+        fontFamily: FONT.TITLE, fontSize: '28px', fontStyle: 'bold', letterSpacing: 6,
       }).setOrigin(0.5);
       stage.add([codePanel, display]);
 
       if (this.litNodes[1]) {
-        stage.add(this.add.text(GAME_WIDTH / 2, 492, '2088 TERBACA — SIMPUL MAWAR LENGKAP', {
+        stage.add(this.add.text(756, 260, '2088 TERBACA\nSIMPUL MAWAR LENGKAP', {
+          color: CSS.greenBright, fontFamily: FONT.TITLE, fontSize: '18px', fontStyle: 'bold', align: 'center',
+          lineSpacing: 6,
+        }).setOrigin(0.5));
+        stage.add(this.add.text(GAME_WIDTH / 2, 492, '2088 TERBACA — SIMPUL MAWAR LENGKAP (TEKAN SPACE / ENTER UNTUK TUTUP)', {
           backgroundColor: '#567a61e6', color: '#FFF8EA', fontFamily: FONT.META,
           fontSize: '13px', fontStyle: 'bold', padding: { x: 16, y: 8 },
-        }).setOrigin(0.5));
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.closeModal()));
         return;
       }
 
       const digits = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
       digits.forEach((digit, index) => {
-        const x = 272 + (index % 5) * 104;
-        const y = 392 + Math.floor(index / 5) * 48;
-        this.addButton(stage, x, y, 78, 36, digit, () => pressCode(digit));
+        const x = 640 + (index % 5) * 58;
+        const y = 200 + Math.floor(index / 5) * 46;
+        this.addButton(stage, x, y, 50, 36, digit, () => pressCode(digit));
       });
-      this.addButton(stage, 315, 488, 150, 36, 'HAPUS', () => pressCode('clear'));
-      this.addButton(stage, 645, 488, 150, 36, 'BACA KODE', () => pressCode('ok'), true);
-      stage.add(this.add.text(GAME_WIDTH / 2, 354, 'Lima mawar membuka pesan. Baca angka pada gambar dan masukkan tahunnya.', {
-        backgroundColor: '#0d0a08e8', color: CSS.paper, fontFamily: FONT.META,
-        fontSize: '12px', padding: { x: 14, y: 7 },
+      this.addButton(stage, 686, 302, 110, 38, 'HAPUS', () => pressCode('clear'));
+      this.addButton(stage, 826, 302, 130, 38, 'BACA KODE', () => pressCode('ok'), true);
+
+      stage.add(this.add.text(756, 372, 'Baca 4 angka pada gambar mawar\ndi sebelah kiri dan masukkan kodenya.', {
+        color: CSS.body, fontFamily: FONT.UI, fontSize: '13px', align: 'center', lineSpacing: 4,
       }).setOrigin(0.5));
     };
 
     this.bindModalKey((event) => {
+      if (this.litNodes[1]) {
+        if (event.code === 'Space' || event.key === 'Enter' || event.key === 'Escape' || event.code === 'KeyX') {
+          event.preventDefault();
+          this.closeModal();
+          return;
+        }
+      }
       if (this.roseCollected.every(Boolean)) {
         if (/^\d$/.test(event.key)) pressCode(event.key);
         else if (event.key === 'Backspace' || event.key === 'Delete') pressCode('clear');
         else if (event.key === 'Enter') pressCode('ok');
         return;
       }
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (event.key === 'Escape' || event.code === 'KeyX') {
         event.preventDefault();
-        focus = this.nextOpenIndex(this.roseCollected, focus, event.key === 'ArrowLeft' ? -1 : 1);
-        renderStage();
-      } else if (event.key === 'Enter' || event.code === 'Space') {
-        event.preventDefault();
-        collectRose(focus);
+        this.closeModal();
       }
     });
 
@@ -591,24 +600,43 @@ export class Bonus2088Scene extends Phaser.Scene {
     const stage = this.add.container(0, 0);
     modal.add(stage);
 
-    const assignPerson = (person: DinnerPerson): void => {
+    const seatPositions = [
+      { x: 110, y: 125 },
+      { x: 238, y: 125 },
+      { x: 366, y: 125 },
+      { x: 494, y: 125 },
+    ];
+
+    const assignPersonToSeat = (person: DinnerPerson, seatIndex: number): void => {
       if (this.litNodes[2]) return;
       const previousSeat = this.dinnerPeople.indexOf(person);
       if (previousSeat >= 0) this.dinnerPeople[previousSeat] = null;
-      this.dinnerPeople[this.dinnerFocusSeat] = person;
+      this.dinnerPeople[seatIndex] = person;
+      this.dinnerFocusSeat = seatIndex;
       this.soundManager?.playSelect();
-      this.dinnerMessage = `${person} ditempatkan di kursi ${this.dinnerFocusSeat + 1}.`;
+      this.dinnerMessage = `${person} ditempatkan di kursi ${seatIndex + 1}.`;
       render();
     };
 
-    const assignFood = (food: DinnerFood): void => {
+    const assignFoodToSeat = (food: DinnerFood, seatIndex: number): void => {
       if (this.litNodes[2]) return;
       const previousSeat = this.dinnerFoods.indexOf(food);
       if (previousSeat >= 0) this.dinnerFoods[previousSeat] = null;
-      this.dinnerFoods[this.dinnerFocusSeat] = food;
+      this.dinnerFoods[seatIndex] = food;
+      this.dinnerFocusSeat = seatIndex;
       this.soundManager?.playGlassClink();
-      this.dinnerMessage = `${FOOD_LABELS[food]} disajikan di kursi ${this.dinnerFocusSeat + 1}.`;
+      this.dinnerMessage = `${FOOD_LABELS[food]} disajikan di kursi ${seatIndex + 1}.`;
       render();
+    };
+
+    const findTargetSeat = (pointerX: number, pointerY: number): number => {
+      for (let i = 0; i < seatPositions.length; i++) {
+        const pos = seatPositions[i];
+        if (Math.abs(pointerX - pos.x) < 60 && pointerY >= 70 && pointerY <= 400) {
+          return i;
+        }
+      }
+      return -1;
     };
 
     const checkDinner = (): void => {
@@ -627,8 +655,8 @@ export class Bonus2088Scene extends Phaser.Scene {
 
     const render = (): void => {
       stage.removeAll(true);
-      this.addArtwork(stage, 'bonus-dinner-bg', { x: 42, y: 70, width: 560, height: 315 }, 'Ilustrasi meja makan tidak tersedia');
-      stage.add(addPaperPanel(this, 598, 70, 316, 320, { radius: 9 }));
+      this.addArtwork(stage, 'bonus-dinner-bg', { x: 42, y: 100, width: 560, height: 300 }, 'Ilustrasi meja makan tidak tersedia');
+      stage.add(addPaperPanel(this, 598, 70, 316, 330, { radius: 9 }));
       stage.add(this.add.text(620, 82, 'PETUNJUK', {
         color: CSS.red, fontFamily: FONT.UI, fontSize: '16px', fontStyle: 'bold',
       }));
@@ -639,102 +667,159 @@ export class Bonus2088Scene extends Phaser.Scene {
         '4. Adi duduk sebelum kursi steak.\n' +
         '5. Spaghetti bersebelahan dengan Budi.\n' +
         '6. Adi tidak makan udang atau nasi.', {
-          color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', lineSpacing: 5,
-        }));
+        color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', lineSpacing: 5,
+      }));
 
-      const seatPositions = [
-        { x: 176, y: 145 }, { x: 468, y: 145 }, { x: 176, y: 325 }, { x: 468, y: 325 },
-      ];
       seatPositions.forEach((position, index) => {
         const focused = index === this.dinnerFocusSeat;
-        const seat = this.add.rectangle(position.x, position.y, 136, 74, focused ? RED : STONE, 0.9)
-          .setStrokeStyle(focused ? 3 : 2, focused ? GOLD : STONE_INK)
+
+        // 1. Tag Nama Orang di atas kepala figur (y = 110, tanpa menutupi kepala)
+        const nameBox = this.add.rectangle(position.x, 110, 118, 32, focused ? RED : STONE, 0.95)
+          .setStrokeStyle(focused ? 2.5 : 1.5, focused ? GOLD : STONE_INK)
           .setInteractive({ useHandCursor: true });
-        seat.on('pointerup', () => {
+        nameBox.on('pointerup', () => {
           this.dinnerFocusSeat = index;
-          this.dinnerMessage = `Kursi ${index + 1} dipilih.`;
+          this.dinnerMessage = `Kursi ${index + 1} dipilih. Geser (Drag) atau klik orang / makanan ke sini.`;
           render();
         });
-        stage.add(seat);
-        stage.add(this.add.text(position.x, position.y - 24, `KURSI ${index + 1}`, {
-          color: focused ? CSS.goldBright : CSS.paper, fontFamily: FONT.META,
-          fontSize: '10px', fontStyle: 'bold',
+        stage.add(nameBox);
+
+        stage.add(this.add.text(position.x, 110, `${index + 1}. ${this.dinnerPeople[index] ?? '— orang —'}`, {
+          color: '#FFF8EA', fontFamily: FONT.META, fontSize: '11px', fontStyle: 'bold',
         }).setOrigin(0.5));
-        stage.add(this.add.text(position.x, position.y - 3, this.dinnerPeople[index] ?? '— orang —', {
-          color: '#FFF8EA', fontFamily: FONT.META, fontSize: '12px', fontStyle: 'bold',
-        }).setOrigin(0.5));
-        stage.add(this.add.text(position.x, position.y + 20, this.dinnerFoods[index] ? FOOD_LABELS[this.dinnerFoods[index]] : '— hidangan —', {
-          color: CSS.paper, fontFamily: FONT.UI, fontSize: '12px',
-        }).setOrigin(0.5));
+
+        // 2. Slot Hidangan Makanan di atas permukaan meja makan (y = 290)
+        const foodBox = this.add.rectangle(position.x, 290, 118, 46, focused ? RED : STONE, 0.95)
+          .setStrokeStyle(focused ? 2.5 : 1.5, focused ? GOLD : STONE_INK)
+          .setInteractive({ useHandCursor: true });
+        foodBox.on('pointerup', () => {
+          this.dinnerFocusSeat = index;
+          this.dinnerMessage = `Kursi ${index + 1} dipilih. Geser (Drag) atau klik orang / makanan ke sini.`;
+          render();
+        });
+        stage.add(foodBox);
+
+        const currentFood = this.dinnerFoods[index];
+        if (currentFood && this.textures.exists(`food-${currentFood}`)) {
+          stage.add(this.add.image(position.x - 34, 290, `food-${currentFood}`).setDisplaySize(38, 28));
+          stage.add(this.add.text(position.x + 12, 290, FOOD_LABELS[currentFood], {
+            color: '#FFF8EA', fontFamily: FONT.META, fontSize: '10px', fontStyle: 'bold',
+          }).setOrigin(0.5));
+        } else {
+          stage.add(this.add.text(position.x, 290, currentFood ? FOOD_LABELS[currentFood] : '— hidangan —', {
+            color: CSS.paper, fontFamily: FONT.UI, fontSize: '11px',
+          }).setOrigin(0.5));
+        }
       });
 
       this.addButton(stage, 756, 352, 240, 38, 'PERIKSA SUSUNAN', checkDinner, true);
 
       DINNER_PEOPLE.forEach((person, index) => {
-        const selected = this.dinnerPeople[this.dinnerFocusSeat] === person;
-        this.addButton(stage, 138 + index * 174, 418, 146, 36, person, () => assignPerson(person), selected);
+        const cardX = 110 + index * 128;
+        const cardY = 414;
+        const isAssigned = this.dinnerPeople.includes(person);
+
+        const bg = this.add.rectangle(0, 0, 118, 34, isAssigned ? RED : STONE, 0.95)
+          .setStrokeStyle(isAssigned ? 2.5 : 1.5, isAssigned ? GOLD : STONE_INK);
+        const txt = this.add.text(0, 0, person, {
+          color: '#FFF8EA', fontFamily: FONT.META, fontSize: '12px', fontStyle: 'bold',
+        }).setOrigin(0.5);
+
+        const cardContainer = this.add.container(cardX, cardY, [bg, txt])
+          .setSize(118, 34)
+          .setInteractive({ useHandCursor: true });
+
+        this.input.setDraggable(cardContainer);
+
+        cardContainer.on('dragstart', () => {
+          stage.bringToTop(cardContainer);
+          bg.setStrokeStyle(3, 0xfff0a0, 1);
+        });
+
+        cardContainer.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+          cardContainer.x = dragX;
+          cardContainer.y = dragY;
+        });
+
+        cardContainer.on('dragend', (pointer: Phaser.Input.Pointer) => {
+          const targetSeat = findTargetSeat(pointer.x, pointer.y);
+          if (targetSeat >= 0) {
+            assignPersonToSeat(person, targetSeat);
+          } else {
+            assignPersonToSeat(person, this.dinnerFocusSeat);
+          }
+        });
+
+        stage.add(cardContainer);
       });
 
       DINNER_FOODS.forEach((food, index) => {
-        const x = 138 + index * 174;
-        const selected = this.dinnerFoods[this.dinnerFocusSeat] === food;
-        const background = this.add.rectangle(x, 465, 146, 54, selected ? RED : STONE, 0.95)
-          .setStrokeStyle(selected ? 3 : 2, selected ? GOLD : STONE_INK)
-          .setInteractive({ useHandCursor: true });
-        background.on('pointerup', () => assignFood(food));
-        stage.add(background);
+        const cardX = 110 + index * 128;
+        const cardY = 464;
+        const isAssigned = this.dinnerFoods.includes(food);
+
+        const bg = this.add.rectangle(0, 0, 118, 44, isAssigned ? RED : STONE, 0.95)
+          .setStrokeStyle(isAssigned ? 2.5 : 1.5, isAssigned ? GOLD : STONE_INK);
+
+        const elements: Phaser.GameObjects.GameObject[] = [bg];
         if (this.textures.exists(`food-${food}`)) {
-          stage.add(this.add.image(x - 46, 465, `food-${food}`).setDisplaySize(52, 38));
+          elements.push(this.add.image(-36, 0, `food-${food}`).setDisplaySize(38, 28));
         }
-        stage.add(this.add.text(x + 18, 465, FOOD_LABELS[food], {
+        elements.push(this.add.text(12, 0, FOOD_LABELS[food], {
           color: '#FFF8EA', fontFamily: FONT.META, fontSize: '10px', fontStyle: 'bold',
         }).setOrigin(0.5));
+
+        const cardContainer = this.add.container(cardX, cardY, elements)
+          .setSize(118, 44)
+          .setInteractive({ useHandCursor: true });
+
+        this.input.setDraggable(cardContainer);
+
+        cardContainer.on('dragstart', () => {
+          stage.bringToTop(cardContainer);
+          bg.setStrokeStyle(3, 0xfff0a0, 1);
+        });
+
+        cardContainer.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
+          cardContainer.x = dragX;
+          cardContainer.y = dragY;
+        });
+
+        cardContainer.on('dragend', (pointer: Phaser.Input.Pointer) => {
+          const targetSeat = findTargetSeat(pointer.x, pointer.y);
+          if (targetSeat >= 0) {
+            assignFoodToSeat(food, targetSeat);
+          } else {
+            assignFoodToSeat(food, this.dinnerFocusSeat);
+          }
+        });
+
+        stage.add(cardContainer);
       });
 
-      stage.add(this.add.text(GAME_WIDTH / 2, 512, this.dinnerMessage, {
+      stage.add(this.add.text(GAME_WIDTH / 2, 512, this.litNodes[2] ? 'SEMUA PETUNJUK TERPENUHI — MAKAN MALAM SIAP (TEKAN SPACE / ENTER UNTUK TUTUP)' : this.dinnerMessage, {
         backgroundColor: this.litNodes[2] ? '#567a61e6' : '#0d0a08e8',
         color: this.litNodes[2] ? '#FFF8EA' : CSS.gold,
         fontFamily: FONT.META, fontSize: '12px', fontStyle: 'bold', padding: { x: 14, y: 6 },
-      }).setOrigin(0.5));
-    };
-
-    const cyclePerson = (): void => {
-      const current = this.dinnerPeople[this.dinnerFocusSeat];
-      const start = DINNER_PEOPLE.indexOf(current as DinnerPerson);
-      for (let step = 1; step <= DINNER_PEOPLE.length; step++) {
-        const next = DINNER_PEOPLE[(start + step) % DINNER_PEOPLE.length];
-        if (!this.dinnerPeople.some((value, seat) => seat !== this.dinnerFocusSeat && value === next)) {
-          assignPerson(next);
-          return;
-        }
-      }
-    };
-    const cycleFood = (): void => {
-      const current = this.dinnerFoods[this.dinnerFocusSeat];
-      const start = DINNER_FOODS.indexOf(current as DinnerFood);
-      for (let step = 1; step <= DINNER_FOODS.length; step++) {
-        const next = DINNER_FOODS[(start + step) % DINNER_FOODS.length];
-        if (!this.dinnerFoods.some((value, seat) => seat !== this.dinnerFocusSeat && value === next)) {
-          assignFood(next);
-          return;
-        }
-      }
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
+        if (this.litNodes[2]) this.closeModal();
+      }));
     };
 
     this.bindModalKey((event) => {
+      if (this.litNodes[2]) {
+        if (event.code === 'Space' || event.key === 'Enter' || event.key === 'Escape' || event.code === 'KeyX') {
+          event.preventDefault();
+          this.closeModal();
+          return;
+        }
+      }
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
         this.dinnerFocusSeat = Phaser.Math.Wrap(
           this.dinnerFocusSeat + (event.key === 'ArrowLeft' ? -1 : 1), 0, 4,
         );
-        this.dinnerMessage = `Kursi ${this.dinnerFocusSeat + 1} dipilih.`;
         render();
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        cyclePerson();
-      } else if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        cycleFood();
       } else if (event.key === 'Enter' || event.code === 'Space') {
         event.preventDefault();
         checkDinner();
@@ -748,7 +833,7 @@ export class Bonus2088Scene extends Phaser.Scene {
     const art = this.addArtwork(modal, 'bonus-cats-art', CAT_RECT, 'Ilustrasi 18 kucing tidak tersedia');
     art.setInteractive({ useHandCursor: true });
     const markerLayer = this.add.container(0, 0);
-    const help = this.add.text(GAME_WIDTH / 2, 466, 'Temukan semua kucing • Keyboard: ←/→ pilih, Enter tandai', {
+    const help = this.add.text(GAME_WIDTH / 2, 466, 'Klik atau sentuh setiap kucing pada gambar untuk menemukannya (bebas urutan).', {
       backgroundColor: '#0d0a08dd', color: CSS.paper, fontFamily: FONT.META,
       fontSize: '11px', padding: { x: 12, y: 5 },
     }).setOrigin(0.5);
@@ -757,9 +842,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       fontSize: '13px', fontStyle: 'bold', padding: { x: 14, y: 6 },
     }).setOrigin(0.5);
     modal.add([markerLayer, help, status]);
-
-    let focus = this.nextOpenIndex(this.catFound, -1, 1);
-    let showKeyboardFocus = false;
 
     const render = (): void => {
       markerLayer.removeAll(true);
@@ -773,57 +855,54 @@ export class Bonus2088Scene extends Phaser.Scene {
           0.25,
         ).setStrokeStyle(3, GREEN_BRIGHT));
       });
-      if (showKeyboardFocus && focus >= 0 && !this.catFound[focus]) {
-        const spot = CAT_SPOTS[focus];
-        markerLayer.add(this.add.circle(
-          CAT_RECT.x + spot[0] * CAT_RECT.width,
-          CAT_RECT.y + spot[1] * CAT_RECT.height,
-          19,
-          GOLD,
-          0.12,
-        ).setStrokeStyle(2, GOLD));
-      }
       const count = this.catFound.filter(Boolean).length;
-      status.setText(count === CAT_SPOTS.length
-        ? '18 / 18 — SEMUA KUCING DITEMUKAN'
+      const isDone = count === CAT_SPOTS.length;
+      status.setText(isDone
+        ? '18 / 18 — SEMUA KUCING DITEMUKAN (TEKAN SPACE / ENTER UNTUK TUTUP)'
         : `KUCING DITEMUKAN: ${count} / ${CAT_SPOTS.length}`)
-        .setColor(count === CAT_SPOTS.length ? CSS.greenBright : CSS.brass);
+        .setColor(isDone ? CSS.greenBright : CSS.brass);
     };
 
     const mark = (index: number): void => {
       if (index < 0 || this.catFound[index]) return;
       this.catFound[index] = true;
       this.soundManager?.playLockSuccess();
-      focus = this.nextOpenIndex(this.catFound, index, 1);
       if (this.catFound.every(Boolean)) this.completeNode(3);
       render();
     };
 
     art.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.y <= 60) return;
+      if (this.litNodes[3]) {
+        this.closeModal();
+        return;
+      }
       const index = findCatAt(
         pointer.x - CAT_RECT.x,
         pointer.y - CAT_RECT.y,
         CAT_RECT.width,
         CAT_RECT.height,
         this.catFound,
+        50,
       );
       if (index >= 0) mark(index);
       else {
         this.soundManager?.playErrorBuzz();
-        status.setText('Belum ada kucing di titik itu — periksa siluet dan sudut ruangan.').setColor(CSS.redBright);
+        status.setText('Belum ada kucing di titik itu — periksa siluet dan sudut gambar.').setColor(CSS.redBright);
       }
     });
 
     this.bindModalKey((event) => {
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (this.litNodes[3] || this.catFound.every(Boolean)) {
+        if (event.code === 'Space' || event.key === 'Enter' || event.key === 'Escape' || event.code === 'KeyX') {
+          event.preventDefault();
+          this.closeModal();
+          return;
+        }
+      }
+      if (event.key === 'Escape' || event.code === 'KeyX') {
         event.preventDefault();
-        showKeyboardFocus = true;
-        focus = this.nextOpenIndex(this.catFound, focus, event.key === 'ArrowLeft' ? -1 : 1);
-        render();
-      } else if (event.key === 'Enter' || event.code === 'Space') {
-        event.preventDefault();
-        showKeyboardFocus = true;
-        mark(focus);
+        this.closeModal();
       }
     });
 
@@ -880,25 +959,31 @@ export class Bonus2088Scene extends Phaser.Scene {
         if (this.textures.exists(item.texture)) {
           stage.add(this.add.image(625, y, item.texture).setDisplaySize(72, 58));
         }
-        stage.add(this.add.text(684, y - 13, `${index + 1}. ${item.label}`, {
-          color: '#FFF8EA', fontFamily: FONT.META, fontSize: '13px', fontStyle: 'bold',
-        }));
-        stage.add(this.add.text(684, y + 13, `Kenangan ${item.era}${selected ? '  ✓' : ''}`, {
-          color: selected ? CSS.greenBright : CSS.paper, fontFamily: FONT.UI, fontSize: '14px',
-        }));
+        stage.add(this.add.text(684, y, `${index + 1}. ${item.label}${selected ? '  ✓' : ''}`, {
+          color: selected ? CSS.greenBright : '#FFF8EA', fontFamily: FONT.META, fontSize: '14px', fontStyle: 'bold',
+        }).setOrigin(0, 0.5));
       });
 
-      stage.add(this.add.text(GAME_WIDTH / 2, 474, message, {
+      stage.add(this.add.text(GAME_WIDTH / 2, 474, this.litNodes[4] ? 'WATCH → ROSE → GEM — GELAS CINTA BERHASIL (TEKAN SPACE / ENTER UNTUK TUTUP)' : message, {
         backgroundColor: this.litNodes[4] ? '#567a61e6' : '#0d0a08e8',
         color: this.litNodes[4] ? '#FFF8EA' : CSS.gold,
         fontFamily: FONT.META, fontSize: '12px', fontStyle: 'bold', padding: { x: 14, y: 7 },
-      }).setOrigin(0.5));
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
+        if (this.litNodes[4]) this.closeModal();
+      }));
       stage.add(this.add.text(GAME_WIDTH / 2, 515, 'Klik bahan • Keyboard: ↑/↓ pilih, Enter campurkan', {
         color: CSS.paper, fontFamily: FONT.META, fontSize: '11px',
       }).setOrigin(0.5));
     };
 
     this.bindModalKey((event) => {
+      if (this.litNodes[4]) {
+        if (event.code === 'Space' || event.key === 'Enter' || event.key === 'Escape' || event.code === 'KeyX') {
+          event.preventDefault();
+          this.closeModal();
+          return;
+        }
+      }
       if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
         event.preventDefault();
         focus = Phaser.Math.Wrap(focus + (event.key === 'ArrowUp' ? -1 : 1), 0, CHEMISTRY_ITEMS.length);
@@ -950,8 +1035,9 @@ export class Bonus2088Scene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     const text = this.add.text(x, y, label, {
       color: '#FFF8EA', fontFamily: FONT.META, fontSize: '11px', fontStyle: 'bold',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     background.on('pointerup', onPress);
+    text.on('pointerup', onPress);
     container.add([background, text]);
     return background;
   }
@@ -996,9 +1082,13 @@ export class Bonus2088Scene extends Phaser.Scene {
   }
 
   private closeModal(): void {
-    if (!this.activeModal) return;
+    if (!this.activeModal && !this.modalCloseBtn) return;
     this.clearModalBindings();
-    this.activeModal.destroy(true);
+    this.modalCloseBtn?.destroy();
+    this.modalCloseTxt?.destroy();
+    this.modalCloseBtn = undefined;
+    this.modalCloseTxt = undefined;
+    this.activeModal?.destroy(true);
     this.activeModal = undefined;
     this.controls.setEnabled(true);
     this.ui.setModal(false);
@@ -1034,9 +1124,9 @@ export class Bonus2088Scene extends Phaser.Scene {
     const copy = this.add.text(GAME_WIDTH / 2, 262,
       'Seluruh kenangan, cinta, dan penantian 55 tahun telah abadi.\n' +
       'Arthur dan Elena akhirnya berjalan menuju masa depan yang sama.', {
-        color: CSS.body, fontFamily: FONT.UI, fontSize: '19px',
-        align: 'center', lineSpacing: 8,
-      }).setOrigin(0.5);
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '19px',
+      align: 'center', lineSpacing: 8,
+    }).setOrigin(0.5);
     const button = this.add.rectangle(GAME_WIDTH / 2, 372, 330, 40, RED, 0.96)
       .setStrokeStyle(1.5, RED_DARK)
       .setInteractive({ useHandCursor: true });
