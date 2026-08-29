@@ -60,10 +60,18 @@ export class UIScene extends Phaser.Scene {
 
     this.createEraCaption(data.eraTitle || 'HEARTS ACROSS TIME');
     this.createLoopCounter();
-    this.prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 62, '', {
-      backgroundColor: '#100c09dd', color: '#fff4d1', fontFamily: FONT.UI,
-      fontSize: '18px', padding: { x: 18, y: 10 }, align: 'center',
-    }).setOrigin(0.5).setVisible(false);
+    this.prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 60, '', {
+      backgroundColor: '#FAF5EAee',
+      color: '#2B211A',
+      fontFamily: FONT.UI,
+      fontStyle: 'bold',
+      fontSize: '16px',
+      padding: { x: 20, y: 8 },
+      align: 'center',
+      stroke: '#94342E',
+      strokeThickness: 1.2,
+      shadow: { color: '#00000033', blur: 6, fill: true, offsetY: 2 },
+    }).setOrigin(0.5).setDepth(2500).setVisible(false);
 
     this.createInventoryHUD();
     this.refreshInventory();

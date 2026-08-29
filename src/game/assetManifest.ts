@@ -1,4 +1,20 @@
+export const PORTRAIT_ASSETS: Record<string, string> = {
+  'portrait-elena-neutral': 'assets/art/characters/portrait-elena-neutral.png',
+  'portrait-elena-sad': 'assets/art/characters/portrait-elena-sad.png',
+  'portrait-elena-shock': 'assets/art/characters/portrait-elena-shock.png',
+  'portrait-elena-warm': 'assets/art/characters/portrait-elena-warm.png',
+  'portrait-elena-angry': 'assets/art/characters/portrait-elena-angry.png',
+  'portrait-arthur-muda-neutral': 'assets/art/characters/portrait-arthur-muda-neutral.png',
+  'portrait-arthur-muda-shock': 'assets/art/characters/portrait-arthur-muda-shock.png',
+  'portrait-arthur-muda-warm': 'assets/art/characters/portrait-arthur-muda-warm.png',
+  'portrait-arthur-dewasa-neutral': 'assets/art/characters/portrait-arthur-dewasa-neutral.png',
+  'portrait-arthur-buron-neutral': 'assets/art/characters/portrait-arthur-buron-neutral.png',
+  'portrait-arthur-tua-sad': 'assets/art/characters/portrait-arthur-tua-sad.png',
+  'portrait-arthur-tua-warm': 'assets/art/characters/portrait-arthur-tua-warm.png',
+};
+
 export const IMAGE_ASSETS: Record<string, string> = {
+  ...PORTRAIT_ASSETS,
   'title-cover': 'assets/art/ui/title-cover.png',
   'title-bg-color': 'assets/art/ui/title-bg-color.png',
   'title-bg-mono': 'assets/art/ui/title-bg-mono.png',

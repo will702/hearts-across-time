@@ -356,6 +356,38 @@ export class PrologueScene extends Phaser.Scene {
     gradients.fillGradientStyle(0x040405, 0x040405, 0x050506, 0x050506, 0.82, 0.82, 0, 0);
     gradients.fillRect(0, 0, GAME_WIDTH, 210);
 
+    // Partikel percikan waktu merah/emas mengambang di sekitar Elena (2088)
+    if (!reduce) {
+      const emberGfx = this.add.graphics().setDepth(6);
+      const embers: Array<{ x: number; y: number; r: number; vy: number; vx: number; alpha: number }> = [];
+      for (let i = 0; i < 28; i++) {
+        embers.push({
+          x: Math.random() * GAME_WIDTH,
+          y: Math.random() * GAME_HEIGHT,
+          r: 1 + Math.random() * 2.2,
+          vy: -(0.25 + Math.random() * 0.5),
+          vx: (Math.random() - 0.5) * 0.35,
+          alpha: 0.2 + Math.random() * 0.5,
+        });
+      }
+      this.time.addEvent({
+        delay: 30,
+        loop: true,
+        callback: () => {
+          emberGfx.clear();
+          emberGfx.fillStyle(0xc23b3b, 1);
+          embers.forEach((p) => {
+            p.y += p.vy;
+            p.x += p.vx;
+            if (p.y < 0) p.y = GAME_HEIGHT;
+            if (p.x < 0) p.x = GAME_WIDTH;
+            if (p.x > GAME_WIDTH) p.x = 0;
+            emberGfx.fillCircle(p.x, p.y, p.r);
+          });
+        },
+      });
+    }
+
     // vignette denyut merah + SFX jantung tiap 2.4 detik
     const vignette = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, this.ensureRedVignette())
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
