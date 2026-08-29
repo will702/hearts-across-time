@@ -253,7 +253,25 @@ export class Bonus2088Scene extends Phaser.Scene {
       this.add.image(0, 92, 'bg2088-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
     }
     if (this.textures.exists('bg2088-near')) {
-      this.add.image(0, 444, 'bg2088-near').setOrigin(0, 1).setScale(0.75).setScrollFactor(0.45).setDepth(-20);
+      this.add.image(0, 444, 'bg2088-near').setOrigin(0, 1).setScale(0.75).setScrollFactor(0.35).setDepth(-20);
+    }
+
+    // 1:1 Solid 2088 Dystopian Pavement Platform
+    const ground = this.add.graphics().setDepth(-6);
+    ground.fillStyle(0x1a1512, 1);
+    ground.fillRect(0, 444, WORLD_WIDTH, GAME_HEIGHT - 444);
+    for (let x = 0; x < WORLD_WIDTH; x += 44) {
+      ground.fillStyle(0x27201a, 1);
+      ground.fillRect(x + 1, 444, 42, 16);
+      ground.fillStyle(0x42362b, 0.4);
+      ground.fillRect(x + 1, 444, 42, 2);
+      ground.fillStyle(0x100d0a, 0.9);
+      ground.fillRect(x, 444, 1, 16);
+      // Bioluminescent temporal moss specks
+      if (x % 88 === 0) {
+        ground.fillStyle(0xd4a535, 0.35);
+        ground.fillRect(x + 10, 444 + 4, 8, 2);
+      }
     }
 
     BONUS_NODES.forEach((node, index) => {

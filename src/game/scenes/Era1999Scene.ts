@@ -161,14 +161,41 @@ export class Era1999Scene extends Phaser.Scene {
       this.add.image(0, 92, 'bg1999-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
     }
     if (this.textures.exists('bg1999-mid')) {
-      this.add.image(0, ERA_1999.groundY, 'bg1999-mid').setOrigin(0, 1).setScrollFactor(0.45).setDepth(-20);
+      this.add.image(0, ERA_1999.groundY, 'bg1999-mid').setOrigin(0, 1).setScrollFactor(0.35).setDepth(-20);
     }
+
+    // 1:1 Solid High-Tech Cryogenic Glass-Titanium Runway
+    const ground = this.add.graphics().setDepth(-6);
+    ground.fillStyle(0x08111e, 1);
+    ground.fillRect(0, ERA_1999.groundY, ERA_1999.width, ERA_1999.height - ERA_1999.groundY);
+
+    // Titanium runway panels with glowing cyan seams
+    for (let x = 0; x < ERA_1999.width; x += 56) {
+      // Dark slate titanium plate
+      ground.fillStyle(0x121e30, 1);
+      ground.fillRect(x + 1, ERA_1999.groundY, 54, 16);
+      // Top polished glass bevel reflection
+      ground.fillStyle(0x38bdf8, 0.25);
+      ground.fillRect(x + 1, ERA_1999.groundY, 54, 2);
+      // Vertical cyber circuit seam
+      ground.fillStyle(0x030810, 0.9);
+      ground.fillRect(x, ERA_1999.groundY, 1, 16);
+      ground.fillStyle(0x0284c7, 0.6);
+      ground.fillRect(x, ERA_1999.groundY + 1, 1, 14);
+      // Stasis vent / bolt accents
+      ground.fillStyle(0x1e3a5f, 0.8);
+      ground.fillRect(x + 6, ERA_1999.groundY + 4, 3, 3);
+      ground.fillRect(x + 45, ERA_1999.groundY + 4, 3, 3);
+    }
+    // Glowing cyan perimeter boundary line
+    ground.fillStyle(0x38bdf8, 0.5);
+    ground.fillRect(0, ERA_1999.groundY, ERA_1999.width, 1.5);
 
     this.createAnimatedProp('prop-consoleWave1999', 380, 444, 82, 3.5, 438);
     this.createAnimatedProp('prop-frost1999', 720, 444, 88, 2, 439);
 
     if (this.textures.exists('bg1999-fg')) {
-      this.add.image(0, ERA_1999.groundY - 14, 'bg1999-fg').setOrigin(0).setDisplaySize(1120, 152).setDepth(430);
+      this.add.image(0, ERA_1999.groundY - 14, 'bg1999-fg').setOrigin(0).setDisplaySize(1120, 152).setDepth(445);
     }
   }
 

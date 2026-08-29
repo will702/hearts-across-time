@@ -23,78 +23,100 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
   camera.setZoom(reduced ? 1 : config.startZoom);
   camera.centerOn(config.startFocusX, config.groundY - 120);
 
-  let barColor = config.barColor ?? 0xa85550;
-  if (!config.barColor) {
-    if (config.caption.includes('1968') && config.caption.includes('BUNKER')) barColor = 0x6b91a8;
-    else if (config.caption.includes('1968')) barColor = 0x5d91a9;
-    else if (config.caption.includes('1999')) barColor = 0x64a3bc;
-    else if (config.caption.includes('1944')) barColor = 0xa85550;
+  let barColor = config.barColor ?? 0xd4a535;
+  let defaultBackdrop = config.backdrop;
+  let videoKey: string | undefined;
+  let partColor = 0xf2d6a2;
+
+  if (config.caption.includes('1944')) {
+    barColor = 0xc24a3e;
+    defaultBackdrop = defaultBackdrop || (scene.textures.exists('cutscene-arrival-1944') ? 'cutscene-arrival-1944' : undefined);
+    videoKey = scene.cache.video.exists('cutscene-video-arrival-1944') ? 'cutscene-video-arrival-1944' : undefined;
+    partColor = 0xffc48a;
+  } else if (config.caption.includes('1968')) {
+    barColor = 0x5d91a9;
+    defaultBackdrop = defaultBackdrop || (scene.textures.exists('cutscene-arrival-1968') ? 'cutscene-arrival-1968' : undefined);
+    videoKey = scene.cache.video.exists('cutscene-video-arrival-1968') ? 'cutscene-video-arrival-1968' : undefined;
+    partColor = 0xd0e8f2;
+  } else if (config.caption.includes('1999')) {
+    barColor = 0x38bdf8;
+    defaultBackdrop = defaultBackdrop || (scene.textures.exists('cutscene-arrival-1999') ? 'cutscene-arrival-1999' : undefined);
+    videoKey = scene.cache.video.exists('cutscene-video-arrival-1999') ? 'cutscene-video-arrival-1999' : undefined;
+    partColor = 0x9be3ff;
   }
 
-  // Lukisan intro era: kamera besar lalu mundur (keyframe Ken Burns)
+  // Lukisan atau Video sinematik beresolusi tinggi (Ken Burns effect)
   let backdrop: Phaser.GameObjects.Image | undefined;
-  if (config.backdrop && scene.textures.exists(config.backdrop)) {
-    backdrop = scene.add.image(480, 270, config.backdrop)
+  let videoObj: Phaser.GameObjects.Video | undefined;
+
+  if (videoKey && !reduced) {
+    try {
+      videoObj = scene.add.video(480, 270, videoKey)
+        .setDisplaySize(960, 540)
+        .setScrollFactor(0)
+        .setDepth(2998);
+      videoObj.play(true);
+    } catch {
+      videoObj = undefined;
+    }
+  }
+
+  if (!videoObj && defaultBackdrop && scene.textures.exists(defaultBackdrop)) {
+    backdrop = scene.add.image(480, 270, defaultBackdrop)
       .setDisplaySize(960, 540)
       .setScrollFactor(0)
       .setDepth(2998);
     if (!reduced) {
-      backdrop.setScale(backdrop.scaleX * 2.2, backdrop.scaleY * 2.2);
+      backdrop.setScale(backdrop.scaleX * 1.12, backdrop.scaleY * 1.12);
     }
   }
 
-  // Lapisan atmosferik partikel mengambang
-  const particles = scene.add.graphics().setScrollFactor(0).setDepth(2998);
+  // Partikel atmosferik khusus per era
+  const particles = scene.add.graphics().setScrollFactor(0).setDepth(2999);
   const particleDots: Array<{ x: number; y: number; r: number; vy: number; vx: number; alpha: number }> = [];
   if (!reduced) {
-    const partColor = config.caption.includes('1999') ? 0x9be3ff : (config.caption.includes('1968') ? 0xd0e8f2 : 0xf2d6a2);
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 34; i++) {
       particleDots.push({
         x: Math.random() * 960,
         y: Math.random() * 540,
-        r: 1 + Math.random() * 2.5,
-        vy: -(0.2 + Math.random() * 0.5),
-        vx: (Math.random() - 0.5) * 0.3,
-        alpha: 0.15 + Math.random() * 0.45,
+        r: 1 + Math.random() * 2.2,
+        vy: -(0.25 + Math.random() * 0.5),
+        vx: (Math.random() - 0.5) * 0.4,
+        alpha: 0.2 + Math.random() * 0.5,
       });
     }
     particles.fillStyle(partColor, 1);
   }
 
-  // Karakter hidup setengah badan / pose sinematik di tengah adegan
-  let charVisual: Phaser.GameObjects.Image | undefined;
-  const poseKey = config.characterPose || (config.caption.includes('1944') ? 'pose-elena-resolve' : (config.caption.includes('1968') ? 'elena-dialog-sad' : 'elena-dialog'));
-  if (scene.textures.exists(poseKey)) {
-    charVisual = scene.add.image(480, 540 - 110, poseKey)
-      .setOrigin(0.5, 1)
-      .setScrollFactor(0)
-      .setDepth(2999)
-      .setAlpha(0);
-    const targetH = 260;
-    charVisual.setScale(targetH / charVisual.height);
-  }
+  // Anamorphic 21:9 Cinematic Letterbox Bars
+  const letterbox = scene.add.graphics().setScrollFactor(0).setDepth(3000);
+  letterbox.fillStyle(0x060504, 0.94);
+  letterbox.fillRect(0, 0, 960, 52);
+  letterbox.fillRect(0, 540 - 72, 960, 72);
+  // Gold dividing line
+  letterbox.fillStyle(0xd4a535, 0.5);
+  letterbox.fillRect(40, 52, 880, 1.5);
+  letterbox.fillRect(40, 540 - 72, 880, 1.5);
 
-  // Top & bottom linear gradient dark vignette
-  const vignette = scene.add.graphics().setScrollFactor(0).setDepth(2999);
-  vignette.fillGradientStyle(0x040405, 0x040405, 0x040405, 0x040405, 0.88, 0.88, 0, 0);
-  vignette.fillRect(0, 0, 960, 180);
-  vignette.fillGradientStyle(0x040405, 0x040405, 0x040405, 0x040405, 0, 0, 0.85, 0.85);
-  vignette.fillRect(0, 540 - 150, 960, 150);
+  const caption = scene.add.text(480, 488, config.caption, {
+    color: '#fbf7ee',
+    fontFamily: 'Cinzel, Georgia, serif',
+    fontSize: '17px',
+    fontStyle: 'bold',
+    stroke: '#080604',
+    strokeThickness: 3,
+    letterSpacing: 2.2,
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
 
-  const caption = scene.add.text(480, 480, config.caption, {
-    color: '#f5f0e8', fontFamily: 'Cinzel, Georgia, serif', fontSize: '16px', fontStyle: 'italic',
-    stroke: '#080604', strokeThickness: 4, letterSpacing: 2.5,
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(3000);
-
-  const track = scene.add.rectangle(375, 508, 210, 3, 0xf5f0e8, 0.2)
-    .setOrigin(0, 0.5).setScrollFactor(0).setDepth(3000);
-  const bar = scene.add.rectangle(375, 508, 1, 3, barColor, 1)
+  const track = scene.add.rectangle(375, 514, 210, 3, 0xf5f0e8, 0.22)
     .setOrigin(0, 0.5).setScrollFactor(0).setDepth(3001);
-  const hint = scene.add.text(480, 524, 'ENTER / SPACE / SENTUH UNTUK MELEWATI', {
-    color: '#f5f0e899', fontFamily: 'Poppins, sans-serif', fontSize: '10px', letterSpacing: 0.8,
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(3000);
+  const bar = scene.add.rectangle(375, 514, 1, 3, barColor, 1)
+    .setOrigin(0, 0.5).setScrollFactor(0).setDepth(3002);
+  const hint = scene.add.text(480, 528, 'ENTER / SPACE / SENTUH UNTUK MELEWATI', {
+    color: 'rgba(245,240,232,0.65)', fontFamily: 'Poppins, sans-serif', fontSize: '9.5px', letterSpacing: 0.9,
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
 
-  const baseScale = backdrop ? backdrop.scaleX / (reduced ? 1 : 2.2) : 1;
+  const baseScale = backdrop ? backdrop.scaleX / (reduced ? 1 : 1.12) : 1;
 
   const finish = (): void => {
     if (finished) return;
@@ -103,14 +125,14 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
     scene.input.keyboard?.off('keydown-ENTER', finish);
     scene.input.keyboard?.off('keydown-SPACE', finish);
     scene.input.off('pointerdown', finish);
-    vignette.destroy();
+    letterbox.destroy();
     particles.destroy();
-    charVisual?.destroy();
     caption.destroy();
     track.destroy();
     bar.destroy();
     hint.destroy();
     backdrop?.destroy();
+    videoObj?.destroy();
     camera.setZoom(1);
     config.onComplete();
   };
@@ -125,27 +147,14 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
       if (!reduced) camera.setZoom(Phaser.Math.Linear(config.startZoom, 1, value));
       camera.centerOn(Phaser.Math.Linear(config.startFocusX, config.endFocusX, value), config.groundY - 120);
       if (backdrop && !reduced) {
-        const s = Phaser.Math.Linear(2.2, 1, value) * baseScale;
+        const s = Phaser.Math.Linear(1.12, 1.0, value) * baseScale;
         backdrop.setScale(s, s);
       }
       bar.width = Math.max(1, 210 * value);
 
-      // Munculkan karakter living atmosphere setelah 35% durasi
-      if (charVisual) {
-        if (value > 0.35) {
-          const charProg = Math.min(1, (value - 0.35) / 0.3);
-          charVisual.setAlpha(charProg * 0.95);
-          if (!reduced) {
-            const bob = Math.sin(scene.time.now * 0.002) * 2;
-            charVisual.setY(540 - 110 + bob);
-          }
-        }
-      }
-
       // Animasi partikel atmosferik
       if (!reduced && particleDots.length) {
         particles.clear();
-        const partColor = config.caption.includes('1999') ? 0x9be3ff : (config.caption.includes('1968') ? 0xd0e8f2 : 0xf2d6a2);
         particles.fillStyle(partColor, 1);
         particleDots.forEach(p => {
           p.y += p.vy;

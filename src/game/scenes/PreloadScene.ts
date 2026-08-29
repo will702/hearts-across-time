@@ -4,6 +4,7 @@ import {
   CHARACTER_SHEET_ASSETS,
   IMAGE_ASSETS,
   PROP_SHEET_ASSETS,
+  VIDEO_ASSETS,
 } from '../assetManifest';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 
@@ -34,6 +35,9 @@ export class PreloadScene extends Phaser.Scene {
     });
     Object.entries(AUDIO_ASSETS).forEach(([key, url]) => {
       this.load.audio(key, url);
+    });
+    Object.entries(VIDEO_ASSETS).forEach(([key, url]) => {
+      this.load.video(key, url);
     });
 
     this.load.video('intro', 'assets/video/intro.mp4');

@@ -55,6 +55,10 @@ export const IMAGE_ASSETS: Record<string, string> = {
   'cryolog-prop': 'assets/art/props/prop_cryolog1999.png',
   'bonus-puzzle-board': 'assets/art/bonus/puzzle-board.jpg',
   'bonus-city-complete': 'assets/art/bonus/city-complete.jpg',
+  'cutscene-prologue-2088': 'assets/art/cutscenes/prologue_2088.jpg',
+  'cutscene-arrival-1944': 'assets/art/cutscenes/arrival_1944.jpg',
+  'cutscene-arrival-1968': 'assets/art/cutscenes/arrival_1968.jpg',
+  'cutscene-arrival-1999': 'assets/art/cutscenes/arrival_1999.jpg',
 };
 
 export const BONUS_IMAGE_ASSETS: Record<string, string> = {
@@ -115,6 +119,14 @@ export const AUDIO_ASSETS: Record<string, string> = {
   'hum': 'assets/audio/hum.wav',
 };
 
+export const VIDEO_ASSETS: Record<string, string> = {
+  'cutscene-video-prologue-2088': 'assets/video/cutscene_prologue_2088.mp4',
+  'cutscene-video-arrival-1944': 'assets/video/cutscene_arrival_1944.mp4',
+  'cutscene-video-arrival-1968': 'assets/video/cutscene_arrival_1968.mp4',
+  'cutscene-video-arrival-1999': 'assets/video/cutscene_arrival_1999.mp4',
+  'cutscene-video-vortex': 'assets/video/cutscene_vortex.mp4',
+};
+
 export const STATIC_ASSETS = [
   ...Object.values(IMAGE_ASSETS),
   ...Object.values(BONUS_IMAGE_ASSETS),
@@ -122,6 +134,7 @@ export const STATIC_ASSETS = [
   ...Object.values(BONUS_PROP_SHEET_ASSETS),
   ...Object.values(CHARACTER_SHEET_ASSETS),
   ...Object.values(AUDIO_ASSETS),
+  ...Object.values(VIDEO_ASSETS),
   'assets/video/intro.mp4',
   'assets/fonts/cinzel.ttf',
   'assets/fonts/poppins-regular.ttf',

@@ -54,7 +54,18 @@ export class VortexScene extends Phaser.Scene {
     this.soundManager?.playVortex(Boolean(data.rewind));
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050508, 1);
-    if (this.textures.exists('time-vortex')) {
+    const hasVideo = this.cache.video.exists('cutscene-video-vortex');
+    if (hasVideo && !this.registry.get('reduceMotion')) {
+      try {
+        const video = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'cutscene-video-vortex')
+          .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+          .setDepth(1)
+          .setAlpha(0.88);
+        video.play(true);
+      } catch {
+        // fallback
+      }
+    } else if (this.textures.exists('time-vortex')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'time-vortex')
         .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
         .setAlpha(0.3);

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
-import { GAME_HEIGHT, GAME_WIDTH, GROUND_Y } from '../config';
+import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 const INTRO_PAGES = [
@@ -295,79 +295,74 @@ export class PrologueScene extends Phaser.Scene {
     });
   }
 
-  /** Adegan prolog legacy: latar narator zoom-out, Elena setengah badan,
-      gradasi gelap, denyut jantung merah tiap 2.4 detik. */
+  /** Adegan prolog: ilustrasi sinematik Elena 2088, Ken Burns zoom,
+      letterbox 21:9, partikel bara waktu merah/emas, denyut detak jantung tiap 2.4 detik. */
   private stagePrologueScene(): void {
     const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     const reduce = Boolean(this.registry.get('reduceMotion'));
 
-    // kamera dimulai besar lalu perlahan mundur (zoom 1.16 → 1, pan -18/+12 → 0)
-    if (this.bgImage && !reduce) {
-      this.tweens.killTweensOf(this.bgImage);
-      this.bgImage.setAlpha(1);
-      const baseScale = Math.max(GAME_WIDTH / this.bgImage.width, GAME_HEIGHT / this.bgImage.height);
-      this.bgImage.setScale(baseScale * 1.16);
-      this.bgImage.setPosition(GAME_WIDTH / 2 - 18, GAME_HEIGHT / 2 + 12);
-      this.tweens.add({
-        targets: this.bgImage,
-        scaleX: baseScale,
-        scaleY: baseScale,
-        x: GAME_WIDTH / 2,
-        y: GAME_HEIGHT / 2,
-        duration: 7500,
-        ease: 'Sine.easeOut',
-      });
-    } else if (this.bgImage) {
-      this.bgImage.setAlpha(1);
-    }
+    const hasVideo = this.cache.video.exists('cutscene-video-prologue-2088');
+    let videoObj: Phaser.GameObjects.Video | undefined;
 
-    // Elena setengah badan (crop legacy .345/.03/.31/.48, tinggi 270)
-    const elenaKey = this.textures.exists('elena-dialog-sad') ? 'elena-dialog-sad' : 'elena-dialog';
-    if (this.textures.exists(elenaKey)) {
-      const frame = this.textures.getFrame(elenaKey);
-      const cw = frame.width * 0.31;
-      const ch = frame.height * 0.48;
-      const dh = 270;
-      const dw = dh * (cw / ch);
-      const elena = this.add.image(GAME_WIDTH / 2, GROUND_Y - dh + 20, elenaKey)
-        .setOrigin(0, 0)
-        .setCrop(frame.width * 0.345, frame.height * 0.03, cw, ch)
-        .setDisplaySize(dw, dh)
-        .setDepth(5);
-      if (!reduce) {
-        this.tweens.add({
-          targets: elena,
-          y: `-=${1.4 * 2}`,
-          duration: 2000,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut',
-        });
+    if (hasVideo && !reduce) {
+      try {
+        videoObj = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'cutscene-video-prologue-2088')
+          .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+          .setDepth(4);
+        videoObj.play(true);
+      } catch {
+        videoObj = undefined;
       }
-      // bayang lembut di kaki
-      const shadow = this.add.ellipse(GAME_WIDTH / 2, GROUND_Y + 2, dw * 0.84, 18, 0x090706, 0.25).setDepth(4);
-      void shadow;
     }
 
-    // gradasi bawah + atas (drawPrologueScene legacy)
+    if (!videoObj) {
+      const prologueKey = this.textures.exists('cutscene-prologue-2088') ? 'cutscene-prologue-2088' : 'bgnarator';
+      if (this.textures.exists(prologueKey)) {
+        const art = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, prologueKey)
+          .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+          .setDepth(4);
+
+        if (!reduce) {
+          art.setScale(art.scaleX * 1.08, art.scaleY * 1.08);
+          this.tweens.add({
+            targets: art,
+            scaleX: art.scaleX / 1.08,
+            scaleY: art.scaleY / 1.08,
+            duration: 9000,
+            ease: 'Sine.easeOut',
+          });
+        }
+      }
+    }
+
+    // Anamorphic 21:9 Cinematic Letterbox Bars
+    const letterbox = this.add.graphics().setDepth(5);
+    letterbox.fillStyle(0x040304, 0.95);
+    letterbox.fillRect(0, 0, GAME_WIDTH, 48);
+    letterbox.fillRect(0, GAME_HEIGHT - 64, GAME_WIDTH, 64);
+    // Gold ornamental dividing lines
+    letterbox.fillStyle(0xd4a535, 0.45);
+    letterbox.fillRect(40, 48, GAME_WIDTH - 80, 1.5);
+    letterbox.fillRect(40, GAME_HEIGHT - 64, GAME_WIDTH - 80, 1.5);
+
+    // Gradasi gelap bawah untuk keterbacaan teks dialog
     const gradients = this.add.graphics().setDepth(6);
-    gradients.fillGradientStyle(0x080605, 0x080605, 0x080605, 0x080605, 0, 0, 0.64, 0.64);
-    gradients.fillRect(0, GAME_HEIGHT * 0.56, GAME_WIDTH, GAME_HEIGHT * 0.44);
-    gradients.fillGradientStyle(0x040405, 0x040405, 0x050506, 0x050506, 0.82, 0.82, 0, 0);
-    gradients.fillRect(0, 0, GAME_WIDTH, 210);
+    gradients.fillGradientStyle(0x060507, 0x060507, 0x060507, 0x060507, 0, 0, 0.72, 0.72);
+    gradients.fillRect(0, GAME_HEIGHT * 0.52, GAME_WIDTH, GAME_HEIGHT * 0.48);
 
     // Partikel percikan waktu merah/emas mengambang di sekitar Elena (2088)
     if (!reduce) {
       const emberGfx = this.add.graphics().setDepth(6);
-      const embers: Array<{ x: number; y: number; r: number; vy: number; vx: number; alpha: number }> = [];
-      for (let i = 0; i < 28; i++) {
+      const embers: Array<{ x: number; y: number; r: number; vy: number; vx: number; alpha: number; color: number }> = [];
+      for (let i = 0; i < 36; i++) {
         embers.push({
           x: Math.random() * GAME_WIDTH,
           y: Math.random() * GAME_HEIGHT,
-          r: 1 + Math.random() * 2.2,
-          vy: -(0.25 + Math.random() * 0.5),
-          vx: (Math.random() - 0.5) * 0.35,
-          alpha: 0.2 + Math.random() * 0.5,
+          r: 1 + Math.random() * 2.4,
+          vy: -(0.25 + Math.random() * 0.6),
+          vx: (Math.random() - 0.5) * 0.4,
+          alpha: 0.2 + Math.random() * 0.6,
+          color: Math.random() > 0.4 ? 0xd4a535 : 0xe04343,
         });
       }
       this.time.addEvent({
@@ -375,13 +370,13 @@ export class PrologueScene extends Phaser.Scene {
         loop: true,
         callback: () => {
           emberGfx.clear();
-          emberGfx.fillStyle(0xc23b3b, 1);
           embers.forEach((p) => {
             p.y += p.vy;
             p.x += p.vx;
-            if (p.y < 0) p.y = GAME_HEIGHT;
+            if (p.y < 48) p.y = GAME_HEIGHT - 64;
             if (p.x < 0) p.x = GAME_WIDTH;
             if (p.x > GAME_WIDTH) p.x = 0;
+            emberGfx.fillStyle(p.color, p.alpha);
             emberGfx.fillCircle(p.x, p.y, p.r);
           });
         },

@@ -296,11 +296,25 @@ export class UIScene extends Phaser.Scene {
       container.on('pointerout', release);
       this.touchObjects.push(container);
     };
-    pad(70, GAME_HEIGHT - 65, 31, 'left');
-    pad(GAME_WIDTH - 70, GAME_HEIGHT - 65, 31, 'right');
+    pad(60, GAME_HEIGHT - 56, 31, 'left');
+    pad(132, GAME_HEIGHT - 56, 31, 'right');
     pad(GAME_WIDTH - 36, GAME_HEIGHT - 162, 27, 'run');
 
-    // tombol kontekstual kertas — label mengikuti prompt dunia
+    // Tombol aksi sentuh kanan (882, 482)
+    const actCircle = this.add.circle(GAME_WIDTH - 78, GAME_HEIGHT - 58, 32, 0x94342e, 0.9)
+      .setStrokeStyle(1.8, 0xf5f0e8, 0.9)
+      .setInteractive({ useHandCursor: true });
+    const actText = this.add.text(GAME_WIDTH - 78, GAME_HEIGHT - 58, 'AKSI', {
+      color: '#fff8ea',
+      fontFamily: FONT.META,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      letterSpacing: 0.8,
+    }).setOrigin(0.5);
+    actCircle.on('pointerdown', () => this.controls?.triggerTouch('interact'));
+    this.touchObjects.push(actCircle, actText);
+
+    // tombol kontekstual kertas tengah — label mengikuti prompt dunia
     const actW = 138, actH = 44;
     const paper = addPaperPanel(this, GAME_WIDTH / 2 - actW / 2, GAME_HEIGHT - 64 - actH / 2, actW, actH, { radius: 9, shadow: false });
     const label = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 64, '', {

@@ -169,7 +169,53 @@ export class Era1968Scene extends Phaser.Scene {
     }
     if (this.textures.exists(bgMidKey)) {
       const midScale = isLab ? 0.5 : 0.75;
-      this.add.image(0, ERA_1968.groundY, bgMidKey).setOrigin(0, 1).setScale(midScale).setScrollFactor(0.45).setDepth(-20);
+      this.add.image(0, ERA_1968.groundY, bgMidKey).setOrigin(0, 1).setScale(midScale).setScrollFactor(0.35).setDepth(-20);
+    }
+
+    // 1:1 Solid Industrial Ground Platform
+    const ground = this.add.graphics().setDepth(-6);
+    if (isLab) {
+      // Lab: Steel composite tiles with hazard yellow-black stripes and cooling vents
+      ground.fillStyle(0x0f1826, 1);
+      ground.fillRect(0, ERA_1968.groundY, ERA_1968.width, ERA_1968.height - ERA_1968.groundY);
+
+      // Steel floor plates
+      for (let x = 0; x < ERA_1968.width; x += 48) {
+        ground.fillStyle(0x182438, 1);
+        ground.fillRect(x + 1, ERA_1968.groundY, 46, 16);
+        ground.fillStyle(0x283d5a, 0.4);
+        ground.fillRect(x + 1, ERA_1968.groundY, 46, 2);
+        // Plate joints & rivets
+        ground.fillStyle(0x0b111c, 0.9);
+        ground.fillRect(x, ERA_1968.groundY, 1, 16);
+        ground.fillRect(x + 5, ERA_1968.groundY + 4, 2, 2);
+        ground.fillRect(x + 41, ERA_1968.groundY + 4, 2, 2);
+      }
+      // Safety hazard border line along bottom walk edge
+      for (let x = 0; x < ERA_1968.width; x += 16) {
+        const isYellow = (x / 16) % 2 === 0;
+        ground.fillStyle(isYellow ? 0xd4a535 : 0x161e2a, 0.85);
+        ground.fillRect(x, ERA_1968.groundY + 16, 16, 4);
+      }
+    } else {
+      // Bunker: Industrial concrete slab with heavy rusted diamond-plate steel runner
+      ground.fillStyle(0x241d18, 1);
+      ground.fillRect(0, ERA_1968.groundY, ERA_1968.width, ERA_1968.height - ERA_1968.groundY);
+
+      // Diamond-plate runner walkway
+      for (let x = 0; x < ERA_1968.width; x += 40) {
+        ground.fillStyle(0x382e26, 1);
+        ground.fillRect(x + 1, ERA_1968.groundY, 38, 15);
+        ground.fillStyle(0x56473c, 0.5);
+        ground.fillRect(x + 1, ERA_1968.groundY, 38, 2);
+        // Rust stains & bolts
+        ground.fillStyle(0x1a1410, 0.9);
+        ground.fillRect(x, ERA_1968.groundY, 1, 15);
+        ground.fillRect(x + 4, ERA_1968.groundY + 3, 2, 2);
+        ground.fillRect(x + 34, ERA_1968.groundY + 3, 2, 2);
+        ground.fillStyle(0x6b3f27, 0.35);
+        ground.fillRect(x + 12, ERA_1968.groundY + 8, 16, 4);
+      }
     }
 
     if (isLab) {
@@ -181,7 +227,7 @@ export class Era1968Scene extends Phaser.Scene {
     }
 
     if (this.textures.exists(bgFgKey)) {
-      this.add.image(0, ERA_1968.groundY - 14, bgFgKey).setOrigin(0).setDisplaySize(1220, 165).setDepth(430);
+      this.add.image(0, ERA_1968.groundY - 14, bgFgKey).setOrigin(0).setDisplaySize(1220, 165).setDepth(445);
     }
   }
 

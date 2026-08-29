@@ -208,25 +208,53 @@ export class Era1944Scene extends Phaser.Scene {
     if (this.textures.exists('bg1944-far')) {
       this.add.image(0, 92, 'bg1944-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
     }
-    const hasPaintedGround = this.textures.exists('bg1944-mid');
-    if (hasPaintedGround) {
-      this.add.image(0, -312, 'bg1944-mid').setOrigin(0).setScale(0.75).setScrollFactor(0.45).setDepth(-20);
+    if (this.textures.exists('bg1944-mid')) {
+      this.add.image(0, -312, 'bg1944-mid').setOrigin(0).setScale(0.75).setScrollFactor(0.35).setDepth(-20);
     }
 
-    if (!hasPaintedGround) {
-      this.add.rectangle(ERA_1944.width / 2, 472, ERA_1944.width, 136, 0x4a3b2c).setDepth(-12);
-      const ground = this.add.graphics().setDepth(-11);
-      ground.fillStyle(0x392b20, 0.8);
-      for (let x = 30; x < ERA_1944.width; x += 152) ground.fillRoundedRect(x, 414 + (x % 304 ? 50 : 0), 70, 9, 4);
-      ground.fillStyle(0x6b3d2b, 0.3);
-      for (let x = 95; x < ERA_1944.width; x += 230) ground.fillEllipse(x, 493 + (x % 3) * 5, 72, 13);
+    // 1:1 Solid Trench Ground Floor (Duckboards, mud ruts, puddle glints, timber planks)
+    const ground = this.add.graphics().setDepth(-6);
+    // Base solid mud layer
+    ground.fillStyle(0x3a2c20, 1);
+    ground.fillRect(0, ERA_1944.groundY, ERA_1944.width, ERA_1944.height - ERA_1944.groundY);
+
+    // Weathered timber duckboard planks running across the frontline trench
+    for (let x = 0; x < ERA_1944.width; x += 32) {
+      const plankW = 28;
+      const plankH = 14;
+      const isAlt = (x / 32) % 2 === 0;
+      // Plank shadow
+      ground.fillStyle(0x221810, 0.7);
+      ground.fillRect(x + 2, ERA_1944.groundY + 1, plankW, plankH + 2);
+      // Plank body
+      ground.fillStyle(isAlt ? 0x5a422d : 0x4d3725, 1);
+      ground.fillRoundedRect(x, ERA_1944.groundY, plankW, plankH, 2);
+      // Wood grain / nail rivets
+      ground.fillStyle(0x352417, 0.85);
+      ground.fillRect(x + 4, ERA_1944.groundY + 3, 2, 2);
+      ground.fillRect(x + plankW - 6, ERA_1944.groundY + 3, 2, 2);
+      ground.fillRect(x + 4, ERA_1944.groundY + 10, 2, 2);
+      ground.fillRect(x + plankW - 6, ERA_1944.groundY + 10, 2, 2);
+      // Plank top edge highlight
+      ground.fillStyle(0x75593e, 0.4);
+      ground.fillRect(x + 1, ERA_1944.groundY, plankW - 2, 1.5);
+    }
+
+    // Wet mud ruts & watercolor puddle glints between timber sections
+    ground.fillStyle(0x2d1f14, 0.85);
+    for (let x = 40; x < ERA_1944.width; x += 180) {
+      ground.fillEllipse(x + 20, ERA_1944.groundY + 18, 64, 12);
+    }
+    ground.fillStyle(0x6b4f35, 0.35);
+    for (let x = 110; x < ERA_1944.width; x += 220) {
+      ground.fillEllipse(x, ERA_1944.groundY + 22, 78, 14);
     }
 
     this.createAnimatedProp('prop-flag1944', 390, 444, 132, 5, 438);
     this.createAnimatedProp('prop-lantern1944', 620, 436, 94, 3.2, 439);
 
     if (this.textures.exists('bg1944-fg')) {
-      this.add.image(0, ERA_1944.groundY - 14, 'bg1944-fg').setOrigin(0).setDisplaySize(1470, 200).setDepth(430);
+      this.add.image(0, ERA_1944.groundY - 14, 'bg1944-fg').setOrigin(0).setDisplaySize(1470, 200).setDepth(445);
     }
   }
 
