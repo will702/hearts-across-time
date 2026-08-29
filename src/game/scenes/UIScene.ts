@@ -394,57 +394,49 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
-  /** Tombol lingkar tinta legacy (drawPauseBtn): #0a0806 + goresan ganda. */
+  /** Tombol lingkar tinta legacy: musik di kiri (x=850), jeda di kanan (x=927). */
   private createTopButtons(): void {
     const soundManager = this.registry.get('soundManager') as { setMuted: (m: boolean) => void; muted: boolean } | undefined;
     let muted = soundManager?.muted ?? false;
 
-    const makeCircle = (x: number, onPress: () => void): {
-      container: Phaser.GameObjects.Container;
+    const makeButton = (x: number, width: number, label: string, onPress: () => void): {
+      bg: Phaser.GameObjects.Rectangle;
       icon: Phaser.GameObjects.Graphics;
+      label: Phaser.GameObjects.Text;
+      container: Phaser.GameObjects.Container;
     } => {
+      const bg = this.add.rectangle(0, 0, width, 30, 0x090b10, 0.76).setStrokeStyle(1, 0xf1d58b, 0.58);
       const icon = this.add.graphics();
-      const container = this.add.container(x, 26, [icon])
-        .setSize(30, 30)
-        .setInteractive({ useHandCursor: true, pixelPerfect: false })
+      const buttonLabel = this.add.text(-width / 2 + 29, 0, label, {
+        color: '#f5f0e8', fontFamily: FONT.META, fontSize: '9px', letterSpacing: 0.5, fontStyle: 'bold',
+      }).setOrigin(0, 0.5);
+      const container = this.add.container(x, 27, [bg, icon, buttonLabel])
+        .setSize(width, 30)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => bg.setFillStyle(0x36251d, 0.94).setStrokeStyle(1.4, 0xf1d58b, 0.9))
+        .on('pointerout', () => bg.setFillStyle(0x090b10, 0.76).setStrokeStyle(1, 0xf1d58b, 0.58))
         .on('pointerup', onPress);
-      return { container, icon };
+      return { bg, icon, label: buttonLabel, container };
     };
 
-    const drawFrame = (icon: Phaser.GameObjects.Graphics, on: boolean): void => {
-      icon.clear();
-      icon.fillStyle(0x0a0806, on ? 0.85 : 0.65);
-      icon.fillCircle(0, 0, 15);
-      icon.lineStyle(1.6, 0xf5f0e8, 1);
-      icon.strokeCircle(0, 0, 15);
-      icon.lineStyle(0.8, 0xf5f0e8, 0.22);
-      icon.strokeCircle(0, 0, 11.5);
-    };
-
-    const pause = makeCircle(GAME_WIDTH - 72, () => this.togglePause());
-    drawFrame(pause.icon, false);
-    pause.icon.fillStyle(0xf5f0e8, 1).fillRect(-5, -5, 3.6, 10).fillRect(1.4, -5, 3.6, 10);
-    pause.container.on('pointerover', () => { drawFrame(pause.icon, true); pause.icon.fillStyle(0xf5f0e8, 1).fillRect(-5, -5, 3.6, 10).fillRect(1.4, -5, 3.6, 10); });
-    pause.container.on('pointerout', () => { drawFrame(pause.icon, false); pause.icon.fillStyle(0xf5f0e8, 1).fillRect(-5, -5, 3.6, 10).fillRect(1.4, -5, 3.6, 10); });
-    this.touchObjects.push(pause.container);
-
-    const mute = makeCircle(GAME_WIDTH - 34, () => {
+    const music = makeButton(GAME_WIDTH - 110, 92, 'MUSIK', () => {
       muted = !muted;
       soundManager?.setMuted(muted);
-      drawMuteIcon();
+      drawMusicIcon();
     });
-    const drawMuteIcon = (): void => {
-      drawFrame(mute.icon, false);
-      mute.icon.fillStyle(muted ? 0xb8a898 : 0xf5f0e8, 1);
-      mute.icon.fillRect(-8, -2.5, 3, 5);
-      mute.icon.fillTriangle(-5, -4, -5, 4, -1, 0);
-      if (muted) mute.icon.lineStyle(1.6, 0xb8a898, 1).lineBetween(-1, -6, 8, 6);
-      else mute.icon.lineStyle(1.4, 0xf5f0e8, 1).strokeCircle(1, 0, 5.5);
+    const drawMusicIcon = (): void => {
+      music.icon.clear().fillStyle(muted ? 0xb8a898 : 0xf1d58b, 1);
+      music.icon.fillRect(-36, -5, 5, 10).fillTriangle(-31, -7, -31, 7, -23, 0);
+      music.icon.lineStyle(1.5, muted ? 0xb8a898 : 0xf1d58b, 1).strokeCircle(-22, 0, 9);
+      if (muted) music.icon.lineBetween(-31, -9, -14, 9);
+      music.label.setText(muted ? 'MATI' : 'MUSIK');
     };
-    drawMuteIcon();
-    mute.container.on('pointerover', () => { drawFrame(mute.icon, true); drawMuteIcon(); });
-    mute.container.on('pointerout', () => drawMuteIcon());
-    this.touchObjects.push(mute.container);
+    drawMusicIcon();
+    this.touchObjects.push(music.container);
+
+    const pause = makeButton(GAME_WIDTH - 33, 56, 'JEDA', () => this.togglePause());
+    pause.icon.fillStyle(0xf1d58b, 1).fillRect(-20, -6, 4, 12).fillRect(-13, -6, 4, 12);
+    this.touchObjects.push(pause.container);
   }
 
   private getActiveGameplayScene(): string {
