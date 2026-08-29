@@ -231,7 +231,7 @@ export class UIScene extends Phaser.Scene {
     this.modalOwned = owned && on;
     this.modal = on;
     this.touchObjects.forEach((object) => object.setVisible(!on && !this.paused));
-    this.topHUDObjects.forEach((object) => object.setVisible(!this.paused));
+    this.topHUDObjects.forEach((object) => object.setVisible(!on && !this.paused));
     if (on) this.prompt?.setVisible(false);
   }
 
