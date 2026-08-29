@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { Player } from '../entities/Player';
 import { LORE_COMPLETION_TEXT, isLoreId, recordLoreInspection } from '../narrative/lore';
+import type { CharacterId, Expression } from '../narrative/storyScript';
 import { InputSystem } from '../systems/InputSystem';
 import { InteractionSystem } from '../systems/InteractionSystem';
 import { LoopEchoTrail } from '../systems/LoopEchoTrail';
@@ -12,6 +13,8 @@ import { ERA_1999 } from '../world/era1999';
 import { WorldFactory } from '../world/WorldFactory';
 import type { WorldObject } from '../world/WorldObject';
 import type { WorldAction, WorldState } from '../world/worldTypes';
+import type { DialogueSceneData } from './DialogueScene';
+import { EraSpeakerRig } from './eraSpeakerRig';
 import type { UIScene } from './UIScene';
 import { playArrivalSequence } from './playArrivalSequence';
 
@@ -78,7 +81,7 @@ export class Era1999Scene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
 
-    this.scene.launch('UIScene', { input: this.controls, eraTitle: 'BABAK 3 — 1999', run: this.run });
+    this.scene.launch('UIScene', { input: this.controls, eraTitle: 'BABAK 3 — RUANG OBSERVASI KAPSUL, 1999', run: this.run });
     this.ui = this.scene.get('UIScene') as UIScene;
     this.lastSavedX = spawnX;
     this.save.saveCycle('1999', this.run, spawnX);
@@ -253,23 +256,37 @@ export class Era1999Scene extends Phaser.Scene {
     if (action.type === 'dialog') {
       this.controls.setEnabled(false);
       this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
-      this.scene.launch('DialogueScene', {
-        nodeId: action.node,
-        run: this.run,
-        onComplete: (res?: { type: string; kind?: EndingKey }) => {
-          if (res?.type === 'ending' && res.kind) {
-            this.endingCommitted = true;
-            this.save.clearCycle();
-            this.scene.start('PuzzleAwardScene', { key: res.kind, run: this.run });
-          } else {
-            this.scene.resume();
-            this.controls.setEnabled(true);
-            this.registry.set('nativeState', 'era1999');
-          }
-        },
-      });
+      this.scene.launch('DialogueScene', this.dialoguePayload(action.node, (res?: { type: string; kind?: EndingKey }) => {
+        if (res?.type === 'ending' && res.kind) {
+          this.endingCommitted = true;
+          this.save.clearCycle();
+          this.scene.start('PuzzleAwardScene', { key: res.kind, run: this.run });
+        } else {
+          this.scene.resume();
+          this.controls.setEnabled(true);
+          this.registry.set('nativeState', 'era1999');
+        }
+      }));
       this.scene.pause();
     }
+  }
+
+  /** Payload DialogueScene lengkap dengan jangkar balon komik era ini. */
+  private dialoguePayload(
+    nodeId: string,
+    onComplete: DialogueSceneData['onComplete'],
+  ): DialogueSceneData {
+    const arthur = this.objects.find(object => object.definition.id === 'arthur');
+    const rig = new EraSpeakerRig(this.cameras.main, this.player, arthur?.visual, 'tua');
+    return {
+      nodeId,
+      run: this.run,
+      speakerAnchor: (who: CharacterId) => rig.anchor(who),
+      setSpeakerExpression: (who: CharacterId, expr: Expression) => rig.setExpression(who, expr),
+      speakerVisual: who => rig.visual(who),
+      resetSpeakers: () => rig.reset(),
+      onComplete,
+    };
   }
 
   private validSpawnX(savedX?: number): number {
@@ -290,6 +307,7 @@ export class Era1999Scene extends Phaser.Scene {
       startFocusX: 640,
       endFocusX: 500,
       groundY: ERA_1999.groundY,
+      backdrop: 'lab-final',
       onComplete: () => this.launchEntryDialogue(),
     });
   }
@@ -299,15 +317,11 @@ export class Era1999Scene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
     this.ui.setModal(false);
-    this.scene.launch('DialogueScene', {
-      nodeId: 'final_lab_intro',
-      run: this.run,
-      onComplete: () => {
-        this.scene.resume();
-        this.controls.setEnabled(true);
-        this.registry.set('nativeState', 'era1999');
-      },
-    });
+    this.scene.launch('DialogueScene', this.dialoguePayload('final_lab_intro', () => {
+      this.scene.resume();
+      this.controls.setEnabled(true);
+      this.registry.set('nativeState', 'era1999');
+    }));
     this.scene.pause();
   }
 
@@ -327,19 +341,15 @@ export class Era1999Scene extends Phaser.Scene {
     this.controls.setEnabled(false);
     this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
     this.ui.setPrompt('');
-    this.scene.launch('DialogueScene', {
-      nodeId: id,
-      run: this.run,
-      onComplete: () => {
-        this.scene.resume();
-        this.controls.setEnabled(true);
-        this.registry.set('nativeState', 'era1999');
-        if (discovery.completedNow) {
-          this.soundManager?.playChime();
-          this.ui.showToast(LORE_COMPLETION_TEXT, 4200);
-        }
-      },
-    });
+    this.scene.launch('DialogueScene', this.dialoguePayload(id, () => {
+      this.scene.resume();
+      this.controls.setEnabled(true);
+      this.registry.set('nativeState', 'era1999');
+      if (discovery.completedNow) {
+        this.soundManager?.playChime();
+        this.ui.showToast(LORE_COMPLETION_TEXT, 4200);
+      }
+    }));
     this.scene.pause();
   }
 

@@ -3,6 +3,8 @@ import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { MICROFILM_STARTS, MICROFILM_TARGETS, microfilmHint } from '../minigames/challengeRules';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
+import { addPaperPanel } from '../ui/paper';
+import { CSS, FONT } from '../ui/theme';
 
 export type SignalTuneData = { run: RunState; save: SaveSystem; onComplete: () => void };
 type Approach = 'empathy' | 'logic';
@@ -44,26 +46,25 @@ export class SignalTuneScene extends Phaser.Scene {
     this.draggingLayer = -1;
     this.registry.set('nativeState', 'signaltune');
 
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x030b15, 0.97);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x04060a, 0.78);
     if (this.textures.exists('bg1968A-mid')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1968A-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.11);
     }
-    this.add.text(GAME_WIDTH / 2, 32, 'ARSIP MIKROFILM — 1968', {
-      color: '#67e8f9', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
-      stroke: '#06131c', strokeThickness: 5,
+    addPaperPanel(this, 150, 88, 660, 380, { radius: 9 });
+    this.add.text(GAME_WIDTH / 2, 118, 'ARSIP MIKROFILM — 1968', {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '23px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 67, 'Sejajarkan tanda registrasi pada tiga lapisan untuk memulihkan arsip.', {
-      color: '#e0f2fe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    this.add.text(GAME_WIDTH / 2, 143, 'Sejajarkan tanda registrasi pada tiga lapisan untuk memulihkan arsip.', {
+      color: '#5A4A3C', fontFamily: FONT.META, fontSize: '13px',
     }).setOrigin(0.5);
 
     this.createApproachPanel();
     this.filmPanel = this.add.container(0, 0).setVisible(false);
-    this.status = this.add.text(GAME_WIDTH / 2, 438, 'Pilih cara membaca arsip.', {
-      backgroundColor: '#071521e8', color: '#bae6fd', fontFamily: 'Poppins, sans-serif',
-      fontSize: '13px', padding: { x: 18, y: 9 }, align: 'center',
+    this.status = this.add.text(GAME_WIDTH / 2, 444, 'Pilih cara membaca arsip.', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
     this.add.text(GAME_WIDTH / 2, 500, '↑/↓ — LAPISAN   •   ←/→ — GESER   •   SPACE / ENTER — KUNCI', {
-      color: '#94a3b8', fontFamily: 'Poppins, sans-serif', fontSize: '11px',
+      color: '#6A5B4B', fontFamily: FONT.META, fontSize: '11px',
     }).setOrigin(0.5);
 
     this.keys = this.input.keyboard?.addKeys({
@@ -132,31 +133,35 @@ export class SignalTuneScene extends Phaser.Scene {
     };
   }
 
+  /** Kartu pendekatan kertas legacy: wash merah + gores tinta bila terpilih. */
   private createApproachPanel(): void {
     this.choicePanel = this.add.container(0, 0);
-    const prompt = this.add.text(GAME_WIDTH / 2, 112, 'PILIH PENDEKATAN MEMBACA ARSIP:', {
-      color: '#f8fafc', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    const prompt = this.add.text(GAME_WIDTH / 2, 168, 'PILIH PENDEKATAN MEMBACA ARSIP:', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '17px', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.choicePanel.add(prompt);
     const definitions = [
-      { x: 310, title: 'EMPATI', desc: 'Cari jejak pribadi Arthur\ndi antara bingkai yang rusak.', color: 0x2b6b70 },
-      { x: 650, title: 'LOGIKA', desc: 'Cocokkan nomor registrasi\ndan tanda optik.', color: 0x28364f },
+      { x: 245, title: '1. EMPATI', desc: 'Cari jejak pribadi Arthur\ndi antara bingkai yang rusak.' },
+      { x: 565, title: '2. LOGIKA', desc: 'Cocokkan nomor registrasi\ndan tanda optik.' },
     ];
     definitions.forEach((entry, index) => {
-      const bg = this.add.rectangle(entry.x, 235, 300, 116, entry.color, 0.95)
-        .setStrokeStyle(index ? 2 : 3, index ? 0x67e8f9 : 0xf7d984, index ? 0.45 : 1)
+      const bg = this.add.rectangle(entry.x, 265, 290, 130, 0x5a4a3c, 0.06)
+        .setStrokeStyle(1.5, 0x2b211a, 0.4)
         .setInteractive({ useHandCursor: true }).on('pointerup', () => {
           this.selectApproach(index);
           this.startPlay();
         });
-      const title = this.add.text(entry.x, 205, entry.title, {
-        color: '#f8fafc', fontFamily: 'Cinzel, serif', fontSize: '16px', fontStyle: 'bold',
+      const title = this.add.text(entry.x, 232, entry.title, {
+        color: CSS.body, fontFamily: FONT.UI, fontSize: '17px',
       }).setOrigin(0.5);
-      const desc = this.add.text(entry.x, 252, entry.desc, {
-        color: '#dbeafe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '16px', align: 'center',
+      const desc = this.add.text(entry.x, 280, entry.desc, {
+        color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', align: 'center',
       }).setOrigin(0.5);
       this.choicePanel?.add([bg, title, desc]);
     });
+    this.add.text(GAME_WIDTH / 2, 398, '← → pilih  •  ENTER konfirmasi', {
+      color: '#6A5B4B', fontFamily: FONT.UI, fontSize: '14px',
+    }).setOrigin(0.5);
   }
 
   private selectApproach(index: number): void {
@@ -166,8 +171,11 @@ export class SignalTuneScene extends Phaser.Scene {
     if (!this.choicePanel) return;
     [1, 4].forEach((childIndex, optionIndex) => {
       const bg = this.choicePanel?.getAt(childIndex) as Phaser.GameObjects.Rectangle;
+      const title = this.choicePanel?.getAt(childIndex + 1) as Phaser.GameObjects.Text;
       const selected = optionIndex === this.selectedApproach;
-      bg.setStrokeStyle(selected ? 3 : 2, selected ? 0xf7d984 : 0x67e8f9, selected ? 1 : 0.45);
+      bg.setFillStyle(selected ? 0x94342e : 0x5a4a3c, selected ? 0.13 : 0.06);
+      bg.setStrokeStyle(selected ? 3 : 1.5, 0x94342e, selected ? 1 : 0.4);
+      title?.setFontStyle(selected ? 'bold' : 'normal');
     });
   }
 
@@ -177,7 +185,7 @@ export class SignalTuneScene extends Phaser.Scene {
     this.stage = 'play';
     this.choicePanel?.setVisible(false);
     this.filmPanel?.setVisible(true);
-    this.status?.setText('LAPISAN 1/3 — GESER TANDA KUNING KE GARIS TENGAH').setColor('#bae6fd');
+    this.status?.setText('LAPISAN 1/3 — GESER TANDA KUNING KE GARIS TENGAH').setColor(CSS.body);
     this.soundManager?.playConfirm();
     this.renderFilms();
   }
@@ -207,7 +215,7 @@ export class SignalTuneScene extends Phaser.Scene {
       const direction = microfilmHint(this.positions[index], MICROFILM_TARGETS[index]);
       this.status?.setText(this.assisted
         ? `REGISTRASI BELUM PAS — GESER ${direction > 0 ? 'KE KANAN' : 'KE KIRI'}`
-        : 'TANDA REGISTRASI BELUM BERIMPIT DENGAN GARIS TENGAH').setColor('#fca5a5');
+        : 'TANDA REGISTRASI BELUM BERIMPIT DENGAN GARIS TENGAH').setColor(CSS.redBright);
       this.soundManager?.playErrorBuzz();
       this.renderFilms();
       return;
@@ -220,21 +228,21 @@ export class SignalTuneScene extends Phaser.Scene {
       return;
     }
     this.selectedLayer = this.locked.findIndex(locked => !locked);
-    this.status?.setText(`LAPISAN ${this.locked.filter(Boolean).length}/3 TERKUNCI — LANJUTKAN REGISTRASI`).setColor('#86efac');
+    this.status?.setText(`LAPISAN ${this.locked.filter(Boolean).length}/3 TERKUNCI — LANJUTKAN REGISTRASI`).setColor(CSS.green);
     this.renderFilms();
   }
 
   private renderFilms(): void {
     if (!this.filmPanel || this.stage !== 'play') return;
     this.filmPanel.removeAll(true);
-    const colors = [0x67e8f9, 0xf7d984, 0xf472b6];
+    const colors = [0x5d91a9, 0xb98a3d, 0x94342e];
 
     for (let index = 0; index < 3; index += 1) {
       const y = 165 + index * 92;
       const selected = index === this.selectedLayer;
-      const color = this.locked[index] ? 0x86efac : colors[index];
-      const film = this.add.rectangle(GAME_WIDTH / 2, y, 570, 70, 0x102b3a, 0.82)
-        .setStrokeStyle(selected ? 3 : 2, color, selected ? 1 : 0.55)
+      const color = this.locked[index] ? 0x567a61 : colors[index];
+      const film = this.add.rectangle(GAME_WIDTH / 2, y, 570, 70, 0x1a2630, 0.88)
+        .setStrokeStyle(selected ? 3 : 1.6, color, selected ? 1 : 0.55)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', (pointer: Phaser.Input.Pointer) => {
           if (this.locked[index]) return;
@@ -256,12 +264,12 @@ export class SignalTuneScene extends Phaser.Scene {
       this.filmPanel.add(this.add.rectangle(notchX, y, 7, 42, color, 0.95));
       this.filmPanel.add(this.add.rectangle(GAME_WIDTH / 2, y, 3, 62, 0xffffff, 0.8));
       this.filmPanel.add(this.add.text(180, y, `${index + 1}`, {
-        color: '#e0f2fe', fontFamily: 'Cinzel, serif', fontSize: '18px', fontStyle: 'bold',
+        color: CSS.body, fontFamily: FONT.TITLE, fontSize: '18px', fontStyle: 'bold',
       }).setOrigin(0.5));
       if (this.assisted && selected && !this.locked[index]) {
         const direction = microfilmHint(this.positions[index], MICROFILM_TARGETS[index]);
         this.filmPanel.add(this.add.text(775, y, direction > 0 ? '→' : direction < 0 ? '←' : '✓', {
-          color: '#facc15', fontFamily: 'Poppins, sans-serif', fontSize: '28px', fontStyle: 'bold',
+          color: '#b98a3d', fontFamily: FONT.UI, fontSize: '26px', fontStyle: 'bold',
         }).setOrigin(0.5));
       }
       this.addFilmButton(128, y, '‹', () => this.shiftLayer(index, -1));
@@ -272,10 +280,10 @@ export class SignalTuneScene extends Phaser.Scene {
 
   private addFilmButton(x: number, y: number, label: string, action: () => void, width = 42): void {
     if (!this.filmPanel) return;
-    const bg = this.add.rectangle(x, y, width, 36, 0x0c4a6e, 0.95)
-      .setStrokeStyle(2, 0x67e8f9, 0.7).setInteractive({ useHandCursor: true }).on('pointerup', action);
+    const bg = this.add.rectangle(x, y, width, 36, 0x94342e, 0.95)
+      .setStrokeStyle(1.5, 0x6d211d, 1).setInteractive({ useHandCursor: true }).on('pointerup', action);
     const text = this.add.text(x, y, label, {
-      color: '#f8fafc', fontFamily: 'Poppins, sans-serif', fontSize: label.length > 2 ? '10px' : '18px', fontStyle: 'bold',
+      color: '#FFF8EA', fontFamily: FONT.UI, fontSize: label.length > 2 ? '10px' : '18px', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.filmPanel.add([bg, text]);
   }
@@ -286,13 +294,18 @@ export class SignalTuneScene extends Phaser.Scene {
     this.tuneData.run[this.approach] += 1;
     this.tuneData.save.saveCycle('1968', this.tuneData.run);
     this.filmPanel?.removeAll(true);
-    this.status?.setText('TIGA LAPISAN SELARAS — ARSIP ARTHUR PROJECT DIPULIHKAN').setColor('#86efac');
-    this.add.text(GAME_WIDTH / 2, 255, 'ARSIP TERPULIHKAN', {
-      color: '#a5f3fc', fontFamily: 'Cinzel, serif', fontSize: '30px', fontStyle: 'bold',
-      stroke: '#083344', strokeThickness: 6,
+
+    // kartu sukses kertas legacy
+    this.add.rectangle(GAME_WIDTH / 2, 275, 660, 180, 0xf3eada, 0.96);
+    this.add.text(GAME_WIDTH / 2, 235, 'ARSIP TERPULIHKAN', {
+      color: CSS.green, fontFamily: FONT.UI, fontSize: '27px', fontStyle: 'bold',
     }).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 285, 'Tiga lapisan mikrofilm kembali selaras.', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '16px',
+    }).setOrigin(0.5);
+    this.status?.setVisible(false);
     this.soundManager?.playSuccessFanfare();
-    this.time.delayedCall(900, () => {
+    this.time.delayedCall(1000, () => {
       this.scene.stop();
       this.tuneData.onComplete();
     });

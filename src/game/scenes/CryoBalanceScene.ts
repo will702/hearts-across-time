@@ -8,6 +8,8 @@ import {
   isCircuitComplete,
 } from '../minigames/challengeRules';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
+import { addPaperPanel } from '../ui/paper';
+import { CSS, FONT } from '../ui/theme';
 
 export type CryoBalanceData = {
   run: RunState;
@@ -16,7 +18,7 @@ export type CryoBalanceData = {
 };
 
 const CELL_SIZE = 82;
-const GRID_TOP = 116;
+const GRID_TOP = 136;
 
 export class CryoBalanceScene extends Phaser.Scene {
   private balanceData!: CryoBalanceData;
@@ -51,25 +53,24 @@ export class CryoBalanceScene extends Phaser.Scene {
     this.testFailures = 0;
     this.assisted = false;
 
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x040810, 0.97);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x04060a, 0.8);
     if (this.textures.exists('bg1999-mid')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1999-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.1);
     }
-    this.add.text(GAME_WIDTH / 2, 34, 'SIRKUIT PENDINGIN KAPSUL — 1999', {
-      color: '#67e8f9', fontFamily: 'Cinzel, serif', fontSize: '24px', fontStyle: 'bold',
-      stroke: '#083344', strokeThickness: 5,
+    addPaperPanel(this, 150, 60, 660, 374, { radius: 9 });
+    this.add.text(GAME_WIDTH / 2, 88, 'SIRKUIT PENDINGIN KAPSUL — 1999', {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '23px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 68, 'Sambungkan daya, pendingin, dan serum tanpa jalur bocor.', {
-      color: '#cffafe', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    this.add.text(GAME_WIDTH / 2, 113, 'Sambungkan daya, pendingin, dan serum tanpa jalur bocor.', {
+      color: '#5A4A3C', fontFamily: FONT.META, fontSize: '13px',
     }).setOrigin(0.5);
 
     this.boardContainer = this.add.container(0, 0).setVisible(false);
-    this.statusText = this.add.text(GAME_WIDTH / 2, 426, 'Pilih prioritas pemulihan kapsul.', {
-      backgroundColor: '#071521e8', color: '#67e8f9', fontFamily: 'Poppins, sans-serif',
-      fontSize: '13px', padding: { x: 18, y: 9 }, align: 'center',
+    this.statusText = this.add.text(GAME_WIDTH / 2, 448, 'Pilih prioritas pemulihan kapsul.', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
     this.add.text(GAME_WIDTH / 2, 500, 'PANAH / WASD — FOKUS   •   SPACE — PUTAR   •   ENTER — UJI ALIRAN', {
-      color: '#94a3b8', fontFamily: 'Poppins, sans-serif', fontSize: '11px',
+      color: '#6A5B4B', fontFamily: FONT.META, fontSize: '11px',
     }).setOrigin(0.5);
 
     this.createChooseUI();
@@ -133,31 +134,35 @@ export class CryoBalanceScene extends Phaser.Scene {
     };
   }
 
+  /** Kartu pendekatan kertas legacy: wash merah + gores tinta bila terpilih. */
   private createChooseUI(): void {
     this.chooseContainer = this.add.container(0, 0);
-    const subtitle = this.add.text(GAME_WIDTH / 2, 112, 'PILIH PRIORITAS PEMULIHAN KAPSUL:', {
-      color: '#fffbf0', fontFamily: 'Patrick Hand, sans-serif', fontSize: '18px',
+    const subtitle = this.add.text(GAME_WIDTH / 2, 152, 'PILIH PRIORITAS PEMULIHAN KAPSUL:', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '17px', fontStyle: 'bold',
     }).setOrigin(0.5);
     const entries = [
-      { x: 310, title: '1. EMPATI', desc: 'Pulihkan jalur penunjang hidup dahulu.\n(Menjaga Arthur tetap aman)', color: 0x9f1239 },
-      { x: 650, title: '2. LOGIKA', desc: 'Pulihkan sistem sesuai dependensi.\n(Menjaga formula tetap murni)', color: 0x0e7490 },
+      { x: 245, title: '1. EMPATI', desc: 'Pulihkan jalur penunjang hidup dahulu.\n(Menjaga Arthur tetap aman)' },
+      { x: 565, title: '2. LOGIKA', desc: 'Pulihkan sistem sesuai dependensi.\n(Menjaga formula tetap murni)' },
     ];
     entries.forEach((entry, index) => {
-      const bg = this.add.rectangle(entry.x, 230, 310, 116, entry.color, 0.95)
-        .setStrokeStyle(index ? 2 : 3, index ? 0x155e75 : 0xf7d984)
+      const bg = this.add.rectangle(entry.x, 250, 290, 130, 0x5a4a3c, 0.06)
+        .setStrokeStyle(1.5, 0x2b211a, 0.4)
         .setInteractive({ useHandCursor: true }).on('pointerup', () => {
           this.selectApproach(index);
           this.startPlay();
         });
-      const title = this.add.text(entry.x, 197, entry.title, {
-        color: '#fff', fontFamily: 'Cinzel, serif', fontSize: '15px', fontStyle: 'bold',
+      const title = this.add.text(entry.x, 217, entry.title, {
+        color: CSS.body, fontFamily: FONT.UI, fontSize: '17px',
       }).setOrigin(0.5);
-      const desc = this.add.text(entry.x, 245, entry.desc, {
-        color: '#fff', fontFamily: 'Patrick Hand, sans-serif', fontSize: '14px', align: 'center',
+      const desc = this.add.text(entry.x, 265, entry.desc, {
+        color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', align: 'center',
       }).setOrigin(0.5);
       this.chooseContainer?.add([bg, title, desc]);
     });
     this.chooseContainer.add(subtitle);
+    this.add.text(GAME_WIDTH / 2, 384, '← → pilih  •  ENTER konfirmasi', {
+      color: '#6A5B4B', fontFamily: FONT.UI, fontSize: '14px',
+    }).setOrigin(0.5);
   }
 
   private selectApproach(index: number): void {
@@ -168,7 +173,10 @@ export class CryoBalanceScene extends Phaser.Scene {
     [0, 3].forEach((childIndex, optionIndex) => {
       const selected = optionIndex === this.selectedChoice;
       const bg = this.chooseContainer?.getAt(childIndex) as Phaser.GameObjects.Rectangle;
-      bg.setStrokeStyle(selected ? 3 : 2, selected ? 0xf7d984 : optionIndex ? 0x155e75 : 0xbe123c);
+      const title = this.chooseContainer?.getAt(childIndex + 1) as Phaser.GameObjects.Text;
+      bg.setFillStyle(selected ? 0x94342e : 0x5a4a3c, selected ? 0.13 : 0.06);
+      bg.setStrokeStyle(selected ? 3 : 1.5, 0x94342e, selected ? 1 : 0.4);
+      title?.setFontStyle(selected ? 'bold' : 'normal');
     });
   }
 
@@ -186,7 +194,7 @@ export class CryoBalanceScene extends Phaser.Scene {
     const board = CIRCUIT_BOARDS[this.system];
     this.rotations = board.tiles.map(tile => tile.initialRotation);
     this.focusIndex = board.tiles.findIndex(tile => tile.targetMask !== 0);
-    this.statusText?.setText(`SISTEM ${this.system + 1}/3 — ${board.label}: PUTAR KONDUIT, LALU UJI ALIRAN`).setColor('#67e8f9');
+    this.statusText?.setText(`SISTEM ${this.system + 1}/3 — ${board.label}: PUTAR KONDUIT, LALU UJI ALIRAN`).setColor(CSS.body);
     this.renderCircuit();
   }
 
@@ -226,7 +234,7 @@ export class CryoBalanceScene extends Phaser.Scene {
       this.soundManager?.playErrorBuzz();
       this.statusText?.setText(this.assisted
         ? 'ALIRAN BOCOR — KONDUIT YANG PERLU DIPERBAIKI DISOROT EMAS'
-        : 'ALIRAN TERPUTUS ATAU BOCOR — PERIKSA SAMBUNGAN').setColor('#fca5a5');
+        : 'ALIRAN TERPUTUS ATAU BOCOR — PERIKSA SAMBUNGAN').setColor(CSS.redBright);
       if (!this.registry.get('reduceMotion')) this.cameras.main.shake(130, 0.004);
       this.renderCircuit();
       return;
@@ -237,7 +245,7 @@ export class CryoBalanceScene extends Phaser.Scene {
       this.finish();
       return;
     }
-    this.statusText?.setText('ALIRAN STABIL — MENGALIHKAN KE SISTEM BERIKUTNYA').setColor('#86efac');
+    this.statusText?.setText('ALIRAN STABIL — MENGALIHKAN KE SISTEM BERIKUTNYA').setColor(CSS.green);
     this.time.delayedCall(420, () => {
       this.system += 1;
       this.startSystem();
@@ -249,7 +257,7 @@ export class CryoBalanceScene extends Phaser.Scene {
     this.boardContainer.removeAll(true);
     const board = CIRCUIT_BOARDS[this.system];
     const originX = (GAME_WIDTH - board.width * CELL_SIZE) / 2;
-    const colors = [0xfacc15, 0x22d3ee, 0xfb7185];
+    const colors = [0xb98a3d, 0x5d91a9, 0x94342e];
     const color = colors[this.system];
     const hint = this.assisted ? firstCircuitHint(board, this.rotations) : null;
 
@@ -260,9 +268,9 @@ export class CryoBalanceScene extends Phaser.Scene {
       const cy = GRID_TOP + y * CELL_SIZE + CELL_SIZE / 2;
       const active = tile.targetMask !== 0;
       const selected = index === this.focusIndex;
-      const cell = this.add.rectangle(cx, cy, CELL_SIZE - 7, CELL_SIZE - 7, active ? 0x0c2430 : 0x07131c, active ? 0.98 : 0.55)
-        .setStrokeStyle(index === hint ? 4 : selected ? 3 : 1,
-          index === hint ? 0xfacc15 : selected ? 0xffffff : 0x155e75,
+      const cell = this.add.rectangle(cx, cy, CELL_SIZE - 7, CELL_SIZE - 7, active ? 0x14202a : 0x0d151c, active ? 0.96 : 0.5)
+        .setStrokeStyle(index === hint ? 4 : selected ? 3 : 1.2,
+          index === hint ? 0xb98a3d : selected ? 0xf3eada : 0x2b211a,
           active ? 1 : 0.35);
       if (active) cell.setInteractive({ useHandCursor: true }).on('pointerup', () => this.rotateTile(index));
       this.boardContainer?.add(cell);
@@ -270,7 +278,7 @@ export class CryoBalanceScene extends Phaser.Scene {
 
       const mask = circuitMask(board, this.rotations, index);
       const pipe = this.add.graphics();
-      pipe.lineStyle(13, 0x082f49, 1);
+      pipe.lineStyle(13, 0x101c24, 1);
       pipe.lineBetween(cx, cy, cx, cy);
       pipe.lineStyle(9, color, 0.95);
       if (mask & 1) pipe.lineBetween(cx, cy, cx, cy - CELL_SIZE / 2 + 4);
@@ -283,16 +291,16 @@ export class CryoBalanceScene extends Phaser.Scene {
 
       if (index === board.sourceIndex || index === board.sinkIndex) {
         const label = this.add.text(cx, cy, index === board.sourceIndex ? 'S' : 'K', {
-          color: '#020617', fontFamily: 'Poppins, sans-serif', fontSize: '11px', fontStyle: 'bold',
+          color: '#1a1410', fontFamily: FONT.UI, fontSize: '11px', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.boardContainer?.add(label);
       }
     });
 
-    const testButton = this.add.rectangle(GAME_WIDTH / 2, 390, 210, 40, 0x0e7490, 0.96)
-      .setStrokeStyle(2, 0x67e8f9).setInteractive({ useHandCursor: true }).on('pointerup', () => this.testFlow());
-    const testLabel = this.add.text(GAME_WIDTH / 2, 390, 'UJI ALIRAN', {
-      color: '#fff', fontFamily: 'Poppins, sans-serif', fontSize: '13px', fontStyle: 'bold',
+    const testButton = this.add.rectangle(GAME_WIDTH / 2, 396, 210, 40, 0x94342e, 0.96)
+      .setStrokeStyle(1.5, 0x6d211d).setInteractive({ useHandCursor: true }).on('pointerup', () => this.testFlow());
+    const testLabel = this.add.text(GAME_WIDTH / 2, 396, 'UJI ALIRAN', {
+      color: '#FFF8EA', fontFamily: FONT.UI, fontSize: '13px', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.boardContainer.add([testButton, testLabel]);
   }
@@ -303,9 +311,18 @@ export class CryoBalanceScene extends Phaser.Scene {
     this.balanceData.run[this.chosenApproach] += 1;
     this.balanceData.save.saveCycle('1999', this.balanceData.run);
     this.boardContainer?.removeAll(true);
-    this.statusText?.setText('DAYA, PENDINGIN, DAN SERUM TERSAMBUNG — KAPSUL SIAP DIBUKA').setColor('#86efac');
+
+    // kartu sukses kertas legacy
+    this.add.rectangle(GAME_WIDTH / 2, 265, 660, 170, 0xf3eada, 0.96);
+    this.add.text(GAME_WIDTH / 2, 228, 'KAPSUL STABIL', {
+      color: CSS.green, fontFamily: FONT.UI, fontSize: '27px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, 275, 'Daya, pendingin, dan serum tersambung tanpa bocor.', {
+      color: CSS.body, fontFamily: FONT.UI, fontSize: '16px',
+    }).setOrigin(0.5);
+    this.statusText?.setVisible(false);
     this.soundManager?.playSuccessFanfare();
-    this.time.delayedCall(950, () => {
+    this.time.delayedCall(1000, () => {
       this.scene.stop();
       this.balanceData.onComplete();
     });

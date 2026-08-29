@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { Player } from '../entities/Player';
 import { LORE_COMPLETION_TEXT, isLoreId, recordLoreInspection } from '../narrative/lore';
+import type { CharacterId, Expression } from '../narrative/storyScript';
+import { EraGradeSystem } from '../systems/EraGradeSystem';
 import { InputSystem } from '../systems/InputSystem';
 import { InteractionSystem } from '../systems/InteractionSystem';
 import { LoopEchoTrail } from '../systems/LoopEchoTrail';
@@ -11,6 +13,8 @@ import { ERA_1944 } from '../world/era1944';
 import { WorldFactory } from '../world/WorldFactory';
 import type { WorldObject } from '../world/WorldObject';
 import type { WorldAction, WorldState } from '../world/worldTypes';
+import type { DialogueSceneData } from './DialogueScene';
+import { EraSpeakerRig } from './eraSpeakerRig';
 import type { UIScene } from './UIScene';
 import { playArrivalSequence } from './playArrivalSequence';
 
@@ -36,6 +40,7 @@ export class Era1944Scene extends Phaser.Scene {
   private lookAhead = 0;
   private touchControls = false;
   private echo?: LoopEchoTrail;
+  private grade?: EraGradeSystem;
   private arrivalActive = false;
 
   constructor() {
@@ -57,6 +62,7 @@ export class Era1944Scene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, ERA_1944.width, ERA_1944.height);
     this.cameras.main.setBounds(0, 0, ERA_1944.width, ERA_1944.height);
     this.createWorldLayers();
+    this.grade = new EraGradeSystem(this, '1944');
 
     this.surfaces = new SurfaceSystem(this);
     const spawnX = this.validSpawnX(data.playerX);
@@ -75,7 +81,7 @@ export class Era1944Scene extends Phaser.Scene {
 
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
-    this.scene.launch('UIScene', { input: this.controls, eraTitle: 'BABAK 1 — 1944', run: this.run });
+    this.scene.launch('UIScene', { input: this.controls, eraTitle: 'BABAK 1 — GARIS DEPAN, 1944', run: this.run });
     this.ui = this.scene.get('UIScene') as UIScene;
     this.lastSavedX = spawnX;
     this.save.saveCycle('1944', this.run, spawnX);
@@ -106,19 +112,34 @@ export class Era1944Scene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
     this.ui.setModal(false);
-    this.scene.launch('DialogueScene', {
-      nodeId: 'war_intro',
-      run: this.run,
-      onComplete: () => {
-        this.scene.resume();
-        this.controls.setEnabled(true);
-        this.registry.set('nativeState', 'era1944');
-      },
-    });
+    this.scene.launch('DialogueScene', this.dialoguePayload('war_intro', () => {
+      this.scene.resume();
+      this.controls.setEnabled(true);
+      this.registry.set('nativeState', 'era1944');
+    }));
     this.scene.pause();
   }
 
-  update(_time: number, delta: number): void {
+  /** Payload DialogueScene lengkap dengan jangkar balon komik era ini. */
+  private dialoguePayload(
+    nodeId: string,
+    onComplete: DialogueSceneData['onComplete'],
+  ): DialogueSceneData {
+    const arthur = this.objects.find(object => object.definition.id === 'arthur');
+    const rig = new EraSpeakerRig(this.cameras.main, this.player, arthur?.visual, 'muda');
+    return {
+      nodeId,
+      run: this.run,
+      speakerAnchor: (who: CharacterId) => rig.anchor(who),
+      setSpeakerExpression: (who: CharacterId, expr: Expression) => rig.setExpression(who, expr),
+      speakerVisual: who => rig.visual(who),
+      resetSpeakers: () => rig.reset(),
+      onComplete,
+    };
+  }
+
+  update(time: number, delta: number): void {
+    this.grade?.update(time);
     const input = this.controls.read();
     this.player.updatePlayer(input, delta);
     if (this.arrivalActive) return;
@@ -271,19 +292,15 @@ export class Era1944Scene extends Phaser.Scene {
     this.controls.setEnabled(false);
     this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
     this.ui.setPrompt('');
-    this.scene.launch('DialogueScene', {
-      nodeId: id,
-      run: this.run,
-      onComplete: () => {
-        this.scene.resume();
-        this.controls.setEnabled(true);
-        this.registry.set('nativeState', 'era1944');
-        if (discovery.completedNow) {
-          this.soundManager?.playChime();
-          this.ui.showToast(LORE_COMPLETION_TEXT, 4200);
-        }
-      },
-    });
+    this.scene.launch('DialogueScene', this.dialoguePayload(id, () => {
+      this.scene.resume();
+      this.controls.setEnabled(true);
+      this.registry.set('nativeState', 'era1944');
+      if (discovery.completedNow) {
+        this.soundManager?.playChime();
+        this.ui.showToast(LORE_COMPLETION_TEXT, 4200);
+      }
+    }));
     this.scene.pause();
   }
 
@@ -329,19 +346,15 @@ export class Era1944Scene extends Phaser.Scene {
   private openArthurDialogue(): void {
     this.controls.setEnabled(false);
     this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
-    this.scene.launch('DialogueScene', {
-      nodeId: 'n_b1',
-      run: this.run,
-      onComplete: (res?: { type: string; to?: string }) => {
-        if (res?.type === 'vortex' || res?.to === '1968') {
-          this.scene.start('VortexScene', { to: '1968', run: this.run });
-        } else {
-          this.scene.resume();
-          this.controls.setEnabled(true);
-          this.registry.set('nativeState', 'era1944');
-        }
-      },
-    });
+    this.scene.launch('DialogueScene', this.dialoguePayload('n_b1', (res?: { type: string; to?: string }) => {
+      if (res?.type === 'vortex' || res?.to === '1968') {
+        this.scene.start('VortexScene', { to: '1968', run: this.run });
+      } else {
+        this.scene.resume();
+        this.controls.setEnabled(true);
+        this.registry.set('nativeState', 'era1944');
+      }
+    }));
     this.scene.pause();
   }
 
@@ -356,6 +369,8 @@ export class Era1944Scene extends Phaser.Scene {
     this.scene.stop('DialogueScene');
     this.scene.stop('UIScene');
     this.controls?.destroy();
+    this.grade?.destroy();
+    this.grade = undefined;
     this.surfaces?.destroy();
     this.worldFactory?.destroy(this.objects);
     this.objects = [];

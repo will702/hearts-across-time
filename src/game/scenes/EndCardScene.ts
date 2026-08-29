@@ -1,22 +1,31 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
-import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { GAME_HEIGHT, GAME_WIDTH, GROUND_Y } from '../config';
 import { buildRunRecap, deriveEndingProgress, type EndingProgress, type RunRecap } from '../minigames/endingProgress';
 import { LORE_COMPLETION_TEXT } from '../narrative/lore';
-import { defaultRun, type RunState, type SaveSystem } from '../systems/SaveSystem';
+import { defaultRun, type RunState, SaveSystem } from '../systems/SaveSystem';
+import { ensureFrostTexture } from '../ui/paper';
+import { FONT } from '../ui/theme';
 
 export type EndCardData = {
   run?: RunState;
 };
 
-const STORY_PANEL = { x: 38, y: 110, w: 424, h: 252 } as const;
-const RECAP_PANEL = { x: 484, y: 110, w: 438, h: 252 } as const;
+interface RisingHeart {
+  gfx: Phaser.GameObjects.Graphics;
+  vy: number;
+  sway: number;
+  born: number;
+}
 
 export class EndCardScene extends Phaser.Scene {
   private save!: SaveSystem;
   private soundManager?: SoundManager;
   private recap!: RunRecap;
   private endingProgress!: EndingProgress;
+  private elapsed = 0;
+  private hearts: RisingHeart[] = [];
+  private replayText?: Phaser.GameObjects.Text;
 
   constructor() {
     super('EndCardScene');
@@ -26,6 +35,8 @@ export class EndCardScene extends Phaser.Scene {
     this.save = this.registry.get('saveSystem') as SaveSystem;
     this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'endcard');
+    this.elapsed = 0;
+    this.hearts = [];
 
     const run = data.run ?? this.save.data.game?.S ?? defaultRun();
     this.recap = buildRunRecap(run, this.save.data.inspected);
@@ -38,12 +49,36 @@ export class EndCardScene extends Phaser.Scene {
     this.soundManager?.playSuccessFanfare();
 
     this.renderBackground();
-    this.renderStoryPanel();
-    this.renderRecapPanel();
-    this.renderFooter();
+    this.renderTitles();
+    this.renderStats();
+
+    // ▸ MAIN LAGI berkedip setelah 2.6 detik (legacy)
+    this.replayText = this.add.text(GAME_WIDTH / 2, 452, '▸ MAIN LAGI (ENTER / SENTUH)', {
+      color: 'rgba(245,240,232,.75)', fontFamily: FONT.UI, fontSize: '15.5px',
+    }).setOrigin(0.5).setVisible(false);
+    this.time.delayedCall(2600, () => {
+      this.replayText?.setVisible(true);
+      this.time.addEvent({
+        delay: 500,
+        loop: true,
+        callback: () => this.replayText?.setVisible(!this.replayText?.visible),
+      });
+    });
+
+    // bingkai ganda kartu komik penutup (legacy)
+    const frame = this.add.graphics();
+    frame.lineStyle(2.6, 0x16100a, 0.6);
+    frame.strokeRoundedRect(10, 10, GAME_WIDTH - 20, GAME_HEIGHT - 20, 6);
+    frame.lineStyle(1, 0x16100a, 0.35);
+    frame.strokeRoundedRect(16, 16, GAME_WIDTH - 32, GAME_HEIGHT - 32, 4);
+
+    if (!this.registry.get('reduceMotion')) {
+      this.time.addEvent({ delay: 340, loop: true, callback: () => this.spawnHeart() });
+    }
 
     this.input.keyboard?.once('keydown-SPACE', () => this.goToTitle());
     this.input.keyboard?.once('keydown-ENTER', () => this.goToTitle());
+    this.input.once('pointerup', () => this.goToTitle());
   }
 
   snapshot(): Record<string, unknown> {
@@ -57,187 +92,148 @@ export class EndCardScene extends Phaser.Scene {
     };
   }
 
-  private renderBackground(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x090408, 1);
-    if (this.textures.exists('bonus-city-complete')) {
-      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bonus-city-complete')
-        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
-        .setAlpha(0.72);
+  update(_time: number, delta: number): void {
+    this.elapsed += delta / 1000;
+    for (let i = this.hearts.length - 1; i >= 0; i -= 1) {
+      const heart = this.hearts[i];
+      heart.gfx.y += heart.vy * (delta / 1000);
+      heart.gfx.x += Math.sin(this.elapsed * 1.4 + heart.sway) * 0.18;
+      const life = this.elapsed - heart.born;
+      heart.gfx.setAlpha(Phaser.Math.Clamp(life * 1.4, 0, 0.8) * Phaser.Math.Clamp(1 - (life - 2.6) / 1.4, 0, 1));
+      if (heart.gfx.y < -20 || life > 4) {
+        heart.gfx.destroy();
+        this.hearts.splice(i, 1);
+      }
     }
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x090408, 0.52);
-    this.add.rectangle(GAME_WIDTH / 2, 40, GAME_WIDTH, 94, 0x090408, 0.62);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 49, GAME_WIDTH, 98, 0x090408, 0.62);
-
-    this.add.text(GAME_WIDTH / 2, 29, 'HEARTS ACROSS TIME', {
-      color: '#f6d57b',
-      fontFamily: 'Cinzel, serif',
-      fontSize: '29px',
-      fontStyle: 'bold',
-      stroke: '#280c0c',
-      strokeThickness: 6,
-    }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 63, 'BREAK THE LOOP • TRUE ENDING', {
-      color: '#fffbf0',
-      fontFamily: 'Poppins, sans-serif',
-      fontSize: '13px',
-      letterSpacing: 4,
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.add.text(
-      GAME_WIDTH / 2,
-      90,
-      this.endingProgress.complete
-        ? 'PUZZLE WAKTU 6/6 • KOTA 2088 PULIH'
-        : 'PUZZLE WAKTU ' + this.endingProgress.total + '/6 • AKHIR SEJATI TERCATAT',
-      {
-      color: '#1b1a16',
-      backgroundColor: '#f6d57be8',
-      fontFamily: 'Poppins, sans-serif',
-      fontSize: '11px',
-      fontStyle: 'bold',
-      padding: { x: 13, y: 4 },
-      },
-    ).setOrigin(0.5);
   }
 
-  private renderStoryPanel(): void {
-    this.add.rectangle(
-      STORY_PANEL.x + STORY_PANEL.w / 2,
-      STORY_PANEL.y + STORY_PANEL.h / 2,
-      STORY_PANEL.w,
-      STORY_PANEL.h,
-      0x140d12,
-      0.86,
-    ).setStrokeStyle(1, 0xd6b260, 0.4);
+  /** Laboratorium 1999 redup + Elena berlutut memegang vial + selaput beku. */
+  private renderBackground(): void {
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0a0806, 1);
+    if (this.textures.exists('lab-final')) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'lab-final')
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+        .setAlpha(0.8);
+    }
+    if (this.textures.exists('bg1999-fg')) {
+      this.add.image(0, GROUND_Y - 14, 'bg1999-fg').setOrigin(0).setDisplaySize(1120, 152);
+    }
 
-    this.add.text(STORY_PANEL.x + STORY_PANEL.w / 2, STORY_PANEL.y + 25, 'AKHIR SEJATI', {
-      color: '#f6d57b',
-      fontFamily: 'Cinzel, serif',
-      fontSize: '16px',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
+    if (this.textures.exists('pose-elena-kneel')) {
+      const pose = this.add.image(GAME_WIDTH / 2 - 60, GROUND_Y, 'pose-elena-kneel')
+        .setOrigin(0.5, 1);
+      pose.setScale(104 / pose.height);
+      this.add.ellipse(GAME_WIDTH / 2 - 60, GROUND_Y + 3, 40, 8, 0x0a0806, 0.28);
+    }
 
-    this.add.text(
-      STORY_PANEL.x + STORY_PANEL.w / 2,
-      STORY_PANEL.y + 116,
-      'Elena melompat kembali ke tahun 2088.\nVial antibodi murni disuntikkan ke tubuh Arthur.\nDetak jantungnya kembali berdegup stabil.\nLingkaran kutukan waktu telah resmi terputus.',
-      {
-        color: '#fef3c7',
-        fontFamily: 'Patrick Hand, sans-serif',
-        fontSize: '18px',
-        align: 'center',
-        lineSpacing: 6,
-        wordWrap: { width: STORY_PANEL.w - 44, useAdvancedWrap: true },
-      },
-    ).setOrigin(0.5);
-
-    this.add.text(STORY_PANEL.x + STORY_PANEL.w / 2, STORY_PANEL.y + 218, 'KOTA YANG UTUH MENJADI SAKSI TIMELINE BARU', {
-      color: '#bbf7d0',
-      fontFamily: 'Poppins, sans-serif',
-      fontSize: '10px',
-      fontStyle: 'bold',
-      letterSpacing: 1,
-      align: 'center',
-      wordWrap: { width: STORY_PANEL.w - 38, useAdvancedWrap: true },
-    }).setOrigin(0.5);
+    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, ensureFrostTexture(this))
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setAlpha(0.42);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0a0806, 0.55);
   }
 
-  private renderRecapPanel(): void {
-    this.add.rectangle(
-      RECAP_PANEL.x + RECAP_PANEL.w / 2,
-      RECAP_PANEL.y + RECAP_PANEL.h / 2,
-      RECAP_PANEL.w,
-      RECAP_PANEL.h,
-      0x11141a,
-      0.87,
-    ).setStrokeStyle(1, 0xd6b260, 0.4);
+  private renderTitles(): void {
+    const fade = (target: Phaser.GameObjects.Text, delay: number): void => {
+      target.setAlpha(0);
+      this.tweens.add({ targets: target, alpha: 1, duration: 500, delay });
+    };
 
-    this.add.text(RECAP_PANEL.x + RECAP_PANEL.w / 2, RECAP_PANEL.y + 23, 'JEJAK SIKLUS TERAKHIR', {
-      color: '#f6d57b',
-      fontFamily: 'Cinzel, serif',
-      fontSize: '15px',
-      fontStyle: 'bold',
+    fade(this.add.text(GAME_WIDTH / 2, 168, 'THE END', {
+      color: '#f5f0e8', fontFamily: 'Georgia, serif', fontSize: '26px', fontStyle: 'italic',
+    }).setOrigin(0.5), 0);
+
+    fade(this.add.text(GAME_WIDTH / 2, 208, 'HEARTS ACROSS TIME: BREAK THE LOOP', {
+      color: '#c23b3b', fontFamily: 'Georgia, serif', fontSize: '30px', fontStyle: 'bold',
+    }).setOrigin(0.5), 200);
+  }
+
+  /** Statistik afinitas tersembunyi terungkap + rekap siklus (legacy P4). */
+  private renderStats(): void {
+    const group = this.add.container(0, 0).setAlpha(0);
+    this.tweens.add({ targets: group, alpha: 1, duration: 700, delay: 1600 });
+
+    const cycle = this.add.text(GAME_WIDTH / 2, 286, `Siklus ditempuh : ${this.recap.loop}× loop`, {
+      color: 'rgba(245,240,232,.85)', fontFamily: FONT.UI, fontSize: '16px',
     }).setOrigin(0.5);
-    this.add.text(RECAP_PANEL.x + 20, RECAP_PANEL.y + 47, 'LOOP DITEMPUH  ' + this.recap.loop + '×', {
-      color: '#e7e5e4', fontFamily: 'Poppins, sans-serif', fontSize: '11px', fontStyle: 'bold',
+    group.add(cycle);
+
+    const total = Math.max(1, this.recap.empathy + this.recap.logic);
+    group.add(this.affinityBar('EMPATI', this.recap.empathy, total, 315, 0xa85550));
+    group.add(this.affinityBar('LOGIKA', this.recap.logic, total, 341, 0x556b7f));
+
+    // chip rute + pendekatan tantangan (inkTag legacy)
+    const chips: Array<{ label: string; color: number }> = [];
+    this.recap.routes.forEach(route => chips.push({ label: route, color: 0x55614c }));
+    this.recap.challenges.forEach(entry => {
+      if (entry.result === 'empathy') chips.push({ label: `${entry.era} EMPATI`, color: 0x7e4a46 });
+      else if (entry.result === 'logic') chips.push({ label: `${entry.era} LOGIKA`, color: 0x48596b });
     });
-
-    const affinityTotal = Math.max(1, this.recap.empathy + this.recap.logic);
-    this.drawAffinityBar('EMPATI', this.recap.empathy, affinityTotal, RECAP_PANEL.y + 68, 0xa85550);
-    this.drawAffinityBar('LOGIKA', this.recap.logic, affinityTotal, RECAP_PANEL.y + 99, 0x556b7f);
-
-    this.add.text(RECAP_PANEL.x + RECAP_PANEL.w / 2, RECAP_PANEL.y + 139, this.recap.routes.join('  •  '), {
-      color: '#dbe7d7',
-      fontFamily: 'Poppins, sans-serif',
-      fontSize: '11px',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-
-    const tagWidth = 116;
-    this.recap.challenges.forEach((entry, index) => {
-      const result = entry.result === 'empathy' ? 'EMPATI' : entry.result === 'logic' ? 'LOGIKA' : 'BELUM';
-      const color = entry.result === 'empathy' ? 0x7e4a46 : entry.result === 'logic' ? 0x48596b : 0x3f3f46;
-      const cx = RECAP_PANEL.x + 24 + tagWidth / 2 + index * (tagWidth + 11);
-      this.add.rectangle(cx, RECAP_PANEL.y + 172, tagWidth, 34, color, 0.9)
-        .setStrokeStyle(1, 0xffffff, 0.18);
-      this.add.text(cx, RECAP_PANEL.y + 172, entry.era + ' • ' + result, {
-        color: '#fffaf0',
-        fontFamily: 'Poppins, sans-serif',
-        fontSize: '9px',
-        fontStyle: 'bold',
+    const chipW = chips.map(chip => chip.label.length * 6 + 20);
+    const totalW = chipW.reduce((sum, w) => sum + w, 0) + Math.max(0, chips.length - 1) * 8;
+    let cx = GAME_WIDTH / 2 - totalW / 2;
+    chips.forEach((chip, i) => {
+      const tag = this.add.graphics();
+      tag.fillStyle(chip.color, 1);
+      tag.fillRoundedRect(cx, 360, chipW[i], 19, 4);
+      tag.lineStyle(1.4, 0x1e1710, 1);
+      tag.strokeRoundedRect(cx, 360, chipW[i], 19, 4);
+      const label = this.add.text(cx + chipW[i] / 2, 369.5, chip.label, {
+        color: '#F3EADA', fontFamily: FONT.UI, fontSize: '10.5px', fontStyle: 'bold',
       }).setOrigin(0.5);
+      group.add([tag, label]);
+      cx += chipW[i] + 8;
     });
 
-    const loreText = this.recap.loreComplete
-      ? LORE_COMPLETION_TEXT
-      : 'Jejak kisah ditemukan: ' + this.recap.loreFound + '/' + this.recap.loreTotal + '.';
-    this.add.text(RECAP_PANEL.x + RECAP_PANEL.w / 2, RECAP_PANEL.y + 221, loreText, {
-      color: this.recap.loreComplete ? '#fde68a' : '#cbd5e1',
-      fontFamily: this.recap.loreComplete ? 'Cinzel, serif' : 'Patrick Hand, sans-serif',
-      fontSize: this.recap.loreComplete ? '10px' : '12px',
-      fontStyle: this.recap.loreComplete ? 'italic' : 'normal',
-      align: 'center',
-      lineSpacing: 3,
-      wordWrap: { width: RECAP_PANEL.w - 40, useAdvancedWrap: true },
+    if (this.recap.loreComplete) {
+      const lore = this.add.text(GAME_WIDTH / 2, 397, `✦ ${LORE_COMPLETION_TEXT}`, {
+        color: '#F1D58B', fontFamily: 'Georgia, serif', fontSize: '13.5px', fontStyle: 'italic',
+        wordWrap: { width: 760, useAdvancedWrap: true }, align: 'center',
+      }).setOrigin(0.5);
+      group.add(lore);
+    }
+
+    const quote = this.add.text(GAME_WIDTH / 2, 422, '"...di tahun 2088, kita akan bertemu lagi sebagai dua orang biasa yang saling jatuh cinta."', {
+      color: 'rgba(245,240,232,.55)', fontFamily: 'Georgia, serif', fontSize: '13.5px', fontStyle: 'italic',
+      wordWrap: { width: 760, useAdvancedWrap: true }, align: 'center',
     }).setOrigin(0.5);
+    group.add(quote);
   }
 
-  private renderFooter(): void {
-    this.add.rectangle(GAME_WIDTH / 2, 407, 850, 66, 0x160d14, 0.84)
-      .setStrokeStyle(1, 0xd6b260, 0.42);
-    this.add.text(
-      GAME_WIDTH / 2,
-      407,
-      '“Dan suatu hari nanti... kita akan bertemu lagi sebagai dua orang biasa yang saling jatuh cinta.”',
-      {
-        color: '#fbcfe8',
-        fontFamily: 'Cinzel, serif',
-        fontSize: '14px',
-        fontStyle: 'italic',
-        align: 'center',
-        lineSpacing: 6,
-        wordWrap: { width: 770, useAdvancedWrap: true },
-      },
-    ).setOrigin(0.5);
-
-    this.add.text(GAME_WIDTH / 2, 492, 'KEMBALI KE MENU UTAMA (ENTER / SPACE)', {
-      backgroundColor: '#94342ecc',
-      color: '#fff',
-      fontFamily: 'Poppins, sans-serif',
-      fontSize: '14px',
-      padding: { x: 28, y: 11 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.goToTitle());
+  /** Batang afinitas tumbuh pelan ala tinta (legacy). */
+  private affinityBar(label: string, value: number, total: number, y: number, color: number): Phaser.GameObjects.Container {
+    const container = this.add.container(0, 0);
+    const barX = GAME_WIDTH / 2 - 160;
+    const labelText = this.add.text(GAME_WIDTH / 2 - 172, y + 4, label, {
+      color: 'rgba(245,240,232,.85)', fontFamily: FONT.UI, fontSize: '13px',
+    }).setOrigin(1, 0.5);
+    const track = this.add.graphics();
+    track.fillStyle(0xf5f0e8, 0.13);
+    track.fillRoundedRect(barX, y - 9, 300, 17, 8);
+    track.lineStyle(1.2, 0x16100a, 0.5);
+    track.strokeRoundedRect(barX, y - 9, 300, 17, 8);
+    const fillW = value > 0 ? Math.max(7, 300 * (value / total)) : 0;
+    const fill = this.add.graphics();
+    fill.fillStyle(color, 0.92);
+    fill.fillRoundedRect(barX, y - 9, fillW, 17, 8);
+    const count = this.add.text(barX + 8 + Math.min(fillW, 284), y + 3.5, String(value), {
+      color: 'rgba(245,240,232,.75)', fontFamily: FONT.META, fontSize: '11px',
+    }).setOrigin(0, 0.5);
+    container.add([labelText, track, fill, count]);
+    return container;
   }
 
-  private drawAffinityBar(label: string, value: number, total: number, y: number, color: number): void {
-    const x = RECAP_PANEL.x + 20;
-    const width = RECAP_PANEL.w - 40;
-    this.add.text(x, y, label + '  ' + value, {
-      color: '#e7e5e4', fontFamily: 'Poppins, sans-serif', fontSize: '9px', fontStyle: 'bold',
-    });
-    this.add.rectangle(x + width / 2, y + 17, width, 9, 0x334155, 0.58).setStrokeStyle(1, 0xffffff, 0.12);
-    const fillWidth = value > 0 ? Math.max(6, width * value / total) : 0;
-    if (fillWidth > 0) this.add.rectangle(x + fillWidth / 2, y + 17, fillWidth, 9, color, 0.95);
+  /** Partikel hati pink/emas naik (drawParts heart legacy, digambar via Graphics). */
+  private spawnHeart(): void {
+    const gfx = this.add.graphics();
+    const pink = Math.random() < 0.6;
+    const s = 2.4 + Math.random() * 2.6;
+    const color = pink ? 0xf5c6d0 : 0xf1d58b;
+    gfx.fillStyle(color, 0.8);
+    gfx.fillCircle(-s * 0.5, -s * 0.35, s * 0.55);
+    gfx.fillCircle(s * 0.5, -s * 0.35, s * 0.55);
+    gfx.fillTriangle(-s * 1.02, -s * 0.1, s * 1.02, -s * 0.1, 0, s * 1.15);
+    gfx.setPosition(60 + Math.random() * (GAME_WIDTH - 120), GAME_HEIGHT + 12);
+    this.hearts.push({ gfx, vy: -(22 + Math.random() * 20), sway: Math.random() * 6.28, born: this.elapsed });
   }
 
   private goToTitle(): void {

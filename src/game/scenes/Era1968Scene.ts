@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { Player } from '../entities/Player';
 import { LORE_COMPLETION_TEXT, isLoreId, recordLoreInspection } from '../narrative/lore';
+import type { CharacterId, Expression } from '../narrative/storyScript';
 import { InputSystem } from '../systems/InputSystem';
 import { InteractionSystem } from '../systems/InteractionSystem';
 import { LoopEchoTrail } from '../systems/LoopEchoTrail';
@@ -11,6 +12,8 @@ import { ERA_1968, era1968ArthurAsset, era1968Title } from '../world/era1968';
 import { WorldFactory } from '../world/WorldFactory';
 import type { WorldObject } from '../world/WorldObject';
 import type { WorldAction, WorldState } from '../world/worldTypes';
+import type { DialogueSceneData } from './DialogueScene';
+import { EraSpeakerRig } from './eraSpeakerRig';
 import type { UIScene } from './UIScene';
 import { playArrivalSequence } from './playArrivalSequence';
 
@@ -257,21 +260,36 @@ export class Era1968Scene extends Phaser.Scene {
       }
       this.controls.setEnabled(false);
       this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
-      this.scene.launch('DialogueScene', {
-        nodeId: action.node,
-        run: this.run,
-        onComplete: (res?: { type: string; to?: string }) => {
-          if (res?.type === 'vortex' || res?.to === '1999') {
-            this.scene.start('VortexScene', { to: '1999', run: this.run });
-          } else {
-            this.scene.resume();
-            this.controls.setEnabled(true);
-            this.registry.set('nativeState', 'era1968');
-          }
-        },
-      });
+      this.scene.launch('DialogueScene', this.dialoguePayload(action.node, (res?: { type: string; to?: string }) => {
+        if (res?.type === 'vortex' || res?.to === '1999') {
+          this.scene.start('VortexScene', { to: '1999', run: this.run });
+        } else {
+          this.scene.resume();
+          this.controls.setEnabled(true);
+          this.registry.set('nativeState', 'era1968');
+        }
+      }));
       this.scene.pause();
     }
+  }
+
+  /** Payload DialogueScene lengkap dengan jangkar balon komik era ini. */
+  private dialoguePayload(
+    nodeId: string,
+    onComplete: DialogueSceneData['onComplete'],
+  ): DialogueSceneData {
+    const arthur = this.objects.find(object => object.definition.id === 'arthur');
+    const who: CharacterId = this.run.routeB1 === 'B' ? 'dewasa' : 'buron';
+    const rig = new EraSpeakerRig(this.cameras.main, this.player, arthur?.visual, who);
+    return {
+      nodeId,
+      run: this.run,
+      speakerAnchor: (speaker: CharacterId) => rig.anchor(speaker),
+      setSpeakerExpression: (speaker: CharacterId, expr: Expression) => rig.setExpression(speaker, expr),
+      speakerVisual: speaker => rig.visual(speaker),
+      resetSpeakers: () => rig.reset(),
+      onComplete,
+    };
   }
 
   private validSpawnX(savedX?: number): number {
@@ -292,6 +310,7 @@ export class Era1968Scene extends Phaser.Scene {
       startFocusX: this.run.routeB1 === 'B' ? 320 : 880,
       endFocusX: 520,
       groundY: ERA_1968.groundY,
+      backdrop: this.run.routeB1 === 'B' ? 'lab-military' : 'bunker-underground',
       onComplete: () => this.launchEntryDialogue(),
     });
   }
@@ -301,15 +320,14 @@ export class Era1968Scene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
     this.ui.setModal(false);
-    this.scene.launch('DialogueScene', {
-      nodeId: this.run.routeB1 === 'B' ? 'lab_intro' : 'bunker_intro',
-      run: this.run,
-      onComplete: () => {
+    this.scene.launch('DialogueScene', this.dialoguePayload(
+      this.run.routeB1 === 'B' ? 'lab_intro' : 'bunker_intro',
+      () => {
         this.scene.resume();
         this.controls.setEnabled(true);
         this.registry.set('nativeState', 'era1968');
       },
-    });
+    ));
     this.scene.pause();
   }
 
@@ -350,19 +368,15 @@ export class Era1968Scene extends Phaser.Scene {
     this.controls.setEnabled(false);
     this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
     this.ui.setPrompt('');
-    this.scene.launch('DialogueScene', {
-      nodeId: id,
-      run: this.run,
-      onComplete: () => {
-        this.scene.resume();
-        this.controls.setEnabled(true);
-        this.registry.set('nativeState', 'era1968');
-        if (discovery.completedNow) {
-          this.soundManager?.playChime();
-          this.ui.showToast(LORE_COMPLETION_TEXT, 4200);
-        }
-      },
-    });
+    this.scene.launch('DialogueScene', this.dialoguePayload(id, () => {
+      this.scene.resume();
+      this.controls.setEnabled(true);
+      this.registry.set('nativeState', 'era1968');
+      if (discovery.completedNow) {
+        this.soundManager?.playChime();
+        this.ui.showToast(LORE_COMPLETION_TEXT, 4200);
+      }
+    }));
     this.scene.pause();
   }
 
