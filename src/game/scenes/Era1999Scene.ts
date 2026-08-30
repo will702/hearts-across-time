@@ -170,11 +170,22 @@ export class Era1999Scene extends Phaser.Scene {
   private createWorldLayers(): void {
     this.add.rectangle(ERA_1999.width / 2, ERA_1999.height / 2, ERA_1999.width, ERA_1999.height, 0x091424).setDepth(-30);
 
-    if (this.textures.exists('bg1999-far')) {
-      this.add.image(0, ERA_1999.height, 'bg1999-far').setOrigin(0, 1).setDisplaySize(ERA_1999.width, ERA_1999.height).setScrollFactor(0.14).setDepth(-25);
+    if (this.textures.exists('lab-final')) {
+      this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, 'lab-final')
+        .setDisplaySize(VIEW_WIDTH, VIEW_HEIGHT)
+        .setScrollFactor(0)
+        .setDepth(-25);
+    } else if (this.textures.exists('bg1999-far')) {
+      const layer = this.add.image(0, ERA_1999.groundY, 'bg1999-far').setOrigin(0, 1);
+      const source = layer.texture.getSourceImage() as HTMLImageElement;
+      const fittedHeight = ERA_1999.width * source.height / source.width;
+      layer.setDisplaySize(ERA_1999.width, fittedHeight).setScrollFactor(0.14).setDepth(-25);
     }
     if (this.textures.exists('bg1999-mid')) {
-      this.add.image(0, ERA_1999.height, 'bg1999-mid').setOrigin(0, 1).setDisplaySize(ERA_1999.width, ERA_1999.height).setScrollFactor(0.45).setDepth(-20);
+      const layer = this.add.image(0, ERA_1999.groundY, 'bg1999-mid').setOrigin(0, 1);
+      const source = layer.texture.getSourceImage() as HTMLImageElement;
+      const fittedHeight = ERA_1999.width * source.height / source.width;
+      layer.setDisplaySize(ERA_1999.width, fittedHeight).setScrollFactor(0.45).setDepth(-20);
     }
 
     this.createAnimatedProp('prop-consoleWave1999', 380, 444, 82, 3.5, 438);

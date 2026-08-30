@@ -184,10 +184,16 @@ export class Era1968Scene extends Phaser.Scene {
     const bgFarKey = isLab ? 'bg1968B-far' : 'bg1968A-far';
     const bgMidKey = isLab ? 'bg1968B-mid' : 'bg1968A-mid';
     const bgFgKey = isLab ? 'bg1968B-fg' : 'bg1968A-fg';
+    const fullBackdropKey = isLab ? 'lab-military' : 'bunker-underground';
 
     this.add.rectangle(ERA_1968.width / 2, ERA_1968.height / 2, ERA_1968.width, ERA_1968.height, isLab ? 0x111c2e : 0x221a14).setDepth(-30);
 
-    if (this.textures.exists(bgFarKey)) {
+    if (this.textures.exists(fullBackdropKey)) {
+      this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, fullBackdropKey)
+        .setDisplaySize(VIEW_WIDTH, VIEW_HEIGHT)
+        .setScrollFactor(0)
+        .setDepth(-25);
+    } else if (this.textures.exists(bgFarKey)) {
       this.add.image(0, ERA_1968.height, bgFarKey)
         .setOrigin(0, 1)
         .setDisplaySize(ERA_1968.width, ERA_1968.height)
@@ -195,11 +201,10 @@ export class Era1968Scene extends Phaser.Scene {
         .setDepth(-25);
     }
     if (this.textures.exists(bgMidKey)) {
-      this.add.image(0, ERA_1968.groundY, bgMidKey)
-        .setOrigin(0, 1)
-        .setDisplaySize(ERA_1968.width, 250)
-        .setScrollFactor(0.45)
-        .setDepth(-20);
+      const layer = this.add.image(0, ERA_1968.groundY, bgMidKey).setOrigin(0, 1);
+      const source = layer.texture.getSourceImage() as HTMLImageElement;
+      const fittedHeight = ERA_1968.width * source.height / source.width;
+      layer.setDisplaySize(ERA_1968.width, fittedHeight).setScrollFactor(0.45).setDepth(-20);
     }
 
     if (isLab) {

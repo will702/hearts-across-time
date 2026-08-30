@@ -19,9 +19,10 @@ export type SpotlightChallengeData = {
   onComplete: () => void;
 };
 
-const CELL_SIZE = 62;
-const MAP_TOP = 182;
-const PANEL = { x: 150, y: 88, w: 660, h: 380 };
+const CELL_WIDTH = 74;
+const CELL_HEIGHT = 44;
+const MAP_TOP = 148;
+const PANEL = { x: 48, y: 36, w: 864, h: 468 };
 
 export class SpotlightChallengeScene extends Phaser.Scene {
   private challengeData!: SpotlightChallengeData;
@@ -64,18 +65,18 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1944-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.16);
     }
     addPaperPanel(this, PANEL.x, PANEL.y, PANEL.w, PANEL.h, { radius: 9 });
-    this.add.text(GAME_WIDTH / 2, 118, 'PETA EVAKUASI GARIS DEPAN — 1944', {
+    this.add.text(GAME_WIDTH / 2, 68, 'PETA EVAKUASI GARIS DEPAN — 1944', {
       color: CSS.red, fontFamily: FONT.UI, fontSize: '23px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 143, 'Temukan lingkaran pasien, lalu bawa ke titik merah tanpa memasuki sektor berbahaya.', {
+    this.add.text(GAME_WIDTH / 2, 98, 'Temukan lingkaran pasien, lalu bawa ke titik merah tanpa memasuki sektor berbahaya.', {
       color: '#5A4A3C', fontFamily: FONT.META, fontSize: '13px',
     }).setOrigin(0.5);
 
     this.boardContainer = this.add.container(0, 0).setVisible(false);
-    this.statusText = this.add.text(GAME_WIDTH / 2, 444, 'Pilih cara membaca medan evakuasi.', {
+    this.statusText = this.add.text(GAME_WIDTH / 2, 404, 'Pilih cara membaca medan evakuasi.', {
       color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 490, 'PANAH / WASD — FOKUS   •   SPACE / ENTER — PILIH   •   BACKSPACE — MUNDUR', {
+    this.add.text(GAME_WIDTH / 2, 474, 'PANAH / WASD — FOKUS   •   SPACE / ENTER — PILIH   •   BACKSPACE — MUNDUR', {
       color: '#6A5B4B', fontFamily: FONT.META, fontSize: '11px',
     }).setOrigin(0.5);
 
@@ -151,7 +152,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   /** Kartu pendekatan kertas legacy: wash merah + gores tinta bila terpilih. */
   private createChooseUI(): void {
     this.chooseContainer = this.add.container(0, 0);
-    const subtitle = this.add.text(GAME_WIDTH / 2, 168, 'PILIH PENDEKATAN EVAKUASI:', {
+    const subtitle = this.add.text(GAME_WIDTH / 2, 142, 'PILIH PENDEKATAN EVAKUASI:', {
       color: CSS.body, fontFamily: FONT.UI, fontSize: '17px', fontStyle: 'bold',
     }).setOrigin(0.5);
     const entries = [
@@ -159,21 +160,22 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       { x: 640, title: '2. LOGIKA', desc: 'Cari jalur tercepat yang masih aman.\n(Fokus pada efisiensi rute)' },
     ];
     entries.forEach((entry, index) => {
-      const bg = this.add.rectangle(entry.x, 265, 290, 130, 0x5a4a3c, 0.06)
+      const bg = this.add.rectangle(entry.x, 250, 290, 130, 0x5a4a3c, 0.06)
         .setStrokeStyle(1.5, 0x2b211a, 0.4).setInteractive({ useHandCursor: true })
         .on('pointerup', () => { this.selectApproach(index); this.startPlayStage(); });
-      const title = this.add.text(entry.x, 232, entry.title, {
+      const title = this.add.text(entry.x, 217, entry.title, {
         color: CSS.body, fontFamily: FONT.UI, fontSize: '17px',
       }).setOrigin(0.5);
-      const desc = this.add.text(entry.x, 280, entry.desc, {
+      const desc = this.add.text(entry.x, 265, entry.desc, {
         color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', align: 'center',
       }).setOrigin(0.5);
       this.chooseContainer?.add([bg, title, desc]);
     });
     this.chooseContainer.add(subtitle);
-    this.add.text(GAME_WIDTH / 2, 398, '← → pilih  •  ENTER konfirmasi', {
+    const chooseHint = this.add.text(GAME_WIDTH / 2, 366, '← → pilih  •  ENTER konfirmasi', {
       color: '#6A5B4B', fontFamily: FONT.UI, fontSize: '14px',
     }).setOrigin(0.5);
+    this.chooseContainer.add(chooseHint);
   }
 
   private selectApproach(index: number): void {
@@ -288,17 +290,17 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     if (!this.boardContainer || this.stage !== 'play') return;
     this.boardContainer.removeAll(true);
     const board = this.boards[this.round];
-    const originX = (GAME_WIDTH - board.width * CELL_SIZE) / 2;
+    const originX = (GAME_WIDTH - board.width * CELL_WIDTH) / 2;
     const graphics = this.add.graphics();
     graphics.lineStyle(4, this.carryingPatient ? 0x567a61 : 0x55677a, 0.85);
     for (let index = 1; index < this.path.length; index += 1) {
       const from = this.path[index - 1];
       const to = this.path[index];
       graphics.lineBetween(
-        originX + from.x * CELL_SIZE + CELL_SIZE / 2,
-        MAP_TOP + from.y * CELL_SIZE + CELL_SIZE / 2,
-        originX + to.x * CELL_SIZE + CELL_SIZE / 2,
-        MAP_TOP + to.y * CELL_SIZE + CELL_SIZE / 2,
+        originX + from.x * CELL_WIDTH + CELL_WIDTH / 2,
+        MAP_TOP + from.y * CELL_HEIGHT + CELL_HEIGHT / 2,
+        originX + to.x * CELL_WIDTH + CELL_WIDTH / 2,
+        MAP_TOP + to.y * CELL_HEIGHT + CELL_HEIGHT / 2,
       );
     }
     this.boardContainer.add(graphics);
@@ -307,15 +309,15 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     for (let y = 0; y < board.height; y += 1) {
       for (let x = 0; x < board.width; x += 1) {
         const point = { x, y };
-        const cx = originX + x * CELL_SIZE + CELL_SIZE / 2;
-        const cy = MAP_TOP + y * CELL_SIZE + CELL_SIZE / 2;
+        const cx = originX + x * CELL_WIDTH + CELL_WIDTH / 2;
+        const cy = MAP_TOP + y * CELL_HEIGHT + CELL_HEIGHT / 2;
         const blocked = board.blocked.some(cell => samePoint(cell, point));
         const used = this.path.some(cell => samePoint(cell, point));
         const isGoal = samePoint(board.goal, point);
         const isPatient = samePoint(board.patient, point);
         const isStart = samePoint(board.start, point);
         const isHint = Boolean(hint && samePoint(hint, point));
-        const cell = this.add.rectangle(cx, cy, CELL_SIZE - 7, CELL_SIZE - 7,
+        const cell = this.add.rectangle(cx, cy, CELL_WIDTH - 8, CELL_HEIGHT - 6,
           blocked ? 0x94342e : used ? 0x567a61 : 0xf3eada, blocked ? 0.16 : used ? 0.3 : 1)
           .setStrokeStyle(isHint ? 4 : samePoint(this.cursor, point) ? 3 : 1.4,
             isHint ? 0xb98a3d : samePoint(this.cursor, point) ? 0x94342e : 0x2b211a,
