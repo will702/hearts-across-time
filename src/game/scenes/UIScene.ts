@@ -95,6 +95,9 @@ export class UIScene extends Phaser.Scene {
 
   create(data: UIData): void {
     this.resetRuntimeState();
+    // Reduced motion ditangani per-efek. AnimationManager global tidak boleh
+    // tertinggal dalam keadaan pause karena akan membekukan scene berikutnya.
+    this.anims.resumeAll();
     this.controls = data.input;
     this.run = data.run;
 
@@ -767,7 +770,7 @@ export class UIScene extends Phaser.Scene {
   private applyOptions(options: GameOptions, soundManager?: SoundManager): void {
     this.registry.set('options', options);
     this.registry.set('reduceMotion', options.reduceMotion);
-    if (options.reduceMotion) this.anims.pauseAll(); else this.anims.resumeAll();
+    this.anims.resumeAll();
     saveOptions(localStorage, options);
     soundManager?.updateVolumes();
     this.refreshPauseMenu();

@@ -171,17 +171,17 @@ export class Era1999Scene extends Phaser.Scene {
     this.add.rectangle(ERA_1999.width / 2, ERA_1999.height / 2, ERA_1999.width, ERA_1999.height, 0x091424).setDepth(-30);
 
     if (this.textures.exists('bg1999-far')) {
-      this.add.image(0, 0, 'bg1999-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
+      this.add.image(0, ERA_1999.height, 'bg1999-far').setOrigin(0, 1).setDisplaySize(ERA_1999.width, ERA_1999.height).setScrollFactor(0.14).setDepth(-25);
     }
     if (this.textures.exists('bg1999-mid')) {
-      this.add.image(0, ERA_1999.groundY, 'bg1999-mid').setOrigin(0, 1).setScrollFactor(0.45).setDepth(-20);
+      this.add.image(0, ERA_1999.height, 'bg1999-mid').setOrigin(0, 1).setDisplaySize(ERA_1999.width, ERA_1999.height).setScrollFactor(0.45).setDepth(-20);
     }
 
     this.createAnimatedProp('prop-consoleWave1999', 380, 444, 82, 3.5, 438);
     this.createAnimatedProp('prop-frost1999', 720, 444, 88, 2, 439);
 
     if (this.textures.exists('bg1999-fg')) {
-      this.add.image(0, ERA_1999.groundY - 14, 'bg1999-fg').setOrigin(0).setDisplaySize(1120, 152).setDepth(430);
+      this.add.image(0, ERA_1999.height, 'bg1999-fg').setOrigin(0, 1).setDisplaySize(ERA_1999.width, 140).setDepth(430);
     }
   }
 

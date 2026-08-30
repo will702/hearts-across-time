@@ -188,11 +188,18 @@ export class Era1968Scene extends Phaser.Scene {
     this.add.rectangle(ERA_1968.width / 2, ERA_1968.height / 2, ERA_1968.width, ERA_1968.height, isLab ? 0x111c2e : 0x221a14).setDepth(-30);
 
     if (this.textures.exists(bgFarKey)) {
-      this.add.image(0, 0, bgFarKey).setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
+      this.add.image(0, ERA_1968.height, bgFarKey)
+        .setOrigin(0, 1)
+        .setDisplaySize(ERA_1968.width, ERA_1968.height)
+        .setScrollFactor(0.14)
+        .setDepth(-25);
     }
     if (this.textures.exists(bgMidKey)) {
-      const midScale = 0.75;
-      this.add.image(0, ERA_1968.groundY, bgMidKey).setOrigin(0, 1).setScale(midScale).setScrollFactor(0.45).setDepth(-20);
+      this.add.image(0, ERA_1968.groundY, bgMidKey)
+        .setOrigin(0, 1)
+        .setDisplaySize(ERA_1968.width, 250)
+        .setScrollFactor(0.45)
+        .setDepth(-20);
     }
 
     if (isLab) {
@@ -204,7 +211,10 @@ export class Era1968Scene extends Phaser.Scene {
     }
 
     if (this.textures.exists(bgFgKey)) {
-      this.add.image(0, ERA_1968.groundY - 14, bgFgKey).setOrigin(0).setDisplaySize(1220, 165).setDepth(430);
+      this.add.image(0, ERA_1968.height, bgFgKey)
+        .setOrigin(0, 1)
+        .setDisplaySize(ERA_1968.width, 140)
+        .setDepth(430);
     }
   }
 

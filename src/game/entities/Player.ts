@@ -111,15 +111,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   private ensureWalkAnimation(): void {
     if (!this.walkTexture) return;
-    if (this.scene.anims.exists(WALK_ANIMATION)) {
-      this.scene.anims.remove(WALK_ANIMATION);
-    }
+    if (this.scene.anims.exists(WALK_ANIMATION)) return;
     this.scene.anims.create({
       key: WALK_ANIMATION,
       frames: this.scene.anims.generateFrameNumbers(this.walkTexture, this.walkTexture === 'elena-walk'
-        ? { start: 0, end: 13 }
+        ? { start: 0, end: 12 }
         : { frames: [1, 2, 3, 2] }),
-      duration: 600,
+      duration: 650,
       repeat: -1,
     });
   }

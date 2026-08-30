@@ -287,6 +287,9 @@ export class PrologueScene extends Phaser.Scene {
       nodeId: 'prologue',
       run: this.run,
       setSpeakerExpression: (_who: CharacterId, expr: Expression) => this.setElenaExpression(expr),
+      // Narator pada prolog adalah suara batin Elena. Hubungkan visualnya supaya
+      // bounce saat mengetik ikut berjalan seperti dialog sinematik era lain.
+      speakerVisual: (who: CharacterId) => (who === 'narrator' || who === 'elena') ? this.elenaImage ?? null : null,
       onComplete: (action?: { type: string; to?: string }) => {
         this.temporalPulse?.destroy();
         if (action?.type === 'vortex' || action?.to === '1944') {

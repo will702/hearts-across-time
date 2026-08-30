@@ -290,11 +290,11 @@ export class Era1944Scene extends Phaser.Scene {
       .setDepth(-30);
 
     if (this.textures.exists('bg1944-far')) {
-      this.add.image(0, 0, 'bg1944-far').setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
+      this.add.image(0, ERA_1944.height, 'bg1944-far').setOrigin(0, 1).setDisplaySize(ERA_1944.width, ERA_1944.height).setScrollFactor(0.14).setDepth(-25);
     }
     const hasPaintedGround = this.textures.exists('bg1944-mid');
     if (hasPaintedGround) {
-      this.add.image(0, -312, 'bg1944-mid').setOrigin(0).setScale(0.75).setScrollFactor(0.45).setDepth(-20);
+      this.add.image(0, ERA_1944.height, 'bg1944-mid').setOrigin(0, 1).setDisplaySize(ERA_1944.width, ERA_1944.height).setScrollFactor(0.45).setDepth(-20);
     }
 
     if (!hasPaintedGround) {
@@ -311,7 +311,7 @@ export class Era1944Scene extends Phaser.Scene {
     this.createAnimatedProp('prop-lantern1944', 620, 436, 94, 3.2, 439);
 
     if (this.textures.exists('bg1944-fg')) {
-      this.add.image(0, ERA_1944.groundY - 14, 'bg1944-fg').setOrigin(0).setDisplaySize(1470, 200).setDepth(430);
+      this.add.image(0, ERA_1944.height, 'bg1944-fg').setOrigin(0, 1).setDisplaySize(ERA_1944.width, 140).setDepth(430);
     }
   }
 
@@ -533,7 +533,6 @@ export class Era1944Scene extends Phaser.Scene {
     if (
       !this.bombFlash
       || this.arrivalActive
-      || this.registry.get('reduceMotion')
       || time < this.nextBombFlashAt
     ) return;
 
@@ -547,17 +546,18 @@ export class Era1944Scene extends Phaser.Scene {
 
   private triggerBombFlash(): void {
     if (!this.bombFlash) return;
+    const reduced = Boolean(this.registry.get('reduceMotion'));
     this.tweens.killTweensOf(this.bombFlash);
     this.bombFlash
       .setFillStyle(Phaser.Math.RND.pick([0xffe2a8, 0xffc66d, 0xfff0ca]), 1)
-      .setAlpha(0.3);
+      .setAlpha(reduced ? 0.12 : 0.3);
     this.tweens.add({
       targets: this.bombFlash,
       alpha: 0,
-      duration: 520,
+      duration: reduced ? 900 : 520,
       ease: 'Cubic.easeOut',
     });
-    this.cameras.main.shake(180, 0.0025);
+    if (!reduced) this.cameras.main.shake(180, 0.0025);
     this.soundManager?.playBoom();
   }
 

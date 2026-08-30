@@ -163,7 +163,8 @@ export class EraGradeSystem {
     }
 
     if (this.rain) {
-      this.rain.setVisible(animated);
+      // Dalam reduced motion hujan tetap terbaca sebagai atmosfer, hanya diam.
+      this.rain.setVisible(true);
       if (animated) {
         const dt = this.lastTime >= 0 ? Phaser.Math.Clamp(timeMs - this.lastTime, 0, 100) / 1000 : 0;
         this.drops.forEach((drop) => {
@@ -229,7 +230,7 @@ export class EraGradeSystem {
           alpha: 0.08 + (i % 4) * 0.025,
         });
       }
-      this.rain.setVisible(!this.scene.registry.get('reduceMotion'));
+      this.rain.setVisible(true);
       this.renderRain();
     }
   }
