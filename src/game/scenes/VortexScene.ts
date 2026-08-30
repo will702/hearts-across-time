@@ -30,6 +30,7 @@ export class VortexScene extends Phaser.Scene {
   private vortexData!: VortexSceneData;
   private soundManager?: SoundManager;
   private elapsed = 0;
+  private finishing = false;
   private swarmGraphics?: Phaser.GameObjects.Graphics;
   private ringGraphics?: Phaser.GameObjects.Graphics;
   private coreGraphics?: Phaser.GameObjects.Graphics;
@@ -50,6 +51,7 @@ export class VortexScene extends Phaser.Scene {
     this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'vortex');
     this.elapsed = 0;
+    this.finishing = false;
 
     this.soundManager?.playVortex(Boolean(data.rewind));
 
@@ -136,6 +138,11 @@ export class VortexScene extends Phaser.Scene {
 
     // white-out setelah 82% (legacy)
     this.whiteOut?.setAlpha(Phaser.Math.Clamp((p - 0.82) / 0.18, 0, 1) * 0.9);
+
+    // Safari dapat menunda timer ketika tab kehilangan fokus. Jadikan progres
+    // frame sebagai sumber kebenaran kedua agar transisi tetap selesai tepat
+    // setelah tahun tujuan tercapai, tanpa bergantung hanya pada delayedCall.
+    if (p >= 1) this.finish();
   }
 
   /** Cincin elips konsentris sian/merah (drawVortex legacy). */
@@ -194,6 +201,9 @@ export class VortexScene extends Phaser.Scene {
   }
 
   private finish(): void {
+    if (this.finishing) return;
+    this.finishing = true;
+
     const to = this.vortexData.to;
     const intro = Boolean(this.vortexData.intro);
 
