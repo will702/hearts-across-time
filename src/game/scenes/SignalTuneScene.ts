@@ -1,7 +1,12 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
-import { MICROFILM_STARTS, MICROFILM_TARGETS, microfilmHint } from '../minigames/challengeRules';
+import {
+  MICROFILM_STARTS,
+  MICROFILM_TARGETS,
+  microfilmHint,
+  randomMicrofilmLineXs,
+} from '../minigames/challengeRules';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 import { addPaperPanel } from '../ui/paper';
 import { CSS, FONT } from '../ui/theme';
@@ -17,6 +22,7 @@ export class SignalTuneScene extends Phaser.Scene {
   private selectedApproach = 0;
   private selectedLayer = 0;
   private positions: number[] = [...MICROFILM_STARTS];
+  private registrationLineXs: [number, number, number] = [392, 480, 568];
   private locked = [false, false, false];
   private misses = 0;
   private assisted = false;
@@ -40,6 +46,7 @@ export class SignalTuneScene extends Phaser.Scene {
     this.selectedApproach = 0;
     this.selectedLayer = 0;
     this.positions = [...MICROFILM_STARTS];
+    this.registrationLineXs = randomMicrofilmLineXs();
     this.locked = [false, false, false];
     this.misses = 0;
     this.assisted = false;
@@ -124,6 +131,7 @@ export class SignalTuneScene extends Phaser.Scene {
       selectedLayer: this.selectedLayer,
       positions: this.positions,
       targets: MICROFILM_TARGETS,
+      registrationLineXs: this.registrationLineXs,
       locked: this.locked,
       misses: this.misses,
       assisted: this.assisted,
@@ -185,7 +193,7 @@ export class SignalTuneScene extends Phaser.Scene {
     this.stage = 'play';
     this.choicePanel?.setVisible(false);
     this.filmPanel?.setVisible(true);
-    this.status?.setText('LAPISAN 1/3 — GESER TANDA KUNING KE GARIS TENGAH').setColor(CSS.body);
+    this.status?.setText('LAPISAN 1/3 — GESER TANDA KUNING KE GARIS PUTIH').setColor(CSS.body);
     this.soundManager?.playConfirm();
     this.renderFilms();
   }
@@ -237,7 +245,7 @@ export class SignalTuneScene extends Phaser.Scene {
       const direction = microfilmHint(this.positions[index], MICROFILM_TARGETS[index]);
       this.status?.setText(this.assisted
         ? `REGISTRASI BELUM PAS — GESER ${direction > 0 ? 'KE KANAN' : 'KE KIRI'}`
-        : 'TANDA REGISTRASI BELUM BERIMPIT DENGAN GARIS TENGAH').setColor(CSS.redBright);
+        : 'TANDA REGISTRASI BELUM BERIMPIT DENGAN GARIS PUTIH').setColor(CSS.redBright);
       this.soundManager?.playErrorBuzz();
       this.renderFilms();
       return;
@@ -282,9 +290,10 @@ export class SignalTuneScene extends Phaser.Scene {
         this.filmPanel.add(this.add.rectangle(hx, y + 26, 18, 6, 0x020617, 0.9));
       }
 
-      const notchX = GAME_WIDTH / 2 + (this.positions[index] - MICROFILM_TARGETS[index]) * 44;
+      const registrationLineX = this.registrationLineXs[index];
+      const notchX = registrationLineX + (this.positions[index] - MICROFILM_TARGETS[index]) * 44;
       this.filmPanel.add(this.add.rectangle(notchX, y, 7, 42, color, 0.95));
-      this.filmPanel.add(this.add.rectangle(GAME_WIDTH / 2, y, 3, 62, 0xffffff, 0.8));
+      this.filmPanel.add(this.add.rectangle(registrationLineX, y, 3, 62, 0xffffff, 0.8));
       this.filmPanel.add(this.add.text(180, y, `${index + 1}`, {
         color: CSS.body, fontFamily: FONT.TITLE, fontSize: '18px', fontStyle: 'bold',
       }).setOrigin(0.5));

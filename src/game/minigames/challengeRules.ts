@@ -241,6 +241,16 @@ export function nextEvacuationStep(board: EvacuationBoard, path: readonly GridPo
 
 export const MICROFILM_TARGETS = [5, 2, 4] as const;
 export const MICROFILM_STARTS = [0, 6, 1] as const;
+export const MICROFILM_LINE_X_OPTIONS = [392, 436, 480, 524, 568] as const;
+
+export function randomMicrofilmLineXs(random: () => number = Math.random): [number, number, number] {
+  const options = [...MICROFILM_LINE_X_OPTIONS];
+  for (let index = options.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [options[index], options[swapIndex]] = [options[swapIndex], options[index]];
+  }
+  return [options[0], options[1], options[2]];
+}
 
 export function microfilmHint(current: number, target: number): -1 | 0 | 1 {
   return current === target ? 0 : current < target ? 1 : -1;

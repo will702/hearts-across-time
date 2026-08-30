@@ -3,20 +3,41 @@ import { BONUS_IMAGE_ASSETS } from '../assetManifest';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { CSS, FONT } from '../ui/theme';
 
-type Partner = 'elena' | 'arthur';
+type Partner = 'elena' | 'arthur' | 'both';
 type BoothStage = 'choose' | 'requesting' | 'camera';
+type CameraPlacement = { x: number; y: number; width: number; height: number };
+type CameraRect = CameraPlacement;
+
+const PARTNER_OPTIONS: readonly Partner[] = ['elena', 'arthur', 'both'];
 
 const FRAME_BY_PARTNER: Record<Partner, string> = {
   // Berfoto dengan Elena berarti wajah pemain mengisi posisi Arthur.
   elena: 'bonus-photo-elena',
   arthur: 'bonus-photo-arthur',
+  // Mode berdua memakai ilustrasi dengan wajah Elena dan Arthur sama-sama kosong.
+  both: 'bonus-photo-couple',
 };
+
+const CAMERA_PLACEMENT: Record<Partner, CameraPlacement> = {
+  // Area maksimal kamera dipusatkan pada lubang wajah; rasio sumber tetap dipertahankan.
+  elena: { x: 610, y: 174, width: 400, height: 225 },
+  arthur: { x: 390, y: 184, width: 400, height: 225 },
+  both: { x: 480, y: 204, width: 620, height: 349 },
+};
+
+function containCameraRect(placement: CameraPlacement, sourceWidth: number, sourceHeight: number): CameraRect {
+  const width = sourceWidth > 0 ? sourceWidth : 16;
+  const height = sourceHeight > 0 ? sourceHeight : 9;
+  const scale = Math.min(placement.width / width, placement.height / height);
+  return { x: placement.x, y: placement.y, width: width * scale, height: height * scale };
+}
 
 export class PhotoBoothScene extends Phaser.Scene {
   private stage: BoothStage = 'choose';
   private selectedPartner: Partner = 'elena';
   private stream?: MediaStream;
   private cameraVideo?: Phaser.GameObjects.Video;
+  private cameraMetadataHandler?: () => void;
   private statusText?: Phaser.GameObjects.Text;
   private keyHandler?: (event: KeyboardEvent) => void;
 
@@ -41,12 +62,20 @@ export class PhotoBoothScene extends Phaser.Scene {
   }
 
   snapshot(): Record<string, unknown> {
+    const source = this.cameraVideo?.video;
     return {
       minigame: 'epilogue_photo_booth',
       stage: this.stage,
       partner: this.selectedPartner,
       cameraActive: Boolean(this.stream?.active),
       cameraError: this.statusText?.text.startsWith('KAMERA TIDAK') ?? false,
+      cameraPlacement: { ...CAMERA_PLACEMENT[this.selectedPartner] },
+      cameraGeometry: this.cameraVideo ? {
+        width: this.cameraVideo.displayWidth,
+        height: this.cameraVideo.displayHeight,
+        sourceWidth: source?.videoWidth ?? 0,
+        sourceHeight: source?.videoHeight ?? 0,
+      } : null,
     };
   }
 
@@ -68,8 +97,9 @@ export class PhotoBoothScene extends Phaser.Scene {
       color: CSS.paper, fontFamily: FONT.UI, fontSize: '14px', align: 'center',
     }).setOrigin(0.5);
 
-    this.addPartnerButton(330, 'elena', 'BERFOTO DENGAN ELENA');
-    this.addPartnerButton(630, 'arthur', 'BERFOTO DENGAN ARTHUR');
+    this.addPartnerButton(218, 'elena', 'DENGAN ELENA');
+    this.addPartnerButton(480, 'arthur', 'DENGAN ARTHUR');
+    this.addPartnerButton(742, 'both', 'FOTO BERDUA');
     this.add.text(GAME_WIDTH / 2, 513, '← → PILIH  •  ENTER BUKA KAMERA  •  X KEMBALI KE JUDUL', {
       color: '#d8c7aa', fontFamily: FONT.META, fontSize: '11px',
     }).setOrigin(0.5);
@@ -77,19 +107,19 @@ export class PhotoBoothScene extends Phaser.Scene {
   }
 
   private addPartnerButton(x: number, partner: Partner, label: string): void {
-    const button = this.add.rectangle(x, 458, 270, 46, 0x94342e, 0.94)
+    const button = this.add.rectangle(x, 458, 238, 46, 0x94342e, 0.94)
       .setName(`partner-${partner}`)
       .setInteractive({ useHandCursor: true })
       .on('pointerover', () => { this.selectedPartner = partner; this.refreshChoice(); })
       .on('pointerup', () => { void this.requestCamera(partner); });
     const text = this.add.text(x, 458, label, {
-      color: '#fff8ea', fontFamily: FONT.META, fontSize: '12px', fontStyle: 'bold',
+      color: '#fff8ea', fontFamily: FONT.META, fontSize: '11px', fontStyle: 'bold',
     }).setOrigin(0.5);
     button.setData('label', text);
   }
 
   private refreshChoice(): void {
-    (['elena', 'arthur'] as const).forEach((partner) => {
+    PARTNER_OPTIONS.forEach((partner) => {
       const button = this.children.getByName(`partner-${partner}`) as Phaser.GameObjects.Rectangle | null;
       if (!button) return;
       const selected = partner === this.selectedPartner;
@@ -129,17 +159,24 @@ export class PhotoBoothScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.stage = 'camera';
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050505, 1);
-    this.cameraVideo = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2)
-      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+    const placement = CAMERA_PLACEMENT[this.selectedPartner];
+    this.cameraVideo = this.add.video(placement.x, placement.y)
       .setFlipX(true)
       .loadMediaStream(this.stream, true)
       .play(true);
+    this.cameraMetadataHandler = () => this.fitCameraVideo();
+    const media = this.cameraVideo.video;
+    media?.addEventListener('loadedmetadata', this.cameraMetadataHandler);
+    media?.addEventListener('resize', this.cameraMetadataHandler);
+    this.fitCameraVideo();
     const frameKey = FRAME_BY_PARTNER[this.selectedPartner];
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, frameKey).setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
     this.add.rectangle(GAME_WIDTH / 2, 506, 920, 58, 0x0d0a08, 0.9)
       .setStrokeStyle(1.5, 0xb98a3d, 0.8);
-    this.statusText = this.add.text(GAME_WIDTH / 2, 484,
-      `KENCAN DENGAN ${this.selectedPartner.toUpperCase()} • Posisikan wajahmu di bingkai`, {
+    const photoLabel = this.selectedPartner === 'both'
+      ? 'FOTO BERDUA • Posisikan dua wajah di kedua bingkai'
+      : `KENCAN DENGAN ${this.selectedPartner.toUpperCase()} • Posisikan wajahmu di bingkai`;
+    this.statusText = this.add.text(GAME_WIDTH / 2, 484, photoLabel, {
         color: CSS.goldBright, fontFamily: FONT.UI, fontSize: '14px', fontStyle: 'bold',
       }).setOrigin(0.5);
     this.addCameraButton(215, 138, '← GANTI', () => this.showPartnerChoice());
@@ -176,10 +213,19 @@ export class PhotoBoothScene extends Phaser.Scene {
     canvas.height = GAME_HEIGHT;
     const context = canvas.getContext('2d');
     if (!context) return;
+    context.fillStyle = '#050505';
+    context.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    const rect = containCameraRect(
+      CAMERA_PLACEMENT[this.selectedPartner],
+      video.videoWidth,
+      video.videoHeight,
+    );
+    const left = rect.x - rect.width / 2;
+    const top = rect.y - rect.height / 2;
     context.save();
-    context.translate(GAME_WIDTH, 0);
+    context.translate(left + rect.width, top);
     context.scale(-1, 1);
-    context.drawImage(video, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+    context.drawImage(video, 0, 0, rect.width, rect.height);
     context.restore();
     const frame = this.textures.get(FRAME_BY_PARTNER[this.selectedPartner]).getSourceImage() as CanvasImageSource;
     context.drawImage(frame, 0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -210,7 +256,9 @@ export class PhotoBoothScene extends Phaser.Scene {
     if (this.stage === 'choose') {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
-        this.selectedPartner = this.selectedPartner === 'elena' ? 'arthur' : 'elena';
+        const current = PARTNER_OPTIONS.indexOf(this.selectedPartner);
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        this.selectedPartner = PARTNER_OPTIONS[(current + direction + PARTNER_OPTIONS.length) % PARTNER_OPTIONS.length];
         this.refreshChoice();
       } else if (event.key === 'Enter' || event.code === 'Space') {
         event.preventDefault();
@@ -228,10 +276,27 @@ export class PhotoBoothScene extends Phaser.Scene {
   }
 
   private stopCamera(): void {
+    if (this.cameraMetadataHandler && this.cameraVideo?.video) {
+      this.cameraVideo.video.removeEventListener('loadedmetadata', this.cameraMetadataHandler);
+      this.cameraVideo.video.removeEventListener('resize', this.cameraMetadataHandler);
+    }
+    this.cameraMetadataHandler = undefined;
     this.cameraVideo?.stop();
     this.cameraVideo = undefined;
     this.stream?.getTracks().forEach(track => track.stop());
     this.stream = undefined;
+  }
+
+  private fitCameraVideo(): void {
+    const camera = this.cameraVideo;
+    const media = camera?.video;
+    if (!camera || !media) return;
+    const rect = containCameraRect(
+      CAMERA_PLACEMENT[this.selectedPartner],
+      media.videoWidth,
+      media.videoHeight,
+    );
+    camera.setPosition(rect.x, rect.y).setDisplaySize(rect.width, rect.height);
   }
 
   private shutdown(): void {

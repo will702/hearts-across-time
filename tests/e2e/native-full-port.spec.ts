@@ -43,6 +43,7 @@ type Snapshot = {
   path?: Array<{ x: number; y: number }>;
   positions?: number[];
   targets?: number[];
+  registrationLineXs?: number[];
   locked?: boolean[];
   selectedLayer?: number;
   assisted?: boolean;
@@ -59,9 +60,10 @@ type Snapshot = {
   pursuerMoveInMs?: number;
   pursuerMoves?: number;
   caughtCount?: number;
-  partner?: 'elena' | 'arthur';
+  partner?: 'elena' | 'arthur' | 'both';
   cameraActive?: boolean;
   cameraError?: boolean;
+  cameraGeometry?: { width: number; height: number; sourceWidth: number; sourceHeight: number } | null;
   system?: number;
   rotations?: number[];
   tiles?: Array<{
@@ -452,6 +454,11 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).state).toBe('signaltune');
     await attachCanvas(page, testInfo, 'signal-native');
     await page.keyboard.press('Enter');
+    await expect.poll(async () => (await snapshot(page)).stage).toBe('play');
+    const registrationLines = (await snapshot(page)).registrationLineXs;
+    expect(registrationLines).toHaveLength(3);
+    expect(new Set(registrationLines).size).toBe(3);
+    await attachCanvas(page, testInfo, 'signal-random-lines-native');
     await page.keyboard.press('Space');
     await page.keyboard.press('Space');
     await expect.poll(async () => (await snapshot(page)).assisted).toBe(true);
@@ -728,6 +735,13 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).stage).toBe('camera');
     await expect.poll(async () => (await snapshot(page)).partner).toBe('elena');
     await expect.poll(async () => (await snapshot(page)).cameraActive).toBe(true);
+    await expect.poll(async () => {
+      const geometry = (await snapshot(page)).cameraGeometry;
+      if (!geometry || geometry.sourceWidth <= 0 || geometry.sourceHeight <= 0) return false;
+      const displayedRatio = geometry.width / geometry.height;
+      const sourceRatio = geometry.sourceWidth / geometry.sourceHeight;
+      return Math.abs(displayedRatio - sourceRatio) < 0.001 && geometry.width <= 400 && geometry.height <= 225;
+    }).toBe(true);
     await attachCanvas(page, testInfo, 'photo-booth-elena-native');
     await page.waitForTimeout(500);
     const [photoDownload] = await Promise.all([
@@ -743,6 +757,14 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).stage).toBe('camera');
     await expect.poll(async () => (await snapshot(page)).cameraActive).toBe(true);
     await attachCanvas(page, testInfo, 'photo-booth-arthur-native');
+    await page.keyboard.press('Backspace');
+    await expect.poll(async () => (await snapshot(page)).stage).toBe('choose');
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(async () => (await snapshot(page)).partner).toBe('both');
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await snapshot(page)).stage).toBe('camera');
+    await expect.poll(async () => (await snapshot(page)).cameraActive).toBe(true);
+    await attachCanvas(page, testInfo, 'photo-booth-both-native');
     await page.keyboard.press('KeyX');
     await expect.poll(async () => (await snapshot(page)).state).toBe('title');
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hat_save') ?? '{}').bonusSeen)).toBe(true);

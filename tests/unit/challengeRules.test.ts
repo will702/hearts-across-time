@@ -11,10 +11,12 @@ import {
   evacuationRoute,
   firstCircuitHint,
   isCircuitComplete,
+  MICROFILM_LINE_X_OPTIONS,
   microfilmHint,
   nextEvacuationPursuerStep,
   nextEvacuationStep,
   safeEvacuationPursuerPosition,
+  randomMicrofilmLineXs,
   type EvacuationBoard,
   type GridPoint,
 } from '../../src/game/minigames/challengeRules';
@@ -114,6 +116,17 @@ describe('Aturan challenge tiga era', () => {
     expect(microfilmHint(1, 5)).toBe(1);
     expect(microfilmHint(6, 2)).toBe(-1);
     expect(microfilmHint(4, 4)).toBe(0);
+  });
+
+  it('mengacak tiga garis registrasi mikrofilm ke posisi aman yang berbeda', () => {
+    const leftPattern = randomMicrofilmLineXs(() => 0);
+    const rightPattern = randomMicrofilmLineXs(() => 0.999);
+
+    for (const pattern of [leftPattern, rightPattern]) {
+      expect(new Set(pattern).size).toBe(3);
+      pattern.forEach(x => expect(MICROFILM_LINE_X_OPTIONS).toContain(x));
+    }
+    expect(leftPattern).not.toEqual(rightPattern);
   });
 
   it('menerima hanya rangkaian lengkap tanpa kebocoran', () => {
