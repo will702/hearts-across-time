@@ -12,6 +12,7 @@ import { GemAlignScene } from './scenes/GemAlignScene';
 import { GlitchScene } from './scenes/GlitchScene';
 import { IntroScene } from './scenes/IntroScene';
 import { PhotoPuzzleScene } from './scenes/PhotoPuzzleScene';
+import { PhotoBoothScene } from './scenes/PhotoBoothScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { PrologueScene } from './scenes/PrologueScene';
 import { PuzzleAwardScene } from './scenes/PuzzleAwardScene';
@@ -80,6 +81,7 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
       PuzzleAwardScene,
       EndCardScene,
       Bonus2088Scene,
+      PhotoBoothScene,
     ],
   };
 }

@@ -102,6 +102,8 @@ export class Bonus2088Scene extends Phaser.Scene {
   private ending = false;
   private activeNode = -1;
   private rewards: number[] = [];
+  private dateShortcutAvailable = false;
+  private dateShortcutKey?: Phaser.Input.Keyboard.Key;
 
   // Draf mini-game sengaja tinggal di scene agar menutup modal tidak menghapus kemajuan.
   private differenceFound = Array<boolean>(DIFFERENCE_SPOTS.length).fill(false);
@@ -174,6 +176,8 @@ export class Bonus2088Scene extends Phaser.Scene {
       padding: { x: 10, y: 6 },
     }).setScrollFactor(0).setDepth(2000);
     this.updateProgressText();
+    this.dateShortcutAvailable = Boolean(this.save.data.bonusSeen);
+    if (this.dateShortcutAvailable) this.createDateShortcut();
 
     this.game.events.on(Phaser.Core.Events.POST_STEP, this.syncUIModal, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
@@ -182,6 +186,11 @@ export class Bonus2088Scene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (this.activeModal || this.ending) {
       this.ui?.setPrompt('');
+      return;
+    }
+
+    if (this.dateShortcutAvailable && this.dateShortcutKey && Phaser.Input.Keyboard.JustDown(this.dateShortcutKey)) {
+      this.openPhotoBoothShortcut();
       return;
     }
 
@@ -220,6 +229,7 @@ export class Bonus2088Scene extends Phaser.Scene {
       playerX: this.player?.x ?? 0,
       modal: Boolean(this.activeModal),
       ending: this.ending,
+      dateShortcutAvailable: this.dateShortcutAvailable,
       rewards: this.rewards.map(index => BONUS_REWARDS[index].label),
       progress: {
         differences: this.differenceFound.filter(Boolean).length,
@@ -291,6 +301,45 @@ export class Bonus2088Scene extends Phaser.Scene {
         stroke: '#120c07', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(445);
     }
+  }
+
+  private createDateShortcut(): void {
+    const panel = this.add.rectangle(20, 108, 354, 62, NIGHT, 0.9)
+      .setOrigin(0)
+      .setStrokeStyle(1.5, GOLD, 0.85)
+      .setScrollFactor(0)
+      .setDepth(2000);
+    const message = this.add.text(32, 120, 'SUDAH PERNAH MENYELESAIKAN.\nMAU LANGSUNG KENCAN?', {
+      color: CSS.paper,
+      fontFamily: FONT.META,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      lineSpacing: 4,
+    }).setScrollFactor(0).setDepth(2001);
+    const button = this.add.rectangle(300, 139, 126, 36, RED, 0.96)
+      .setStrokeStyle(2, GOLD_BRIGHT)
+      .setScrollFactor(0)
+      .setDepth(2001)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(300, 139, 'LANGSUNG FOTO  [F]', {
+      color: '#FFF8EA',
+      fontFamily: FONT.META,
+      fontSize: '10px',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(2002);
+    button
+      .on('pointerover', () => button.setFillStyle(RED_BRIGHT, 1))
+      .on('pointerout', () => button.setFillStyle(RED, 0.96))
+      .on('pointerup', () => this.openPhotoBoothShortcut());
+    label.setInteractive({ useHandCursor: true }).on('pointerup', () => this.openPhotoBoothShortcut());
+    panel.setData('date-shortcut-message', message);
+    this.dateShortcutKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+  }
+
+  private openPhotoBoothShortcut(): void {
+    if (!this.dateShortcutAvailable || this.activeModal || this.ending) return;
+    this.soundManager?.playConfirm();
+    this.scene.start('PhotoBoothScene');
   }
 
   private createAnimatedProp(key: string, x: number, y: number, height: number, frameRate: number): void {
@@ -902,7 +951,7 @@ export class Bonus2088Scene extends Phaser.Scene {
 
   private buildCatGame(modal: Phaser.GameObjects.Container): void {
     const art = this.addArtwork(modal, 'bonus-cats-art', CAT_RECT, 'Ilustrasi 18 kucing tidak tersedia');
-    art.setInteractive({ useHandCursor: true });
+    art.setScrollFactor(0).setInteractive({ useHandCursor: true });
     const markerLayer = this.add.container(0, 0);
     const help = this.add.text(GAME_WIDTH / 2, 466, 'Temukan semua kucing • Keyboard: ←/→ pilih, Enter tandai', {
       backgroundColor: '#0d0a08dd', color: CSS.paper, fontFamily: FONT.META,
@@ -958,15 +1007,22 @@ export class Bonus2088Scene extends Phaser.Scene {
       render();
     };
 
-    art.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+    art.on('pointerup', (
+      pointer: Phaser.Input.Pointer,
+      localX: number,
+      localY: number,
+    ) => {
       if (pointer.y <= 60) return;
       if (this.litNodes[3]) {
         this.closeModal();
         return;
       }
+      // localX/localY memakai ukuran tekstur sumber; ubah ke ukuran tampilannya.
+      const displayX = localX / art.width * CAT_RECT.width;
+      const displayY = localY / art.height * CAT_RECT.height;
       const index = findCatAt(
-        pointer.x - CAT_RECT.x,
-        pointer.y - CAT_RECT.y,
+        displayX,
+        displayY,
         CAT_RECT.width,
         CAT_RECT.height,
         this.catFound,
@@ -1225,22 +1281,33 @@ export class Bonus2088Scene extends Phaser.Scene {
       color: CSS.body, fontFamily: FONT.UI, fontSize: '19px',
       align: 'center', lineSpacing: 8,
     }).setOrigin(0.5);
-    const button = this.add.rectangle(GAME_WIDTH / 2, 372, 330, 40, RED, 0.96)
+    const button = this.add.rectangle(GAME_WIDTH / 2, 354, 350, 40, RED, 0.96)
       .setStrokeStyle(1.5, RED_DARK)
       .setInteractive({ useHandCursor: true });
-    const buttonLabel = this.add.text(GAME_WIDTH / 2, 372, 'ENTER / SPACE — KEMBALI KE JUDUL', {
+    const buttonLabel = this.add.text(GAME_WIDTH / 2, 354, 'ENTER / SPACE — BUKA PHOTO BOOTH', {
       color: '#FFF8EA', fontFamily: FONT.META, fontSize: '13px', fontStyle: 'bold',
     }).setOrigin(0.5);
+    const photoBooth = (): void => {
+      this.scene.start('PhotoBoothScene');
+    };
     const leave = (): void => {
       this.scene.start('TitleScene');
     };
-    button.on('pointerup', leave);
-    elements.push(title, copy, button, buttonLabel);
+    button.on('pointerup', photoBooth);
+    const leaveButton = this.add.rectangle(GAME_WIDTH / 2, 397, 240, 28, NIGHT, 0.84)
+      .setStrokeStyle(1, STONE_INK)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerup', leave);
+    const leaveLabel = this.add.text(GAME_WIDTH / 2, 397, 'X — KEMBALI KE JUDUL', {
+      color: CSS.paper, fontFamily: FONT.META, fontSize: '11px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    elements.push(title, copy, button, buttonLabel, leaveButton, leaveLabel);
     this.endingOverlay = this.add.container(0, 0, elements).setScrollFactor(0).setDepth(4000);
 
     this.clearModalBindings();
     this.bindModalKey((event) => {
-      if (event.key === 'Enter' || event.code === 'Space') leave();
+      if (event.key === 'Enter' || event.code === 'Space') photoBooth();
+      else if (event.code === 'KeyX' || event.key === 'Escape') leave();
     });
   }
 
@@ -1253,6 +1320,7 @@ export class Bonus2088Scene extends Phaser.Scene {
     this.activeModal?.destroy(true);
     this.endingOverlay?.destroy(true);
     this.player?.destroy();
+    this.dateShortcutKey = undefined;
     this.activeModal = undefined;
     this.endingOverlay = undefined;
   }

@@ -92,7 +92,7 @@ export function evacuationPatientCountForLoop(loop: number): 1 | 2 | 3 {
 
 export function evacuationPursuerIntervalForLoop(loop: number): number {
   const normalized = Math.max(0, Math.floor(loop));
-  return Math.max(1050, 2200 - normalized * 180);
+  return Math.max(1800, 3600 - normalized * 250);
 }
 
 export const EVACUATION_BOARDS: readonly EvacuationBoard[] = evacuationBoardsForLoop(0);
@@ -110,6 +110,96 @@ export function samePoint(a: GridPoint, b: GridPoint): boolean {
 function isOpen(board: EvacuationBoard, point: GridPoint): boolean {
   return point.x >= 0 && point.x < board.width && point.y >= 0 && point.y < board.height
     && !board.blocked.some(blocked => samePoint(blocked, point));
+}
+
+/** Jalur kritis terpendek yang harus selalu tersedia bagi pemain. */
+export function evacuationRoute(
+  board: EvacuationBoard,
+  start: GridPoint,
+  goal: GridPoint,
+): GridPoint[] {
+  const queue: GridPoint[][] = [[start]];
+  const seen = new Set([pointKey(start)]);
+  const directions = [{ x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
+  while (queue.length) {
+    const route = queue.shift()!;
+    const tail = route[route.length - 1];
+    if (samePoint(tail, goal)) return route;
+    for (const direction of directions) {
+      const candidate = { x: tail.x + direction.x, y: tail.y + direction.y };
+      const key = pointKey(candidate);
+      if (!seen.has(key) && isOpen(board, candidate)) {
+        seen.add(key);
+        queue.push([...route, candidate]);
+      }
+    }
+  }
+  return [];
+}
+
+function pursuerForbiddenCells(board: EvacuationBoard, protectedRoute: readonly GridPoint[]): Set<string> {
+  return new Set([
+    ...protectedRoute.map(pointKey),
+    ...board.patients.map(pointKey),
+    pointKey(board.goal),
+  ]);
+}
+
+/**
+ * Memindahkan pengejar keluar dari jalur kritis ketika sasaran pemain berganti.
+ * Dengan begitu musuh tetap mengancam, tetapi tidak bisa membuat soft-lock.
+ */
+export function safeEvacuationPursuerPosition(
+  board: EvacuationBoard,
+  pursuer: GridPoint,
+  player: GridPoint,
+  objective: GridPoint,
+): GridPoint {
+  const protectedRoute = evacuationRoute(board, player, objective);
+  const forbidden = pursuerForbiddenCells(board, protectedRoute);
+  if (!forbidden.has(pointKey(pursuer)) && isOpen(board, pursuer)) return { ...pursuer };
+
+  const candidates: GridPoint[] = [];
+  for (let y = 0; y < board.height; y += 1) {
+    for (let x = 0; x < board.width; x += 1) {
+      const candidate = { x, y };
+      if (isOpen(board, candidate) && !forbidden.has(pointKey(candidate))) candidates.push(candidate);
+    }
+  }
+  candidates.sort((a, b) => {
+    const distanceA = Math.abs(a.x - pursuer.x) + Math.abs(a.y - pursuer.y);
+    const distanceB = Math.abs(b.x - pursuer.x) + Math.abs(b.y - pursuer.y);
+    if (distanceA !== distanceB) return distanceA - distanceB;
+    const playerDistanceA = Math.abs(a.x - player.x) + Math.abs(a.y - player.y);
+    const playerDistanceB = Math.abs(b.x - player.x) + Math.abs(b.y - player.y);
+    return playerDistanceB - playerDistanceA;
+  });
+  return candidates[0] ? { ...candidates[0] } : { ...pursuer };
+}
+
+/** Satu langkah mengejar tanpa memasuki sisa jalur kritis pemain. */
+export function nextEvacuationPursuerStep(
+  board: EvacuationBoard,
+  pursuer: GridPoint,
+  player: GridPoint,
+  objective: GridPoint,
+): GridPoint {
+  const safePursuer = safeEvacuationPursuerPosition(board, pursuer, player, objective);
+  if (!samePoint(safePursuer, pursuer)) return safePursuer;
+
+  const futureRoute = evacuationRoute(board, player, objective).slice(1);
+  const forbidden = pursuerForbiddenCells(board, futureRoute);
+  const candidates = [
+    { x: pursuer.x + 1, y: pursuer.y },
+    { x: pursuer.x, y: pursuer.y - 1 },
+    { x: pursuer.x, y: pursuer.y + 1 },
+    { x: pursuer.x - 1, y: pursuer.y },
+  ].filter(candidate => isOpen(board, candidate) && !forbidden.has(pointKey(candidate)));
+  candidates.sort((a, b) => (
+    Math.abs(a.x - player.x) + Math.abs(a.y - player.y)
+    - Math.abs(b.x - player.x) - Math.abs(b.y - player.y)
+  ));
+  return candidates[0] ? { ...candidates[0] } : { ...pursuer };
 }
 
 export function applyEvacuationStep(

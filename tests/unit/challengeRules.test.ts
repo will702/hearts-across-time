@@ -8,10 +8,13 @@ import {
   evacuationBoardsForLoop,
   evacuationPatientCountForLoop,
   evacuationPursuerIntervalForLoop,
+  evacuationRoute,
   firstCircuitHint,
   isCircuitComplete,
   microfilmHint,
+  nextEvacuationPursuerStep,
   nextEvacuationStep,
+  safeEvacuationPursuerPosition,
   type EvacuationBoard,
   type GridPoint,
 } from '../../src/game/minigames/challengeRules';
@@ -75,7 +78,36 @@ describe('Aturan challenge tiga era', () => {
     expect(evacuationPatientCountForLoop(2)).toBe(2);
     expect(evacuationPatientCountForLoop(3)).toBe(3);
     expect(evacuationPursuerIntervalForLoop(1)).toBeLessThan(evacuationPursuerIntervalForLoop(0));
-    expect(evacuationPursuerIntervalForLoop(99)).toBe(1050);
+    expect(evacuationPursuerIntervalForLoop(99)).toBe(1800);
+  });
+
+  it('menjaga pengejar di luar koridor kritis menuju pasien dan titik merah', () => {
+    for (let loop = 0; loop < 8; loop += 1) {
+      for (const board of evacuationBoardsForLoop(loop)) {
+        const objectives = board.patients.flatMap(patient => [
+          { from: board.start, to: patient },
+          { from: patient, to: board.goal },
+        ]);
+        for (const objective of objectives) {
+          const route = evacuationRoute(board, objective.from, objective.to);
+          expect(route.length).toBeGreaterThan(0);
+          const pursuer = safeEvacuationPursuerPosition(
+            board,
+            board.pursuer,
+            objective.from,
+            objective.to,
+          );
+          expect(route).not.toContainEqual(pursuer);
+          const next = nextEvacuationPursuerStep(
+            board,
+            pursuer,
+            objective.from,
+            objective.to,
+          );
+          expect(route.slice(1)).not.toContainEqual(next);
+        }
+      }
+    }
   });
 
   it('memberi arah registrasi mikrofilm yang tepat', () => {

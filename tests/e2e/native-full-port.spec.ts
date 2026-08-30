@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { CAT_SPOTS } from '../../src/game/minigames/bonusRules';
 
 type Snapshot = {
   state: string;
@@ -58,6 +59,9 @@ type Snapshot = {
   pursuerMoveInMs?: number;
   pursuerMoves?: number;
   caughtCount?: number;
+  partner?: 'elena' | 'arthur';
+  cameraActive?: boolean;
+  cameraError?: boolean;
   system?: number;
   rotations?: number[];
   tiles?: Array<{
@@ -73,6 +77,7 @@ type Snapshot = {
   completedNodes?: number;
   modal?: boolean;
   ending?: boolean;
+  dateShortcutAvailable?: boolean;
   progress?: {
     differences: number;
     roses: number;
@@ -253,17 +258,15 @@ async function solveEvacuation(page: Page): Promise<void> {
     const originX = (GAME_WIDTH - initial.board.width * cellWidth) / 2;
 
     for (let patientNumber = 0; patientNumber < initial.patientCount; patientNumber += 1) {
-      const state = await snapshot(page);
-      const patient = state.remainingPatients?.[0];
-      const start = state.path?.[state.path.length - 1];
-      if (!state.board || !patient || !start) throw new Error('Data pasien evakuasi tidak lengkap');
-      for (const cell of shortestEvacuationPath(state.board, start, patient).slice(1)) {
-        const point = await canvasPoint(page, originX + cell.x * cellWidth + cellWidth / 2, top + cell.y * cellHeight + cellHeight / 2);
-        await page.mouse.click(point.x, point.y);
-      }
-      await expect.poll(async () => (await snapshot(page)).carryingPatient).toBe(true);
-      for (const cell of shortestEvacuationPath(state.board, patient, state.board.goal).slice(1)) {
-        const point = await canvasPoint(page, originX + cell.x * cellWidth + cellWidth / 2, top + cell.y * cellHeight + cellHeight / 2);
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const state = await snapshot(page);
+        if (state.round !== round || (state.rescuedPatients ?? 0) > patientNumber) break;
+        const start = state.path?.[state.path.length - 1];
+        const objective = state.carryingPatient ? state.board?.goal : state.remainingPatients?.[0];
+        if (!state.board || !start || !objective) throw new Error('Data pasien evakuasi tidak lengkap');
+        const next = shortestEvacuationPath(state.board, start, objective)[1];
+        if (!next) throw new Error('Pemain berhenti tepat di tujuan tanpa memicu aksi evakuasi');
+        const point = await canvasPoint(page, originX + next.x * cellWidth + cellWidth / 2, top + next.y * cellHeight + cellHeight / 2);
         await page.mouse.click(point.x, point.y);
       }
       if (patientNumber < initial.patientCount - 1) {
@@ -378,9 +381,9 @@ test.describe('Phaser Native Full Port E2E', () => {
     await attachCanvas(page, testInfo, 'spotlight-play-native');
     const evacuation = await snapshot(page);
     if (!evacuation.board) throw new Error('Peta evakuasi tidak tersedia');
-    const pursuerStart = evacuation.pursuer;
-    await expect.poll(async () => (await snapshot(page)).pursuerMoves, { timeout: 3_500 }).toBeGreaterThan(0);
-    expect((await snapshot(page)).pursuer).not.toEqual(pursuerStart);
+    const chaseCountdown = evacuation.pursuerMoveInMs;
+    await page.waitForTimeout(250);
+    expect((await snapshot(page)).pursuerMoveInMs).toBeLessThan(chaseCountdown ?? 0);
     const invalid = evacuation.board.blocked[0];
     const evacuationOriginX = (GAME_WIDTH - evacuation.board.width * 74) / 2;
     const invalidPoint = await canvasPoint(page, evacuationOriginX + invalid.x * 74 + 37, 148 + invalid.y * 44 + 22);
@@ -652,7 +655,7 @@ test.describe('Phaser Native Full Port E2E', () => {
     await attachCanvas(page, testInfo, 'bonus-differences-native');
     for (let i = 0; i < 10; i++) await page.keyboard.press('Enter');
     await expect.poll(async () => (await snapshot(page)).completedNodes).toBe(1);
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('KeyX');
 
     await openBonusNode(page, 1);
     for (let i = 0; i < 5; i++) await page.keyboard.press('Enter');
@@ -661,7 +664,7 @@ test.describe('Phaser Native Full Port E2E', () => {
     await page.keyboard.type('2088');
     await page.keyboard.press('Enter');
     await expect.poll(async () => (await snapshot(page)).completedNodes).toBe(2);
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('KeyX');
 
     await openBonusNode(page, 2);
     await attachCanvas(page, testInfo, 'bonus-dinner-native');
@@ -678,13 +681,18 @@ test.describe('Phaser Native Full Port E2E', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect.poll(async () => (await snapshot(page)).completedNodes).toBe(3);
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('KeyX');
 
     await openBonusNode(page, 3);
     await attachCanvas(page, testInfo, 'bonus-cats-native');
-    for (let i = 0; i < 18; i++) await page.keyboard.press('Enter');
+    for (let index = 0; index < CAT_SPOTS.length; index += 1) {
+      const spot = CAT_SPOTS[index];
+      const point = await canvasPoint(page, 135 + spot[0] * 690, 68 + spot[1] * 386);
+      await page.mouse.click(point.x, point.y);
+      await expect.poll(async () => (await snapshot(page)).progress?.cats).toBe(index + 1);
+    }
     await expect.poll(async () => (await snapshot(page)).completedNodes).toBe(4);
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('KeyX');
 
     await openBonusNode(page, 4);
     await attachCanvas(page, testInfo, 'bonus-chemistry-native');
@@ -710,10 +718,53 @@ test.describe('Phaser Native Full Port E2E', () => {
     await attachCanvas(page, testInfo, 'bonus-ending-native');
     await page.keyboard.down('Enter');
     try {
-      await expect.poll(async () => (await snapshot(page)).state).toBe('title');
+      await expect.poll(async () => (await snapshot(page)).state).toBe('photobooth');
     } finally {
       await page.keyboard.up('Enter');
     }
+    await expect.poll(async () => (await snapshot(page)).stage).toBe('choose');
+    await attachCanvas(page, testInfo, 'photo-booth-choice-native');
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await snapshot(page)).stage).toBe('camera');
+    await expect.poll(async () => (await snapshot(page)).partner).toBe('elena');
+    await expect.poll(async () => (await snapshot(page)).cameraActive).toBe(true);
+    await attachCanvas(page, testInfo, 'photo-booth-elena-native');
+    await page.waitForTimeout(500);
+    const [photoDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      page.keyboard.press('Space'),
+    ]);
+    expect(photoDownload.suggestedFilename()).toMatch(/^hearts-across-time-elena-\d+\.png$/);
+    await page.keyboard.press('Backspace');
+    await expect.poll(async () => (await snapshot(page)).stage).toBe('choose');
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(async () => (await snapshot(page)).partner).toBe('arthur');
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await snapshot(page)).stage).toBe('camera');
+    await expect.poll(async () => (await snapshot(page)).cameraActive).toBe(true);
+    await attachCanvas(page, testInfo, 'photo-booth-arthur-native');
+    await page.keyboard.press('KeyX');
+    await expect.poll(async () => (await snapshot(page)).state).toBe('title');
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('hat_save') ?? '{}').bonusSeen)).toBe(true);
+
+    for (const selection of [2, 3]) {
+      await page.keyboard.down('ArrowDown');
+      try {
+        await expect.poll(async () => (await snapshot(page)).menuSelection).toBe(selection);
+      } finally {
+        await page.keyboard.up('ArrowDown');
+      }
+    }
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await snapshot(page)).state).toBe('bonus2088');
+    await expect.poll(async () => (await snapshot(page)).dateShortcutAvailable).toBe(true);
+    await attachCanvas(page, testInfo, 'bonus-date-shortcut-native');
+    await page.keyboard.down('KeyF');
+    try {
+      await expect.poll(async () => (await snapshot(page)).state).toBe('photobooth');
+    } finally {
+      await page.keyboard.up('KeyF');
+    }
+    await expect.poll(async () => (await snapshot(page)).stage).toBe('choose');
   });
 });

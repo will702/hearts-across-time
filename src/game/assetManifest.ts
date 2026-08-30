@@ -74,6 +74,9 @@ export const BONUS_IMAGE_ASSETS: Record<string, string> = {
   'food-udang': 'assets/art/bonus/cheese-shrimp.jpg',
   'food-steak': 'assets/art/bonus/steak.jpg',
   'bonus-cats-art': 'assets/art/bonus/cats.jpg',
+  'bonus-photo-couple': 'assets/art/bonus/mukacinta.png',
+  'bonus-photo-elena': 'assets/art/bonus/mukaathur.png',
+  'bonus-photo-arthur': 'assets/art/bonus/mukaelena.png',
   'bonus-chem-glass': 'assets/art/bonus/chemistry-glass.jpg',
   'bonus-love-glass': 'assets/art/bonus/love-glass.jpg',
 };

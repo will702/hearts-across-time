@@ -5,7 +5,9 @@ import {
   applyEvacuationStep,
   evacuationBoardsForLoop,
   evacuationPursuerIntervalForLoop,
+  nextEvacuationPursuerStep,
   nextEvacuationStep,
+  safeEvacuationPursuerPosition,
   samePoint,
   type EvacuationBoard,
   type GridPoint,
@@ -245,6 +247,12 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.remainingPatients = board.patients.map(patient => ({ ...patient }));
     this.rescuedPatients = 0;
     this.pursuer = { ...board.pursuer };
+    this.pursuer = safeEvacuationPursuerPosition(
+      board,
+      this.pursuer,
+      board.start,
+      this.remainingPatients[0] ?? board.goal,
+    );
     this.pursuerElapsed = 0;
     this.path = [{ ...board.start }];
     this.cursor = { ...board.start };
@@ -282,6 +290,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
         this.carriedPatient = this.remainingPatients.splice(patientIndex, 1)[0];
         this.carryingPatient = true;
         this.path = [{ ...this.cursor }];
+        this.pursuer = safeEvacuationPursuerPosition(board, this.pursuer, this.cursor, board.goal);
         this.statusText?.setText('PASIEN DIANGKAT — CEPAT BAWA KE TITIK MERAH').setColor(CSS.green);
         this.renderBoard();
         return;
@@ -297,6 +306,12 @@ export class SpotlightChallengeScene extends Phaser.Scene {
         this.pursuerElapsed = 0;
 
         if (this.remainingPatients.length > 0) {
+          this.pursuer = safeEvacuationPursuerPosition(
+            board,
+            this.pursuer,
+            board.goal,
+            this.remainingPatients[0],
+          );
           this.statusText?.setText(`PASIEN ${this.rescuedPatients}/${board.patients.length} AMAN — JEMPUT KORBAN BERIKUTNYA`).setColor(CSS.green);
           this.renderBoard();
           return;
@@ -345,15 +360,14 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     if (this.stage !== 'play') return;
     this.pursuerElapsed += Math.min(delta, 100);
     const seconds = Math.max(0, (this.pursuerInterval - this.pursuerElapsed) / 1000);
-    this.chaseText?.setText(`⚠ PENGEJAR BERGERAK DALAM ${seconds.toFixed(1)} DETIK`);
+    this.chaseText?.setText(`[!] PENGEJAR BERGERAK DALAM ${seconds.toFixed(1)} DETIK`);
     if (this.pursuerElapsed < this.pursuerInterval) return;
 
     this.pursuerElapsed -= this.pursuerInterval;
     const board = this.boards[this.round];
     const playerPosition = this.path[this.path.length - 1];
-    const chaseBoard = { ...board, goal: playerPosition };
-    const next = nextEvacuationStep(chaseBoard, [this.pursuer]);
-    if (next) this.pursuer = { ...next };
+    const objective = this.carryingPatient ? board.goal : this.remainingPatients[0] ?? board.goal;
+    this.pursuer = nextEvacuationPursuerStep(board, this.pursuer, playerPosition, objective);
     this.pursuerMoves += 1;
     this.soundManager?.playGearTick(0.72);
     if (!this.checkPursuerCatch()) this.renderBoard();
