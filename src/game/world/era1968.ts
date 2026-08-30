@@ -42,7 +42,10 @@ export const ERA_1968 = {
       id: 'rose',
       type: 'puzzle',
       position: { x: 285, y: 444 },
-      visual: { asset: 'rose-bottle-broken', displayHeight: 64, origin: { x: 0.5, y: 1 } },
+      visual: {
+        asset: 'rose-bottle-broken', displayHeight: 58, origin: { x: 0.5, y: 1 },
+        contactShadow: { width: 48, height: 8 },
+      },
       depth: 444,
       collider: { x: 260, y: 384, width: 50, height: 60 },
       sensor: {
@@ -62,7 +65,10 @@ export const ERA_1968 = {
       id: 'signal',
       type: 'challenge',
       position: { x: 500, y: 444 },
-      visual: { asset: 'prop-radio1968A', displayHeight: 74, origin: { x: 0.5, y: 1 } },
+      visual: {
+        asset: 'prop-radio1968A', displayHeight: 66, origin: { x: 0.5, y: 1 },
+        contactShadow: { width: 60, height: 9 },
+      },
       depth: 443,
       collider: { x: 470, y: 370, width: 60, height: 74 },
       sensor: {
@@ -82,7 +88,10 @@ export const ERA_1968 = {
       id: 'diary',
       type: 'lore',
       position: { x: 720, y: 444 },
-      visual: { asset: 'diary-prop', fallbackAsset: 'lore-fallback', displayHeight: 68, origin: { x: 0.5, y: 1 } },
+      visual: {
+        asset: 'diary-prop', fallbackAsset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 },
+        contactShadow: { width: 56, height: 8 },
+      },
       depth: 442,
       sensor: {
         radius: 55,
@@ -100,7 +109,10 @@ export const ERA_1968 = {
       id: 'lore_tape',
       type: 'lore',
       position: { x: 805, y: 444 },
-      visual: { asset: 'tape-prop', fallbackAsset: 'lore-fallback', displayHeight: 54, origin: { x: 0.5, y: 1 } },
+      visual: {
+        asset: 'tape-prop', fallbackAsset: 'lore-fallback', displayHeight: 46, origin: { x: 0.5, y: 1 },
+        contactShadow: { width: 42, height: 7 },
+      },
       depth: 441,
       sensor: {
         radius: 48,
@@ -125,6 +137,7 @@ export const ERA_1968 = {
         displayHeight: 112,
         origin: { x: 0.5, y: 1 },
         flipX: true,
+        contactShadow: { width: 46, height: 8, alpha: 0.34 },
       },
       depth: 444,
       sensor: {

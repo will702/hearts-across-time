@@ -19,6 +19,7 @@ export interface WorldVisualDefinition {
   displayHeight?: number;
   origin?: WorldPoint;
   flipX?: boolean;
+  contactShadow?: { width: number; height: number; alpha?: number };
 }
 
 export interface WorldSensorDefinition {

@@ -4,6 +4,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import {
   applyEvacuationStep,
   evacuationBoardsForLoop,
+  evacuationPursuerIntervalForLoop,
   nextEvacuationStep,
   samePoint,
   type EvacuationBoard,
@@ -35,12 +36,21 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private path: GridPoint[] = [];
   private cursor: GridPoint = { x: 0, y: 0 };
   private carryingPatient = false;
+  private carriedPatient?: GridPoint;
+  private remainingPatients: GridPoint[] = [];
+  private rescuedPatients = 0;
+  private pursuer: GridPoint = { x: 0, y: 0 };
+  private pursuerElapsed = 0;
+  private pursuerInterval = 2200;
+  private pursuerMoves = 0;
+  private caughtCount = 0;
   private misses = 0;
   private assisted = false;
 
   private chooseContainer?: Phaser.GameObjects.Container;
   private boardContainer?: Phaser.GameObjects.Container;
   private statusText?: Phaser.GameObjects.Text;
+  private chaseText?: Phaser.GameObjects.Text;
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
 
   constructor() {
@@ -57,6 +67,13 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.boards = evacuationBoardsForLoop(data.run.loop);
     this.path = [];
     this.carryingPatient = false;
+    this.carriedPatient = undefined;
+    this.remainingPatients = [];
+    this.rescuedPatients = 0;
+    this.pursuerElapsed = 0;
+    this.pursuerInterval = evacuationPursuerIntervalForLoop(data.run.loop);
+    this.pursuerMoves = 0;
+    this.caughtCount = 0;
     this.misses = 0;
     this.assisted = false;
 
@@ -68,9 +85,12 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.add.text(GAME_WIDTH / 2, 68, 'PETA EVAKUASI GARIS DEPAN — 1944', {
       color: CSS.red, fontFamily: FONT.UI, fontSize: '23px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 98, 'Temukan lingkaran pasien, lalu bawa ke titik merah tanpa memasuki sektor berbahaya.', {
+    this.add.text(GAME_WIDTH / 2, 98, 'Selamatkan semua pasien sebelum pengejar menyusulmu. Hindari sektor berbahaya.', {
       color: '#5A4A3C', fontFamily: FONT.META, fontSize: '13px',
     }).setOrigin(0.5);
+    this.chaseText = this.add.text(GAME_WIDTH / 2, 126, '', {
+      color: CSS.red, fontFamily: FONT.META, fontSize: '12px', fontStyle: 'bold',
+    }).setOrigin(0.5).setVisible(false);
 
     this.boardContainer = this.add.container(0, 0).setVisible(false);
     this.statusText = this.add.text(GAME_WIDTH / 2, 404, 'Pilih cara membaca medan evakuasi.', {
@@ -96,7 +116,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     }) as Record<string, Phaser.Input.Keyboard.Key>;
   }
 
-  update(): void {
+  update(_time: number, delta: number): void {
     if (!this.keys || this.stage === 'success') return;
     const left = Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.a);
     const right = Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.d);
@@ -123,6 +143,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       this.updateObjectiveText();
       this.renderBoard();
     }
+    this.updatePursuer(delta);
   }
 
   snapshot(): Record<string, unknown> {
@@ -137,12 +158,21 @@ export class SpotlightChallengeScene extends Phaser.Scene {
         height: board.height,
         start: board.start,
         patient: board.patient,
+        patients: board.patients,
         goal: board.goal,
+        pursuerStart: board.pursuer,
         blocked: board.blocked,
       } : null,
       path: this.path,
       cursor: this.cursor,
       carryingPatient: this.carryingPatient,
+      remainingPatients: this.remainingPatients,
+      rescuedPatients: this.rescuedPatients,
+      patientCount: board?.patients.length ?? 0,
+      pursuer: this.pursuer,
+      pursuerMoveInMs: Math.max(0, Math.ceil(this.pursuerInterval - this.pursuerElapsed)),
+      pursuerMoves: this.pursuerMoves,
+      caughtCount: this.caughtCount,
       misses: this.misses,
       assisted: this.assisted,
       hintCell: this.assisted && board ? nextEvacuationStep(this.objectiveBoard(board), this.path) : null,
@@ -204,12 +234,18 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.chooseContainer?.setVisible(false);
     this.boardContainer?.setVisible(true);
     this.soundManager?.playConfirm();
+    this.chaseText?.setVisible(true);
     this.startRound();
   }
 
   private startRound(): void {
     const board = this.boards[this.round];
     this.carryingPatient = false;
+    this.carriedPatient = undefined;
+    this.remainingPatients = board.patients.map(patient => ({ ...patient }));
+    this.rescuedPatients = 0;
+    this.pursuer = { ...board.pursuer };
+    this.pursuerElapsed = 0;
     this.path = [{ ...board.start }];
     this.cursor = { ...board.start };
     this.updateObjectiveText();
@@ -229,8 +265,8 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private commit(point: GridPoint): void {
     if (this.stage !== 'play') return;
     const board = this.boards[this.round];
-    if (!this.carryingPatient && samePoint(point, board.goal)) {
-      this.rejectStep('JEMPUT LINGKARAN PASIEN SEBELUM MENUJU TITIK MERAH');
+    if (!this.carryingPatient && samePoint(point, board.goal) && this.remainingPatients.length > 0) {
+      this.rejectStep('JEMPUT SALAH SATU PASIEN SEBELUM MENUJU TITIK MERAH');
       return;
     }
     const result = applyEvacuationStep(board, this.path, point);
@@ -241,20 +277,35 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       this.cursor = { ...this.path[this.path.length - 1] };
       this.soundManager?.playLockSuccess();
 
-      if (!this.carryingPatient && samePoint(this.cursor, board.patient)) {
+      const patientIndex = this.remainingPatients.findIndex(patient => samePoint(this.cursor, patient));
+      if (!this.carryingPatient && patientIndex >= 0) {
+        this.carriedPatient = this.remainingPatients.splice(patientIndex, 1)[0];
         this.carryingPatient = true;
-        this.path = [{ ...board.patient }];
-        this.statusText?.setText('PASIEN DIANGKAT — BAWA LINGKARAN KE TITIK MERAH').setColor(CSS.green);
+        this.path = [{ ...this.cursor }];
+        this.statusText?.setText('PASIEN DIANGKAT — CEPAT BAWA KE TITIK MERAH').setColor(CSS.green);
         this.renderBoard();
         return;
       }
 
       if (this.carryingPatient && samePoint(this.cursor, board.goal)) {
+        this.carryingPatient = false;
+        this.carriedPatient = undefined;
+        this.rescuedPatients += 1;
+        this.path = [{ ...board.goal }];
+        this.cursor = { ...board.goal };
+        this.pursuer = { ...board.pursuer };
+        this.pursuerElapsed = 0;
+
+        if (this.remainingPatients.length > 0) {
+          this.statusText?.setText(`PASIEN ${this.rescuedPatients}/${board.patients.length} AMAN — JEMPUT KORBAN BERIKUTNYA`).setColor(CSS.green);
+          this.renderBoard();
+          return;
+        }
         if (this.round === this.boards.length - 1) {
           this.finish();
           return;
         }
-        this.statusText?.setText('KORBAN TIBA DI POS MEDIS — BUKA PETA BERIKUTNYA').setColor(CSS.green);
+        this.statusText?.setText('SEMUA KORBAN PETA INI AMAN — BUKA PETA BERIKUTNYA').setColor(CSS.green);
         this.time.delayedCall(420, () => {
           this.round += 1;
           this.startRound();
@@ -262,6 +313,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
         return;
       }
     }
+    if (this.checkPursuerCatch()) return;
     this.renderBoard();
   }
 
@@ -278,12 +330,58 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private updateObjectiveText(): void {
     const objective = this.carryingPatient
       ? 'BAWA PASIEN KE TITIK MERAH'
-      : 'TEMUKAN DAN AMBIL LINGKARAN PASIEN';
-    this.statusText?.setText(`EVAKUASI ${this.round + 1}/3 — ${objective}`).setColor(CSS.body);
+      : `JEMPUT ${this.remainingPatients.length} PASIEN YANG TERSISA`;
+    const board = this.boards[this.round];
+    this.statusText?.setText(`EVAKUASI ${this.round + 1}/3 • AMAN ${this.rescuedPatients}/${board.patients.length} — ${objective}`).setColor(CSS.body);
   }
 
   private objectiveBoard(board: EvacuationBoard): EvacuationBoard {
-    return this.carryingPatient ? board : { ...board, goal: board.patient };
+    return this.carryingPatient
+      ? board
+      : { ...board, goal: this.remainingPatients[0] ?? board.goal };
+  }
+
+  private updatePursuer(delta: number): void {
+    if (this.stage !== 'play') return;
+    this.pursuerElapsed += Math.min(delta, 100);
+    const seconds = Math.max(0, (this.pursuerInterval - this.pursuerElapsed) / 1000);
+    this.chaseText?.setText(`⚠ PENGEJAR BERGERAK DALAM ${seconds.toFixed(1)} DETIK`);
+    if (this.pursuerElapsed < this.pursuerInterval) return;
+
+    this.pursuerElapsed -= this.pursuerInterval;
+    const board = this.boards[this.round];
+    const playerPosition = this.path[this.path.length - 1];
+    const chaseBoard = { ...board, goal: playerPosition };
+    const next = nextEvacuationStep(chaseBoard, [this.pursuer]);
+    if (next) this.pursuer = { ...next };
+    this.pursuerMoves += 1;
+    this.soundManager?.playGearTick(0.72);
+    if (!this.checkPursuerCatch()) this.renderBoard();
+  }
+
+  private checkPursuerCatch(): boolean {
+    const playerPosition = this.path[this.path.length - 1];
+    if (!samePoint(this.pursuer, playerPosition)) return false;
+
+    const board = this.boards[this.round];
+    if (this.carryingPatient && this.carriedPatient) {
+      this.remainingPatients.unshift({ ...this.carriedPatient });
+    }
+    this.carryingPatient = false;
+    this.carriedPatient = undefined;
+    this.caughtCount += 1;
+    this.misses += 1;
+    this.assisted = this.misses >= 2;
+    this.pursuer = { ...board.pursuer };
+    this.pursuerElapsed = 0;
+    const restart = this.rescuedPatients > 0 ? board.goal : board.start;
+    this.path = [{ ...restart }];
+    this.cursor = { ...restart };
+    this.soundManager?.playErrorBuzz();
+    this.statusText?.setText('PENGEJAR MENYUSULMU — PASIEN YANG DIBAWA KEMBALI KE PETA!').setColor(CSS.redBright);
+    if (!this.registry.get('reduceMotion')) this.cameras.main.shake(180, 0.006);
+    this.renderBoard();
+    return true;
   }
 
   private renderBoard(): void {
@@ -314,7 +412,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
         const blocked = board.blocked.some(cell => samePoint(cell, point));
         const used = this.path.some(cell => samePoint(cell, point));
         const isGoal = samePoint(board.goal, point);
-        const isPatient = samePoint(board.patient, point);
+        const isPatient = this.remainingPatients.some(patient => samePoint(patient, point));
         const isStart = samePoint(board.start, point);
         const isHint = Boolean(hint && samePoint(hint, point));
         const cell = this.add.rectangle(cx, cy, CELL_WIDTH - 8, CELL_HEIGHT - 6,
@@ -324,7 +422,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
             isHint ? 1 : samePoint(this.cursor, point) ? 1 : 0.35)
           .setInteractive({ useHandCursor: true })
           .on('pointerup', () => { this.cursor = point; this.commit(point); });
-        const patientWaiting = isPatient && !this.carryingPatient;
+        const patientWaiting = isPatient;
         const label = this.add.text(cx, cy, blocked ? '✕' : isStart ? '◆' : used ? '•' : '', {
           color: blocked ? CSS.redBright : CSS.green,
           fontFamily: FONT.UI, fontSize: '17px', fontStyle: 'bold',
@@ -348,6 +446,15 @@ export class SpotlightChallengeScene extends Phaser.Scene {
         }
       }
     }
+
+    const pursuerX = originX + this.pursuer.x * CELL_WIDTH + CELL_WIDTH / 2;
+    const pursuerY = MAP_TOP + this.pursuer.y * CELL_HEIGHT + CELL_HEIGHT / 2;
+    const pursuerMarker = this.add.circle(pursuerX, pursuerY, 13, 0x631f1b, 1)
+      .setStrokeStyle(4, 0xf6d57b, 1);
+    const pursuerLabel = this.add.text(pursuerX, pursuerY, '!', {
+      color: '#fff8ea', fontFamily: FONT.UI, fontSize: '16px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.boardContainer.add([pursuerMarker, pursuerLabel]);
   }
 
   private finish(): void {
@@ -356,6 +463,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.challengeData.run[this.chosenApproach] += 1;
     this.challengeData.save.saveCycle('1944', this.challengeData.run, 765);
     this.boardContainer?.removeAll(true);
+    this.chaseText?.setVisible(false);
 
     // kartu sukses kertas legacy
     this.add.rectangle(GAME_WIDTH / 2, 275, 660, 180, 0xf3eada, 0.96);

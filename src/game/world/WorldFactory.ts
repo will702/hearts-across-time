@@ -27,7 +27,8 @@ export class WorldFactory {
     const collider = definition.collider
       ? this.createStaticZone(definition.collider, definition.id, 'collider')
       : undefined;
-    const object = new WorldObject(definition, visual, sensor, collider);
+    const shadow = this.createContactShadow(definition);
+    const object = new WorldObject(definition, visual, sensor, collider, shadow);
     object.refresh(state);
     return object;
   }
@@ -55,6 +56,19 @@ export class WorldFactory {
     image.setDepth(definition.depth).setFlipX(Boolean(visual.flipX));
     if (visual.displayHeight) image.setScale(visual.displayHeight / image.height);
     return image;
+  }
+
+  private createContactShadow(definition: WorldObjectDefinition): Phaser.GameObjects.Ellipse | undefined {
+    const shadow = definition.visual.contactShadow;
+    if (!shadow) return undefined;
+    return this.scene.add.ellipse(
+      definition.position.x,
+      definition.position.y - 1,
+      shadow.width,
+      shadow.height,
+      0x090807,
+      shadow.alpha ?? 0.3,
+    ).setDepth(definition.depth - 1);
   }
 
   private createSensor(definition: WorldObjectDefinition): StaticZone {

@@ -2,10 +2,12 @@ import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import {
-  CIRCUIT_BOARDS,
+  circuitBoardsForLoop,
+  circuitDifficultyForLoop,
   circuitMask,
   firstCircuitHint,
   isCircuitComplete,
+  type CircuitBoard,
 } from '../minigames/challengeRules';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 import { addPaperPanel } from '../ui/paper';
@@ -31,6 +33,7 @@ export class CryoBalanceScene extends Phaser.Scene {
   private focusIndex = 0;
   private testFailures = 0;
   private assisted = false;
+  private boards: readonly CircuitBoard[] = [];
 
   private statusText?: Phaser.GameObjects.Text;
   private chooseContainer?: Phaser.GameObjects.Container;
@@ -52,6 +55,7 @@ export class CryoBalanceScene extends Phaser.Scene {
     this.focusIndex = 0;
     this.testFailures = 0;
     this.assisted = false;
+    this.boards = circuitBoardsForLoop(data.run.loop);
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x04060a, 0.8);
     if (this.textures.exists('bg1999-mid')) {
@@ -111,7 +115,7 @@ export class CryoBalanceScene extends Phaser.Scene {
   }
 
   snapshot(): Record<string, unknown> {
-    const board = CIRCUIT_BOARDS[this.system];
+    const board = this.boards[this.system];
     return {
       minigame: 'coolant_circuit',
       stage: this.stage,
@@ -124,12 +128,18 @@ export class CryoBalanceScene extends Phaser.Scene {
         x: index % board.width,
         y: Math.floor(index / board.width),
         active: tile.targetMask !== 0,
+        pipe: tile.pipeMask !== 0,
+        decoy: tile.targetMask === 0,
         rotation: this.rotations[index] ?? 0,
         targetRotation: 0,
       })) ?? [],
       focusIndex: this.focusIndex,
       testFailures: this.testFailures,
       assisted: this.assisted,
+      loop: this.balanceData.run.loop,
+      difficulty: circuitDifficultyForLoop(this.balanceData.run.loop),
+      activeTileCount: board?.tiles.filter(tile => tile.targetMask !== 0).length ?? 0,
+      pipeTileCount: board?.tiles.filter(tile => tile.pipeMask !== 0).length ?? 0,
       hintTile: this.assisted && board ? firstCircuitHint(board, this.rotations) : null,
     };
   }
@@ -191,34 +201,28 @@ export class CryoBalanceScene extends Phaser.Scene {
   }
 
   private startSystem(): void {
-    const board = CIRCUIT_BOARDS[this.system];
+    const board = this.boards[this.system];
     this.rotations = board.tiles.map(tile => tile.initialRotation);
-    this.focusIndex = board.tiles.findIndex(tile => tile.targetMask !== 0);
-    this.statusText?.setText(`SISTEM ${this.system + 1}/3 — ${board.label}: PUTAR KONDUIT, LALU UJI ALIRAN`).setColor(CSS.body);
+    this.focusIndex = board.sourceIndex;
+    const difficulty = circuitDifficultyForLoop(this.balanceData.run.loop);
+    this.statusText?.setText(`SISTEM ${this.system + 1}/3 — ${board.label} • ${difficulty}: PIPA PENGECOH BOLEH DIABAIKAN`).setColor(CSS.body);
     this.renderCircuit();
   }
 
   private moveFocus(dx: number, dy: number): void {
-    const board = CIRCUIT_BOARDS[this.system];
+    const board = this.boards[this.system];
     let x = this.focusIndex % board.width;
     let y = Math.floor(this.focusIndex / board.width);
-    const attempts = dx ? board.width : board.height;
-    for (let attempt = 0; attempt < attempts; attempt += 1) {
-      x = Phaser.Math.Wrap(x + dx, 0, board.width);
-      y = Phaser.Math.Wrap(y + dy, 0, board.height);
-      const index = y * board.width + x;
-      if (board.tiles[index].targetMask) {
-        this.focusIndex = index;
-        this.soundManager?.playSelect();
-        this.renderCircuit();
-        return;
-      }
-    }
+    x = Phaser.Math.Wrap(x + dx, 0, board.width);
+    y = Phaser.Math.Wrap(y + dy, 0, board.height);
+    this.focusIndex = y * board.width + x;
+    this.soundManager?.playSelect();
+    this.renderCircuit();
   }
 
   private rotateTile(index: number): void {
-    const board = CIRCUIT_BOARDS[this.system];
-    if (this.stage !== 'play' || !board.tiles[index]?.targetMask) return;
+    const board = this.boards[this.system];
+    if (this.stage !== 'play' || !board.tiles[index]?.pipeMask) return;
     this.focusIndex = index;
     this.rotations[index] = (this.rotations[index] + 1) % 4;
     this.soundManager?.playGearTick(0.9 + this.system * 0.1);
@@ -227,7 +231,7 @@ export class CryoBalanceScene extends Phaser.Scene {
 
   private testFlow(): void {
     if (this.stage !== 'play') return;
-    const board = CIRCUIT_BOARDS[this.system];
+    const board = this.boards[this.system];
     if (!isCircuitComplete(board, this.rotations)) {
       this.testFailures += 1;
       this.assisted = this.testFailures >= 2;
@@ -241,7 +245,7 @@ export class CryoBalanceScene extends Phaser.Scene {
     }
 
     this.soundManager?.playSteamRelease();
-    if (this.system === CIRCUIT_BOARDS.length - 1) {
+    if (this.system === this.boards.length - 1) {
       this.finish();
       return;
     }
@@ -255,7 +259,7 @@ export class CryoBalanceScene extends Phaser.Scene {
   private renderCircuit(): void {
     if (!this.boardContainer || this.stage !== 'play') return;
     this.boardContainer.removeAll(true);
-    const board = CIRCUIT_BOARDS[this.system];
+    const board = this.boards[this.system];
     const originX = (GAME_WIDTH - board.width * CELL_SIZE) / 2;
     const colors = [0xb98a3d, 0x5d91a9, 0x94342e];
     const color = colors[this.system];
@@ -266,15 +270,13 @@ export class CryoBalanceScene extends Phaser.Scene {
       const y = Math.floor(index / board.width);
       const cx = originX + x * CELL_SIZE + CELL_SIZE / 2;
       const cy = GRID_TOP + y * CELL_SIZE + CELL_SIZE / 2;
-      const active = tile.targetMask !== 0;
       const selected = index === this.focusIndex;
-      const cell = this.add.rectangle(cx, cy, CELL_SIZE - 7, CELL_SIZE - 7, active ? 0x14202a : 0x0d151c, active ? 0.96 : 0.5)
+      const cell = this.add.rectangle(cx, cy, CELL_SIZE - 7, CELL_SIZE - 7, 0x14202a, 0.96)
         .setStrokeStyle(index === hint ? 4 : selected ? 3 : 1.2,
           index === hint ? 0xb98a3d : selected ? 0xf3eada : 0x2b211a,
-          active ? 1 : 0.35);
-      if (active) cell.setInteractive({ useHandCursor: true }).on('pointerup', () => this.rotateTile(index));
+          1);
+      cell.setInteractive({ useHandCursor: true }).on('pointerup', () => this.rotateTile(index));
       this.boardContainer?.add(cell);
-      if (!active) return;
 
       const mask = circuitMask(board, this.rotations, index);
       const pipe = this.add.graphics();

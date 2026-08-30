@@ -5,7 +5,9 @@ export type EvacuationBoard = {
   height: number;
   start: GridPoint;
   patient: GridPoint;
+  patients: readonly GridPoint[];
   goal: GridPoint;
+  pursuer: GridPoint;
   blocked: readonly GridPoint[];
 };
 
@@ -15,7 +17,9 @@ const EVACUATION_BOARD_TEMPLATES: readonly EvacuationBoard[] = [
     height: 3,
     start: { x: 0, y: 2 },
     patient: { x: 1, y: 0 },
+    patients: [{ x: 1, y: 0 }, { x: 3, y: 2 }, { x: 0, y: 0 }],
     goal: { x: 3, y: 0 },
+    pursuer: { x: 2, y: 0 },
     blocked: [{ x: 1, y: 1 }, { x: 2, y: 2 }],
   },
   {
@@ -23,7 +27,9 @@ const EVACUATION_BOARD_TEMPLATES: readonly EvacuationBoard[] = [
     height: 4,
     start: { x: 0, y: 3 },
     patient: { x: 2, y: 1 },
+    patients: [{ x: 2, y: 1 }, { x: 4, y: 3 }, { x: 0, y: 0 }],
     goal: { x: 4, y: 0 },
+    pursuer: { x: 2, y: 3 },
     blocked: [{ x: 1, y: 3 }, { x: 1, y: 1 }, { x: 3, y: 2 }, { x: 3, y: 0 }],
   },
   {
@@ -31,7 +37,9 @@ const EVACUATION_BOARD_TEMPLATES: readonly EvacuationBoard[] = [
     height: 4,
     start: { x: 0, y: 1 },
     patient: { x: 2, y: 0 },
+    patients: [{ x: 2, y: 0 }, { x: 4, y: 0 }, { x: 0, y: 3 }],
     goal: { x: 4, y: 2 },
+    pursuer: { x: 2, y: 3 },
     blocked: [{ x: 1, y: 0 }, { x: 1, y: 2 }, { x: 2, y: 2 }, { x: 3, y: 1 }, { x: 3, y: 3 }],
   },
 ];
@@ -49,7 +57,9 @@ function rotateEvacuationPoint(point: GridPoint, width: number, height: number, 
 
 /** Delapan orientasi deterministik; loop berikutnya selalu memakai medan yang berbeda. */
 export function evacuationBoardsForLoop(loop: number): readonly EvacuationBoard[] {
-  const variant = Math.max(0, Math.floor(loop)) % 8;
+  const normalizedLoop = Math.max(0, Math.floor(loop));
+  const variant = normalizedLoop % 8;
+  const patientCount = evacuationPatientCountForLoop(normalizedLoop);
   const turns = variant % 4;
   const reflected = variant >= 4;
   return EVACUATION_BOARD_TEMPLATES.map((board) => {
@@ -65,10 +75,24 @@ export function evacuationBoardsForLoop(loop: number): readonly EvacuationBoard[
       height,
       start: transform(board.start),
       patient: transform(board.patient),
+      patients: board.patients.slice(0, patientCount).map(transform),
       goal: transform(board.goal),
+      pursuer: transform(board.pursuer),
       blocked: board.blocked.map(transform),
     };
   });
+}
+
+export function evacuationPatientCountForLoop(loop: number): 1 | 2 | 3 {
+  const normalized = Math.max(0, Math.floor(loop));
+  if (normalized >= 3) return 3;
+  if (normalized >= 1) return 2;
+  return 1;
+}
+
+export function evacuationPursuerIntervalForLoop(loop: number): number {
+  const normalized = Math.max(0, Math.floor(loop));
+  return Math.max(1050, 2200 - normalized * 180);
 }
 
 export const EVACUATION_BOARDS: readonly EvacuationBoard[] = evacuationBoardsForLoop(0);
@@ -143,7 +167,13 @@ const DIRECTIONS = [
   { bit: WEST, opposite: EAST, dx: -1, dy: 0 },
 ] as const;
 
-export type CircuitTile = { targetMask: number; initialRotation: number };
+export type CircuitTile = {
+  /** Orientasi jalur bantuan/solusi utama. Nol berarti pipa pengecoh. */
+  targetMask: number;
+  /** Bentuk pipa yang selalu digambar dan dapat diputar pemain. */
+  pipeMask: number;
+  initialRotation: number;
+};
 export type CircuitBoard = {
   label: 'DAYA' | 'PENDINGIN' | 'SERUM';
   width: number;
@@ -173,14 +203,22 @@ function makeCircuitBoard(
   label: CircuitBoard['label'],
   path: readonly GridPoint[],
   rotations: readonly number[],
+  decoySeed = 0,
 ): CircuitBoard {
   const width = 4;
   const height = 3;
-  const tiles: CircuitTile[] = Array.from({ length: width * height }, () => ({ targetMask: 0, initialRotation: 0 }));
+  const decoyMasks = [NORTH | SOUTH, EAST | WEST, NORTH | EAST, EAST | SOUTH, SOUTH | WEST, WEST | NORTH];
+  const tiles: CircuitTile[] = Array.from({ length: width * height }, (_, index) => ({
+    targetMask: 0,
+    pipeMask: decoyMasks[(decoySeed + index * 5) % decoyMasks.length],
+    initialRotation: (decoySeed + index * 3) % 4,
+  }));
   path.forEach((point, index) => {
     const neighbors = [path[index - 1], path[index + 1]].filter(Boolean) as GridPoint[];
+    const targetMask = neighbors.reduce((mask, neighbor) => mask | directionBit(point, neighbor), 0);
     tiles[point.y * width + point.x] = {
-      targetMask: neighbors.reduce((mask, neighbor) => mask | directionBit(point, neighbor), 0),
+      targetMask,
+      pipeMask: targetMask,
       initialRotation: rotations[index] % 4,
     };
   });
@@ -194,19 +232,103 @@ function makeCircuitBoard(
   };
 }
 
+const CIRCUIT_LABELS = ['DAYA', 'PENDINGIN', 'SERUM'] as const;
+
+const MEDIUM_CIRCUIT_PATHS: readonly (readonly GridPoint[])[] = [
+  [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1 }, { x: 1, y: 1 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
+  [{ x: 0, y: 2 }, { x: 0, y: 1 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 2 }, { x: 2, y: 1 }, { x: 3, y: 1 }],
+  [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 1 }, { x: 2, y: 1 }, { x: 1, y: 1 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
+];
+
+const HARD_CIRCUIT_PATHS: readonly (readonly GridPoint[])[] = [
+  MEDIUM_CIRCUIT_PATHS[2],
+  [...MEDIUM_CIRCUIT_PATHS[2], { x: 2, y: 2 }],
+  [...MEDIUM_CIRCUIT_PATHS[2], { x: 2, y: 2 }, { x: 3, y: 2 }],
+];
+
+const EXPERT_CIRCUIT_PATHS: readonly (readonly GridPoint[])[] = [
+  HARD_CIRCUIT_PATHS[2],
+  [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }, { x: 1, y: 1 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 2 }, { x: 3, y: 1 }, { x: 3, y: 0 }],
+  HARD_CIRCUIT_PATHS[2],
+];
+
+function transformCircuitPath(path: readonly GridPoint[], variant: number): GridPoint[] {
+  const transformed = path.map(point => ({
+    x: variant & 1 ? 3 - point.x : point.x,
+    y: variant & 2 ? 2 - point.y : point.y,
+  }));
+  return variant & 4 ? transformed.reverse() : transformed;
+}
+
+function scrambledCircuitBoard(
+  label: CircuitBoard['label'],
+  path: readonly GridPoint[],
+  loop: number,
+  system: number,
+): CircuitBoard {
+  const solved = makeCircuitBoard(label, path, path.map(() => 0), loop * 11 + system * 7);
+  return {
+    ...solved,
+    tiles: solved.tiles.map((tile, index) => {
+      if (!tile.targetMask) {
+        return {
+          ...tile,
+          initialRotation: (loop * 3 + system * 2 + index * 5) % 4,
+        };
+      }
+      const straight = tile.targetMask === (NORTH | SOUTH) || tile.targetMask === (EAST | WEST);
+      const options = straight ? [1, 3] : [1, 2, 3];
+      return {
+        ...tile,
+        initialRotation: options[(loop * 5 + system * 3 + index * 7) % options.length],
+      };
+    }),
+  };
+}
+
 export const CIRCUIT_BOARDS: readonly CircuitBoard[] = [
   makeCircuitBoard('DAYA', [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 1 }], [1, 1, 2, 1, 1, 3]),
   makeCircuitBoard('PENDINGIN', [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 2 }], [3, 1, 2, 1, 3, 2]),
   makeCircuitBoard('SERUM', [{ x: 0, y: 2 }, { x: 1, y: 2 }, { x: 1, y: 1 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1 }, { x: 3, y: 1 }], [1, 2, 1, 3, 1, 2, 3]),
 ] as const;
 
+export type CircuitDifficulty = 'NORMAL' | 'SULIT' | 'EKSTREM';
+
+export function circuitDifficultyForLoop(loop: number): CircuitDifficulty {
+  const normalized = Math.max(0, Math.floor(loop));
+  return normalized === 0 ? 'NORMAL' : normalized === 1 ? 'SULIT' : 'EKSTREM';
+}
+
+/**
+ * Mengganti bentuk dan orientasi sirkuit pada setiap loop. Kesulitan naik lewat
+ * jumlah konduit aktif: 6–7 (normal), 8–10 (sulit), 10–12 lalu 12 (ekstrem).
+ * Delapan transformasi memberi variasi replay yang deterministik dan teruji.
+ */
+export function circuitBoardsForLoop(loop: number): readonly CircuitBoard[] {
+  const normalized = Math.max(0, Math.floor(loop));
+  if (normalized === 0) return CIRCUIT_BOARDS;
+
+  const paths = normalized === 1
+    ? MEDIUM_CIRCUIT_PATHS
+    : normalized === 2
+      ? HARD_CIRCUIT_PATHS
+      : EXPERT_CIRCUIT_PATHS;
+  const variant = normalized % 8;
+
+  return CIRCUIT_LABELS.map((label, system) => scrambledCircuitBoard(
+    label,
+    transformCircuitPath(paths[system], (variant + system * 3) % 8),
+    normalized,
+    system,
+  ));
+}
+
 export function circuitMask(board: CircuitBoard, rotations: readonly number[], index: number): number {
   const tile = board.tiles[index];
-  return tile ? rotateCircuitMask(tile.targetMask, rotations[index] ?? 0) : 0;
+  return tile ? rotateCircuitMask(tile.pipeMask, rotations[index] ?? 0) : 0;
 }
 
 export function isCircuitComplete(board: CircuitBoard, rotations: readonly number[]): boolean {
-  const active = board.tiles.map((tile, index) => tile.targetMask ? index : -1).filter(index => index >= 0);
   const visited = new Set<number>();
   const queue = [board.sourceIndex];
 
@@ -229,7 +351,9 @@ export function isCircuitComplete(board: CircuitBoard, rotations: readonly numbe
     }
   }
 
-  return visited.has(board.sinkIndex) && active.every(index => visited.has(index));
+  // Pipa yang tidak pernah menerima aliran dari sumber adalah pengecoh dan
+  // tidak wajib menjadi bagian dari rangkaian yang berhasil.
+  return visited.has(board.sinkIndex);
 }
 
 export function firstCircuitHint(board: CircuitBoard, rotations: readonly number[]): number | null {

@@ -57,6 +57,20 @@ describe('storyScript narrative engine', () => {
     expect(loopDiary.pages[2]).toContain('Elena');
   });
 
+  it('mengunci identitas Arthur 1968 berdasarkan rute, bukan nilai emosi', () => {
+    const bunkerOps = getStoryOps('n_b2', baseState({
+      routeB1: 'A', empathy: 5, logic: 0, loop: 3,
+    }));
+    const labOps = getStoryOps('n_b2', baseState({
+      routeB1: 'B', empathy: 0, logic: 5, loop: 3,
+    }));
+
+    expect(bunkerOps?.filter(op => op.t === 'say').slice(0, 3).map(op => op.who))
+      .toEqual(['buron', 'buron', 'buron']);
+    expect(labOps?.filter(op => op.t === 'say').slice(0, 3).map(op => op.who))
+      .toEqual(['dewasa', 'dewasa', 'dewasa']);
+  });
+
   it('emits the exact collectible key for every ending path', () => {
     expect(endingFor('n_b3_final', baseState({ routeB2: 'A1' }))).toBe('A1');
     expect(endingFor('n_b3_final', baseState({ routeB2: 'B1' }))).toBe('B1');

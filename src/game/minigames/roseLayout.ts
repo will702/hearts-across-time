@@ -17,20 +17,75 @@ export const ROSE_TARGET = { x: 355, y: 148, w: 250, h: 214 } as const;
 export const ROSE_SOURCE_CROP = { x: 330, y: 250, w: 1640, h: 1220 } as const;
 export const ROSE_SOURCE_FRAME = 'hat-rose-bottle-region';
 
-export const ROSE_PIECES_DEF: RosePieceDefinition[] = [
-  { poly: [[0, 0], [82, 0], [108, 48], [55, 73], [0, 54]] },
-  { poly: [[82, 0], [168, 0], [183, 72], [126, 108], [108, 48]] },
-  { poly: [[168, 0], [250, 0], [250, 66], [183, 72]] },
-  { poly: [[250, 66], [250, 150], [178, 144], [112, 169], [126, 108], [183, 72]] },
-  { poly: [[250, 150], [250, 214], [162, 214], [112, 169], [178, 144]] },
-  { poly: [[162, 214], [72, 214], [58, 132], [126, 108], [112, 169]] },
-  { poly: [[72, 214], [0, 214], [0, 145], [58, 132]] },
-  { poly: [[0, 145], [0, 54], [55, 73], [108, 48], [126, 108], [58, 132]] },
+const ROSE_LAYOUT_NODES: RosePoint[] = [
+  [0, 0], [82, 0], [168, 0], [250, 0],
+  [250, 66], [250, 150], [250, 214], [162, 214],
+  [72, 214], [0, 214], [0, 145], [0, 54],
+  [108, 48], [55, 73], [183, 72], [126, 108],
+  [178, 144], [112, 169], [58, 132],
 ];
 
+const ROSE_PIECE_NODE_IDS = [
+  [0, 1, 12, 13, 11],
+  [1, 2, 14, 15, 12],
+  [2, 3, 4, 14],
+  [4, 5, 16, 17, 15, 14],
+  [5, 6, 7, 17, 16],
+  [7, 8, 18, 15, 17],
+  [8, 9, 10, 18],
+  [10, 11, 13, 12, 15, 18],
+] as const;
+
+const FIXED_NODE_IDS = new Set([0, 3, 6, 9]);
+const TOP_NODE_IDS = new Set([1, 2]);
+const RIGHT_NODE_IDS = new Set([4, 5]);
+const BOTTOM_NODE_IDS = new Set([7, 8]);
+const LEFT_NODE_IDS = new Set([10, 11]);
+
+/** Jumlah pola yang disimpan di cache tekstur sebelum berulang. */
+export const ROSE_LAYOUT_VARIANT_COUNT = 12;
+
+function layoutNoise(variant: number, nodeIndex: number, axis: number): number {
+  let value = Math.imul(variant + 17, 0x45d9f3b)
+    ^ Math.imul(nodeIndex + 31, 0x27d4eb2d)
+    ^ Math.imul(axis + 7, 0x165667b1);
+  value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
+  value ^= value >>> 16;
+  return ((value >>> 0) / 0xffff_ffff) * 2 - 1;
+}
+
+function roseNodeForVariant(point: RosePoint, nodeIndex: number, variant: number): RosePoint {
+  if (variant === 0 || FIXED_NODE_IDS.has(nodeIndex)) return [...point];
+
+  const xShift = Math.round(layoutNoise(variant, nodeIndex, 0) * 12);
+  const yShift = Math.round(layoutNoise(variant, nodeIndex, 1) * 12);
+  if (TOP_NODE_IDS.has(nodeIndex) || BOTTOM_NODE_IDS.has(nodeIndex)) {
+    return [point[0] + xShift, point[1]];
+  }
+  if (RIGHT_NODE_IDS.has(nodeIndex) || LEFT_NODE_IDS.has(nodeIndex)) {
+    return [point[0], point[1] + yShift];
+  }
+  return [point[0] + xShift, point[1] + yShift];
+}
+
+/**
+ * Menghasilkan retakan deterministik dari nomor loop. Semua keping memakai
+ * simpul bersama yang sama, sehingga bentuk berubah tanpa menciptakan celah.
+ */
+export function rosePiecesForLoop(loop: number): RosePieceDefinition[] {
+  const safeLoop = Math.max(0, Math.floor(Number.isFinite(loop) ? loop : 0));
+  const variant = safeLoop % ROSE_LAYOUT_VARIANT_COUNT;
+  const nodes = ROSE_LAYOUT_NODES.map((point, index) => roseNodeForVariant(point, index, variant));
+  return ROSE_PIECE_NODE_IDS.map(nodeIds => ({
+    poly: nodeIds.map(nodeId => [...nodes[nodeId]] as RosePoint),
+  }));
+}
+
+export const ROSE_PIECES_DEF: RosePieceDefinition[] = rosePiecesForLoop(0);
+
 const HOME_ZONES = [
-  { left: 90, right: 330, top: 125, bottom: 370 },
-  { left: 630, right: 870, top: 125, bottom: 370 },
+  { left: 70, right: 340, top: 115, bottom: 385 },
+  { left: 620, right: 890, top: 115, bottom: 385 },
 ] as const;
 
 const HOME_GAP = 7;
@@ -78,8 +133,11 @@ const PACKED_ROWS = [
  * diacak setiap permainan. Seluruh susunan diulang bila satu keping tidak
  * mendapat rumah, sehingga hasil akhirnya tidak pernah bertumpuk.
  */
-export function randomRoseHomes(random: () => number = Math.random): RoseHome[] {
-  const homes: RoseHome[] = new Array(ROSE_PIECES_DEF.length);
+export function randomRoseHomes(
+  random: () => number = Math.random,
+  pieces: readonly RosePieceDefinition[] = ROSE_PIECES_DEF,
+): RoseHome[] {
+  const homes: RoseHome[] = new Array(pieces.length);
   const sideRows = PACKED_ROWS.map(rows => rows.map(row => [...row]));
   if (random() < 0.5) sideRows.reverse();
 
@@ -89,11 +147,11 @@ export function randomRoseHomes(random: () => number = Math.random): RoseHome[] 
     const rowMetrics = rows.map(row => ({
       row,
       width: row.reduce<number>((sum, index) => {
-        const bounds = polygonBounds(ROSE_PIECES_DEF[index].poly);
+        const bounds = polygonBounds(pieces[index].poly);
         return sum + bounds.right - bounds.left;
       }, 0),
       height: Math.max(...row.map((index) => {
-        const bounds = polygonBounds(ROSE_PIECES_DEF[index].poly);
+        const bounds = polygonBounds(pieces[index].poly);
         return bounds.bottom - bounds.top;
       })),
     }));
@@ -111,7 +169,7 @@ export function randomRoseHomes(random: () => number = Math.random): RoseHome[] 
       let left = zone.left + random() * Math.max(0, zoneWidth - packedWidth);
 
       row.forEach((index) => {
-        const poly = ROSE_PIECES_DEF[index].poly;
+        const poly = pieces[index].poly;
         const bounds = polygonBounds(poly);
         const width = bounds.right - bounds.left;
         const height = bounds.bottom - bounds.top;

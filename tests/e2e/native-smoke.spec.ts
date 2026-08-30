@@ -365,6 +365,50 @@ test('@smoke save, reload, dan Lanjutkan memulihkan posisi valid', async ({ page
   expect(Math.abs(player(await snapshot(page)).x - savedX)).toBeLessThan(4);
 });
 
+test('@smoke transisi akhir 1944 membuka babak 2 tanpa macet', async ({ page }) => {
+  const diagnostics = collectDiagnostics(page);
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem('hat_opts', JSON.stringify({ reduceMotion: true, textSpd: 2, vol: 0 }));
+    localStorage.setItem('hat_save', JSON.stringify({
+      saveVersion: 2,
+      game: {
+        era: '1944',
+        playerX: 1080,
+        S: {
+          empathy: 1,
+          logic: 0,
+          routeB1: '',
+          routeB2: '',
+          loop: 0,
+          watchRepaired: true,
+          roseRepaired: false,
+          gemAligned: false,
+          photoRepaired: false,
+          challenges: { '1944': 'empathy', '1968': null, '1999': null },
+          inventory: { watch: 1 },
+          diaryRead: false,
+        },
+      },
+      endings: {},
+      inspected: {},
+    }));
+  });
+
+  await page.goto('/?qa=1');
+  await expect.poll(async () => (await snapshot(page)).state).toBe('title');
+  await expect.poll(async () => Boolean((await snapshot(page)).titleInteractive)).toBe(true);
+  await pressUntilState(page, 'Enter', 'vortex');
+  try {
+    await pressUntilState(page, 'Enter', 'dialogue');
+  } catch (error) {
+    throw new Error(`Babak 2 macet: ${diagnostics.errors.join(' | ') || 'tanpa error browser'}`, { cause: error });
+  }
+  await pressUntilState(page, 'Enter', 'era1968');
+
+  expect(diagnostics.errors).toEqual([]);
+});
+
 test('@smoke kontrol sentuh menyediakan gerak dan aksi setara', async ({ browser }) => {
   const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();

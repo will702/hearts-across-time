@@ -2,6 +2,10 @@ import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { closestPolylineProgress, pointInPolygon } from '../minigames/math';
+import {
+  memoryRecallQuestionForLoop,
+  type MemoryRecallQuestion,
+} from '../minigames/memoryRecall';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 export type PhotoPuzzleData = {
@@ -52,7 +56,7 @@ const PHOTO_PIECES_DEF: { poly: [number, number][]; home: [number, number] }[] =
 export class PhotoPuzzleScene extends Phaser.Scene {
   private puzzleData!: PhotoPuzzleData;
   private soundManager?: SoundManager;
-  private stage: 'assemble' | 'glue' | 'success' = 'assemble';
+  private stage: 'memory' | 'assemble' | 'glue' | 'success' = 'memory';
   private pieces: Piece[] = [];
   private selectedPiece = 0;
   private draggingIndex = -1;
@@ -64,6 +68,15 @@ export class PhotoPuzzleScene extends Phaser.Scene {
   private feedbackText?: Phaser.GameObjects.Text;
   private seamGraphics?: Phaser.GameObjects.Graphics;
   private photoImage?: Phaser.GameObjects.Image;
+  private memoryQuestion: MemoryRecallQuestion = memoryRecallQuestionForLoop(0);
+  private memoryOverlay?: Phaser.GameObjects.Container;
+  private memoryFeedback?: Phaser.GameObjects.Text;
+  private memoryButtons: Array<{
+    background: Phaser.GameObjects.Rectangle;
+    label: Phaser.GameObjects.Text;
+  }> = [];
+  private memorySelected = 0;
+  private memoryLocked = false;
 
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
 
@@ -75,24 +88,50 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     this.puzzleData = data;
     this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'photopuzzle');
-    this.stage = 'assemble';
+    this.stage = 'memory';
     this.selectedPiece = 0;
     this.draggingIndex = -1;
     this.glueLines = [false, false, false];
     this.glueTrace = [0, 0, 0];
     this.glueSel = 0;
+    this.memoryQuestion = memoryRecallQuestionForLoop(this.puzzleData.run.loop);
+    this.memorySelected = 0;
+    this.memoryLocked = false;
+    this.memoryButtons = [];
 
     this.createBackground();
     this.initPieces();
     this.createInputHandlers();
     this.refreshAllPieces();
+    this.createMemoryRecall();
   }
 
   update(_time: number, delta: number): void {
     if (this.stage === 'success') return;
     const dt = delta / 1000;
 
-    if (this.stage === 'assemble' && this.keys) {
+    if (this.stage === 'memory' && this.keys) {
+      if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.up)) {
+        this.memorySelected = (this.memorySelected + 2) % 3;
+        this.soundManager?.playSelect();
+        this.refreshMemoryButtons();
+      } else if (Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.down)) {
+        this.memorySelected = (this.memorySelected + 1) % 3;
+        this.soundManager?.playSelect();
+        this.refreshMemoryButtons();
+      } else {
+        for (let i = 0; i < 3; i++) {
+          const key = this.keys[`key${i + 1}`];
+          if (key && Phaser.Input.Keyboard.JustDown(key)) {
+            this.submitMemoryAnswer(i);
+            return;
+          }
+        }
+        if (Phaser.Input.Keyboard.JustDown(this.keys.space) || Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
+          this.submitMemoryAnswer(this.memorySelected);
+        }
+      }
+    } else if (this.stage === 'assemble' && this.keys) {
       for (let i = 0; i < 4; i++) {
         const key = this.keys[`key${i + 1}`];
         if (key && Phaser.Input.Keyboard.JustDown(key)) {
@@ -138,6 +177,12 @@ export class PhotoPuzzleScene extends Phaser.Scene {
     return {
       minigame: 'photo',
       stage: this.stage,
+      memoryQuestion: {
+        id: this.memoryQuestion.id,
+        prompt: this.memoryQuestion.prompt,
+        options: [...this.memoryQuestion.options],
+      },
+      memorySelected: this.memorySelected,
       target: PHOTO_TARGET,
       pieces: this.pieces.map(piece => ({ poly: piece.poly, ox: piece.ox, oy: piece.oy, placed: piece.placed })),
       selectedPiece: this.selectedPiece,
@@ -215,6 +260,126 @@ export class PhotoPuzzleScene extends Phaser.Scene {
         image,
         label,
       };
+    });
+  }
+
+  private createMemoryRecall(): void {
+    const overlay = this.add.container(0, 0).setDepth(30);
+    this.memoryOverlay = overlay;
+
+    const veil = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH,
+      GAME_HEIGHT,
+      0x08080b,
+      0.97,
+    );
+    const panel = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 450, 0xf3eada, 1)
+      .setStrokeStyle(4, 0x6a4930, 0.95);
+    const recallTitle = this.puzzleData.run.loop > 0
+      ? 'GAUNG DARI LOOP SEBELUMNYA'
+      : 'INGATAN DARI BABAK SEBELUMNYA';
+    const title = this.add.text(GAME_WIDTH / 2, 75, recallTitle, {
+      color: '#94342e', fontFamily: 'Cinzel, serif', fontSize: '25px', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const meta = this.add.text(
+      GAME_WIDTH / 2,
+      112,
+      `PERTANYAAN INGATAN • LOOP ${this.puzzleData.run.loop}`,
+      {
+        color: '#6a4930', fontFamily: 'Poppins, sans-serif', fontSize: '12px', letterSpacing: 1,
+      },
+    ).setOrigin(0.5);
+    const question = this.add.text(GAME_WIDTH / 2, 162, this.memoryQuestion.prompt, {
+      color: '#2b211a',
+      fontFamily: 'Patrick Hand, sans-serif',
+      fontSize: '23px',
+      align: 'center',
+      wordWrap: { width: 650 },
+    }).setOrigin(0.5);
+
+    overlay.add([veil, panel, title, meta, question]);
+
+    this.memoryQuestion.options.forEach((option, index) => {
+      const y = 245 + index * 62;
+      const background = this.add.rectangle(GAME_WIDTH / 2, y, 620, 48, 0xe5d6bf, 1)
+        .setStrokeStyle(2, 0x8b6b4a, 0.72)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+          if (this.memoryLocked) return;
+          this.memorySelected = index;
+          this.refreshMemoryButtons();
+        })
+        .on('pointerup', () => this.submitMemoryAnswer(index));
+      const label = this.add.text(GAME_WIDTH / 2, y, `${index + 1}. ${option}`, {
+        color: '#3d3027', fontFamily: 'Poppins, sans-serif', fontSize: '15px',
+      }).setOrigin(0.5);
+      this.memoryButtons.push({ background, label });
+      overlay.add([background, label]);
+    });
+
+    this.memoryFeedback = this.add.text(
+      GAME_WIDTH / 2,
+      443,
+      'PILIH JAWABAN DENGAN 1–3 ATAU TOMBOL ARAH, LALU ENTER',
+      {
+        color: '#6a4930', fontFamily: 'Patrick Hand, sans-serif', fontSize: '16px', align: 'center',
+        wordWrap: { width: 660 },
+      },
+    ).setOrigin(0.5);
+    overlay.add(this.memoryFeedback);
+    this.refreshMemoryButtons();
+  }
+
+  private refreshMemoryButtons(): void {
+    this.memoryButtons.forEach(({ background, label }, index) => {
+      const selected = index === this.memorySelected;
+      background
+        .setFillStyle(selected ? 0x94342e : 0xe5d6bf, 1)
+        .setStrokeStyle(selected ? 3 : 2, selected ? 0xf6d57b : 0x8b6b4a, selected ? 1 : 0.72);
+      label.setColor(selected ? '#fffaf0' : '#3d3027');
+    });
+  }
+
+  private submitMemoryAnswer(index: number): void {
+    if (this.stage !== 'memory' || this.memoryLocked) return;
+    this.memorySelected = index;
+    this.refreshMemoryButtons();
+
+    if (index !== this.memoryQuestion.correctIndex) {
+      this.soundManager?.playErrorBuzz();
+      this.memoryFeedback?.setText('INGATAN ITU TERDISTORSI — COBA INGAT KEMBALI.').setColor('#b91c1c');
+      return;
+    }
+
+    this.memoryLocked = true;
+    this.memoryButtons.forEach(({ background }) => background.disableInteractive());
+    this.soundManager?.playConfirm();
+    this.memoryFeedback?.setText(this.memoryQuestion.successText).setColor('#3f6212');
+
+    const revealPuzzle = () => {
+      this.memoryOverlay?.destroy(true);
+      this.memoryOverlay = undefined;
+      this.stage = 'assemble';
+      this.feedbackText
+        ?.setText('RAPIKAN EMPAT ROBEKAN FOTO (ANGKA 1-4 & ARAH + SPACE)')
+        .setColor('#2b211a');
+      this.refreshAllPieces();
+    };
+
+    this.time.delayedCall(650, () => {
+      if (this.registry.get('reduceMotion') || !this.memoryOverlay) {
+        revealPuzzle();
+        return;
+      }
+      this.tweens.add({
+        targets: this.memoryOverlay,
+        alpha: 0,
+        duration: 220,
+        ease: 'Sine.easeIn',
+        onComplete: revealPuzzle,
+      });
     });
   }
 

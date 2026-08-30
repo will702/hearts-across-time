@@ -105,7 +105,12 @@ export class Era1944Scene extends Phaser.Scene {
 
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
-    this.scene.launch('UIScene', { input: this.controls, eraTitle: 'BABAK 1 — GARIS DEPAN, 1944', run: this.run });
+    this.scene.launch('UIScene', {
+      input: this.controls,
+      eraTitle: 'BABAK 1 — GARIS DEPAN, 1944',
+      run: this.run,
+      initialModal: Boolean(data.intro),
+    });
     this.ui = this.scene.get('UIScene') as UIScene;
     this.lastSavedX = spawnX;
     this.save.saveCycle('1944', this.run, spawnX);
@@ -119,7 +124,6 @@ export class Era1944Scene extends Phaser.Scene {
     this.registry.set('nativeState', 'arrival1944');
     this.controls.setEnabled(false);
     this.player.arcadeBody.setVelocityX(0);
-    this.ui.setModal(true);
     playArrivalSequence(this, {
       caption: '1944 — GARIS DEPAN',
       duration: 3250,

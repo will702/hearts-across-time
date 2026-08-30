@@ -7,7 +7,13 @@ import type { RunState } from '../systems/SaveSystem';
 import { addPaperPanel, measureText } from '../ui/paper';
 import { CSS, FONT, RED } from '../ui/theme';
 
-type UIData = { input: InputSystem; eraTitle?: string; run?: RunState };
+type UIData = {
+  input: InputSystem;
+  eraTitle?: string;
+  run?: RunState;
+  initialModal?: boolean;
+  initiallyHidden?: boolean;
+};
 type PauseMenuItem = { label: () => string; action?: () => void; adjust?: (direction: number) => void };
 
 const GAMEPLAY_SCENES = [
@@ -115,6 +121,8 @@ export class UIScene extends Phaser.Scene {
     if (touchMode) this.createTouchControls();
     this.createTopButtons();
     this.pauseKeys = this.input.keyboard?.addKeys('ESC,P,R,M,UP,DOWN,LEFT,RIGHT,W,A,S,D,ENTER,SPACE') as typeof this.pauseKeys;
+    this.setModal(Boolean(data.initialModal));
+    this.cameras.main.setVisible(!data.initiallyHidden);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.resetRuntimeState, this);
   }
 

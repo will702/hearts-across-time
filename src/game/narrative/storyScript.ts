@@ -284,7 +284,7 @@ export const STORY_NODES: Record<string, StoryNodeResolver> = {
   ],
   n_b2: (state: NarrativeState) => {
     const warm = state.empathy > state.logic;
-    const speaker: CharacterId = warm ? 'dewasa' : 'buron';
+    const speaker: CharacterId = state.routeB1 === 'B' ? 'dewasa' : 'buron';
     const ops: StoryOp[] = [];
 
     if (state.loop === 1) {
@@ -296,11 +296,11 @@ export const STORY_NODES: Record<string, StoryNodeResolver> = {
     }
 
     if (warm) {
-      ops.push(say('dewasa', 'Elena...? Liontin itu... kau benar-benar datang kembali setelah 24 tahun!', 'shock'));
-      ops.push(say('dewasa', 'Setiap malam aku bertahan meneliti, hanya kenangan kehangatanmu yang menjagaku tetap waras.', 'warm'));
+      ops.push(say(speaker, 'Elena...? Liontin itu... kau benar-benar datang kembali setelah 24 tahun!', 'shock'));
+      ops.push(say(speaker, 'Setiap malam aku bertahan meneliti, hanya kenangan kehangatanmu yang menjagaku tetap waras.', 'warm'));
     } else {
-      ops.push(say('buron', 'Hahaha! Sang \'penyelamat masa depan\' akhirnya menampakkan diri.', 'angry'));
-      ops.push(say('buron', 'Dulu kau bilang aku cuma alat untuk misimu, kan? Sekarang lihat, aku sudah menguasai seluruh rahasia formula ini.', 'angry'));
+      ops.push(say(speaker, 'Hahaha! Sang \'penyelamat masa depan\' akhirnya menampakkan diri.', 'angry'));
+      ops.push(say(speaker, 'Dulu kau bilang aku cuma alat untuk misimu, kan? Sekarang lihat, aku sudah menguasai seluruh rahasia formula ini.', 'angry'));
     }
 
     if (state.routeB1 === 'A') {

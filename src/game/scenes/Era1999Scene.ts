@@ -94,7 +94,12 @@ export class Era1999Scene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
 
-    this.scene.launch('UIScene', { input: this.controls, eraTitle: 'BABAK 3 — RUANG OBSERVASI KAPSUL, 1999', run: this.run });
+    this.scene.launch('UIScene', {
+      input: this.controls,
+      eraTitle: 'BABAK 3 — RUANG OBSERVASI KAPSUL, 1999',
+      run: this.run,
+      initialModal: Boolean(data.intro),
+    });
     this.ui = this.scene.get('UIScene') as UIScene;
     this.lastSavedX = spawnX;
     this.save.saveCycle('1999', this.run, spawnX);
@@ -323,7 +328,6 @@ export class Era1999Scene extends Phaser.Scene {
     this.registry.set('nativeState', 'arrival1999');
     this.controls.setEnabled(false);
     this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
-    this.ui.setModal(true);
     playArrivalSequence(this, {
       caption: '1999 — LABORATORIUM KRIOGENIK TERAKHIR',
       duration: 5200,

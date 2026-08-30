@@ -4,10 +4,11 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { pointInPolygon } from '../minigames/math';
 import {
   randomRoseHomes,
-  ROSE_PIECES_DEF,
+  ROSE_LAYOUT_VARIANT_COUNT,
   ROSE_SOURCE_CROP,
   ROSE_SOURCE_FRAME,
   ROSE_TARGET,
+  rosePiecesForLoop,
 } from '../minigames/roseLayout';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -39,6 +40,7 @@ export class RosePuzzleScene extends Phaser.Scene {
   private feedbackText?: Phaser.GameObjects.Text;
   private complete = false;
   private roseFrame?: string;
+  private layoutVariant = 0;
 
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
 
@@ -97,6 +99,8 @@ export class RosePuzzleScene extends Phaser.Scene {
   snapshot(): Record<string, unknown> {
     return {
       minigame: 'rose',
+      loop: this.puzzleData.run.loop,
+      layoutVariant: this.layoutVariant,
       target: ROSE_TARGET,
       pieces: this.pieces.map(piece => ({ poly: piece.poly, ox: piece.ox, oy: piece.oy, placed: piece.placed })),
       selectedPiece: this.selectedPiece,
@@ -141,10 +145,14 @@ export class RosePuzzleScene extends Phaser.Scene {
   }
 
   private initPieces(): void {
-    const homes = randomRoseHomes();
-    this.pieces = ROSE_PIECES_DEF.map((def, index) => {
+    this.layoutVariant = Math.max(0, Math.floor(this.puzzleData.run.loop)) % ROSE_LAYOUT_VARIANT_COUNT;
+    const pieceDefinitions = rosePiecesForLoop(this.puzzleData.run.loop);
+    const homes = randomRoseHomes(Math.random, pieceDefinitions);
+    this.pieces = pieceDefinitions.map((def, index) => {
       const g = this.add.graphics().setDepth(4);
-      const fragmentTexture = this.roseFrame ? this.ensureRosePieceTexture(index, def.poly) : undefined;
+      const fragmentTexture = this.roseFrame
+        ? this.ensureRosePieceTexture(this.layoutVariant, index, def.poly)
+        : undefined;
       const image = fragmentTexture
         ? this.add.image(
           ROSE_TARGET.x,
@@ -366,8 +374,12 @@ export class RosePuzzleScene extends Phaser.Scene {
     return texture.has(ROSE_SOURCE_FRAME) ? ROSE_SOURCE_FRAME : undefined;
   }
 
-  private ensureRosePieceTexture(index: number, poly: [number, number][]): string | undefined {
-    const key = `rose-fragment-${index}`;
+  private ensureRosePieceTexture(
+    layoutVariant: number,
+    index: number,
+    poly: [number, number][],
+  ): string | undefined {
+    const key = `rose-fragment-${layoutVariant}-${index}`;
     if (this.textures.exists(key)) return key;
 
     const sourceFrame = this.textures.getFrame('rose-bottle-broken', ROSE_SOURCE_FRAME);

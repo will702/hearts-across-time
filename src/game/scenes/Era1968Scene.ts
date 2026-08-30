@@ -41,6 +41,8 @@ const FIGMA_1968_BUNKER_FRAMES: ArrivalBackdropFrame[] = [
   figmaFrame(-160, -162, 4195, 2341),
 ];
 const FIGMA_1968_ELENA = figmaFrame(-557, 229, 4348, 2492);
+const FLOOR_DEPTH = 418;
+const FOREGROUND_HEIGHT = 68;
 
 export class Era1968Scene extends Phaser.Scene {
   private run!: RunState;
@@ -106,7 +108,13 @@ export class Era1968Scene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
 
-    this.scene.launch('UIScene', { input: this.controls, eraTitle: era1968Title(this.run.routeB1), run: this.run });
+    this.scene.launch('UIScene', {
+      input: this.controls,
+      eraTitle: era1968Title(this.run.routeB1),
+      run: this.run,
+      initialModal: Boolean(data.intro),
+      initiallyHidden: Boolean(data.intro),
+    });
     this.ui = this.scene.get('UIScene') as UIScene;
     this.lastSavedX = spawnX;
     this.save.saveCycle('1968', this.run, spawnX);
@@ -188,7 +196,8 @@ export class Era1968Scene extends Phaser.Scene {
 
     this.add.rectangle(ERA_1968.width / 2, ERA_1968.height / 2, ERA_1968.width, ERA_1968.height, isLab ? 0x111c2e : 0x221a14).setDepth(-30);
 
-    if (this.textures.exists(fullBackdropKey)) {
+    const hasFullBackdrop = this.textures.exists(fullBackdropKey);
+    if (hasFullBackdrop) {
       this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, fullBackdropKey)
         .setDisplaySize(VIEW_WIDTH, VIEW_HEIGHT)
         .setScrollFactor(0)
@@ -200,26 +209,55 @@ export class Era1968Scene extends Phaser.Scene {
         .setScrollFactor(0.14)
         .setDepth(-25);
     }
-    if (this.textures.exists(bgMidKey)) {
+    if (!hasFullBackdrop && this.textures.exists(bgMidKey)) {
       const layer = this.add.image(0, ERA_1968.groundY, bgMidKey).setOrigin(0, 1);
       const source = layer.texture.getSourceImage() as HTMLImageElement;
       const fittedHeight = ERA_1968.width * source.height / source.width;
       layer.setDisplaySize(ERA_1968.width, fittedHeight).setScrollFactor(0.45).setDepth(-20);
     }
 
+    this.createWalkway(isLab);
+
     if (isLab) {
       this.createAnimatedProp('prop-beacon1968B', 360, 444, 82, 4, 438);
-      this.createAnimatedProp('prop-steam1968B', 680, 444, 104, 3, 439);
+      this.createAnimatedProp('prop-steam1968B', 620, 444, 94, 3, 439);
     } else {
-      this.createAnimatedProp('prop-bulb1968A', 420, 444, 108, 2.5, 438);
-      this.createAnimatedProp('prop-radio1968A', 740, 444, 74, 3, 439);
+      this.createAnimatedProp('prop-bulb1968A', 410, 444, 92, 2.5, 438);
     }
 
-    if (this.textures.exists(bgFgKey)) {
-      this.add.image(0, ERA_1968.height, bgFgKey)
-        .setOrigin(0, 1)
-        .setDisplaySize(ERA_1968.width, 140)
+    if (!hasFullBackdrop && this.textures.exists(bgFgKey)) {
+      const foreground = this.add.image(ERA_1968.width / 2, ERA_1968.height, bgFgKey).setOrigin(0.5, 1);
+      const source = foreground.texture.getSourceImage() as HTMLImageElement;
+      const width = source.width * (FOREGROUND_HEIGHT / source.height);
+      foreground
+        .setDisplaySize(width, FOREGROUND_HEIGHT)
         .setDepth(430);
+    }
+  }
+
+  /** Lantai modular menegaskan garis pijak semua karakter dan perabot pada y=444. */
+  private createWalkway(isLab: boolean): void {
+    const floor = this.add.graphics().setDepth(FLOOR_DEPTH);
+    const top = ERA_1968.groundY;
+    const base = isLab ? 0x27343b : 0x2b2926;
+    const edge = isLab ? 0x91aeb8 : 0x8c8173;
+    const seam = isLab ? 0x111a20 : 0x171513;
+
+    floor.fillGradientStyle(base, base, 0x12191d, 0x12191d, 0.96, 0.96, 1, 1);
+    floor.fillRect(0, top, ERA_1968.width, ERA_1968.height - top);
+    floor.fillStyle(0x090b0c, 0.42);
+    floor.fillRect(0, top - 5, ERA_1968.width, 7);
+    floor.lineStyle(2, edge, 0.65);
+    floor.lineBetween(0, top, ERA_1968.width, top);
+    floor.lineStyle(1, seam, 0.72);
+    floor.lineBetween(0, top + 34, ERA_1968.width, top + 34);
+    floor.lineBetween(0, top + 76, ERA_1968.width, top + 76);
+
+    for (let x = 40; x < ERA_1968.width; x += 120) {
+      floor.lineBetween(x, top + 2, x - 18, ERA_1968.height);
+      floor.fillStyle(edge, 0.34);
+      floor.fillCircle(x - 4, top + 16, 2);
+      floor.fillCircle(x - 10, top + 57, 2);
     }
   }
 
@@ -341,8 +379,6 @@ export class Era1968Scene extends Phaser.Scene {
     this.registry.set('nativeState', 'arrival1968');
     this.controls.setEnabled(false);
     this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
-    this.ui.setModal(true);
-    this.ui.cameras.main.setVisible(false);
     playArrivalSequence(this, {
       caption: era1968Title(this.run.routeB1),
       duration: 4600,
