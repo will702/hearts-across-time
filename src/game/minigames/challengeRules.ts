@@ -4,15 +4,74 @@ export type EvacuationBoard = {
   width: number;
   height: number;
   start: GridPoint;
+  patient: GridPoint;
   goal: GridPoint;
   blocked: readonly GridPoint[];
 };
 
-export const EVACUATION_BOARDS: readonly EvacuationBoard[] = [
-  { width: 4, height: 3, start: { x: 0, y: 2 }, goal: { x: 3, y: 0 }, blocked: [{ x: 1, y: 1 }, { x: 2, y: 2 }] },
-  { width: 5, height: 4, start: { x: 0, y: 3 }, goal: { x: 4, y: 0 }, blocked: [{ x: 1, y: 3 }, { x: 1, y: 1 }, { x: 3, y: 2 }, { x: 3, y: 0 }] },
-  { width: 5, height: 4, start: { x: 0, y: 1 }, goal: { x: 4, y: 2 }, blocked: [{ x: 1, y: 0 }, { x: 1, y: 2 }, { x: 2, y: 2 }, { x: 3, y: 1 }, { x: 3, y: 3 }] },
-] as const;
+const EVACUATION_BOARD_TEMPLATES: readonly EvacuationBoard[] = [
+  {
+    width: 4,
+    height: 3,
+    start: { x: 0, y: 2 },
+    patient: { x: 1, y: 0 },
+    goal: { x: 3, y: 0 },
+    blocked: [{ x: 1, y: 1 }, { x: 2, y: 2 }],
+  },
+  {
+    width: 5,
+    height: 4,
+    start: { x: 0, y: 3 },
+    patient: { x: 2, y: 1 },
+    goal: { x: 4, y: 0 },
+    blocked: [{ x: 1, y: 3 }, { x: 1, y: 1 }, { x: 3, y: 2 }, { x: 3, y: 0 }],
+  },
+  {
+    width: 5,
+    height: 4,
+    start: { x: 0, y: 1 },
+    patient: { x: 2, y: 0 },
+    goal: { x: 4, y: 2 },
+    blocked: [{ x: 1, y: 0 }, { x: 1, y: 2 }, { x: 2, y: 2 }, { x: 3, y: 1 }, { x: 3, y: 3 }],
+  },
+];
+
+function rotateEvacuationPoint(point: GridPoint, width: number, height: number, turns: number): GridPoint {
+  let rotated = { ...point };
+  let rotatedWidth = width;
+  let rotatedHeight = height;
+  for (let turn = 0; turn < turns; turn += 1) {
+    rotated = { x: rotatedHeight - 1 - rotated.y, y: rotated.x };
+    [rotatedWidth, rotatedHeight] = [rotatedHeight, rotatedWidth];
+  }
+  return rotated;
+}
+
+/** Delapan orientasi deterministik; loop berikutnya selalu memakai medan yang berbeda. */
+export function evacuationBoardsForLoop(loop: number): readonly EvacuationBoard[] {
+  const variant = Math.max(0, Math.floor(loop)) % 8;
+  const turns = variant % 4;
+  const reflected = variant >= 4;
+  return EVACUATION_BOARD_TEMPLATES.map((board) => {
+    const swapped = turns % 2 === 1;
+    const width = swapped ? board.height : board.width;
+    const height = swapped ? board.width : board.height;
+    const transform = (point: GridPoint): GridPoint => {
+      const rotated = rotateEvacuationPoint(point, board.width, board.height, turns);
+      return reflected ? { x: width - 1 - rotated.x, y: rotated.y } : rotated;
+    };
+    return {
+      width,
+      height,
+      start: transform(board.start),
+      patient: transform(board.patient),
+      goal: transform(board.goal),
+      blocked: board.blocked.map(transform),
+    };
+  });
+}
+
+export const EVACUATION_BOARDS: readonly EvacuationBoard[] = evacuationBoardsForLoop(0);
 
 export type EvacuationStep = 'advance' | 'backtrack' | 'invalid';
 

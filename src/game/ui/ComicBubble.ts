@@ -10,6 +10,7 @@ export interface SpeechInfo {
   who: string;
   x: number;
   headY: number;
+  cinematic?: boolean;
 }
 
 const POP_MS = 220;
@@ -28,6 +29,7 @@ export class ComicBubble {
   private shownChars = 0;
   private textScale = 1;
   private narrator = false;
+  private cinematic = false;
   private speaker: SpeechInfo | null = null;
   private currentW = 0;
   private currentH = 0;
@@ -55,6 +57,7 @@ export class ComicBubble {
     this.shownChars = 0;
     this.textScale = textScale;
     this.narrator = speaker === null || speaker.who === 'narrator';
+    this.cinematic = !this.narrator && Boolean(speaker?.cinematic);
     this.speaker = this.narrator ? null : speaker;
     this.currentW = 0;
     this.currentH = 0;
@@ -101,13 +104,19 @@ export class ComicBubble {
   private layout(): void {
     const spec = this.fontSpec();
     const shown = this.fullText.slice(0, this.shownChars);
-    const maxW = this.narrator ? 640 : 340;
+    const maxW = this.narrator ? 640 : this.cinematic ? 760 : 340;
     const lines = wrapLines(shown, spec.font, maxW);
+    const layoutLines = this.cinematic ? wrapLines(this.fullText, spec.font, maxW) : lines;
 
     let bw: number, bh: number, bx: number, by: number;
     if (this.narrator) {
       bw = 700;
       bh = lines.length * spec.lh + 32;
+      bx = (GAME_WIDTH - bw) / 2;
+      by = GAME_HEIGHT - bh - 24;
+    } else if (this.cinematic) {
+      bw = 820;
+      bh = Math.max(118, layoutLines.length * spec.lh + 36);
       bx = (GAME_WIDTH - bw) / 2;
       by = GAME_HEIGHT - bh - 24;
     } else {
@@ -128,7 +137,7 @@ export class ComicBubble {
       this.panel = addPaperPanel(this.scene, bx, by, bw, bh, { radius: this.narrator ? 6 : 7 });
       this.content.add(this.panel);
       this.content.sendToBack(this.panel);
-      if (!this.narrator && this.speaker) {
+      if (!this.narrator && this.speaker && !this.cinematic) {
         const tailKey = ensureTailTexture(this.scene);
         if (!this.tail) {
           this.tail = this.scene.add.image(0, 0, tailKey).setOrigin(0, 0);
@@ -136,17 +145,19 @@ export class ComicBubble {
         } else {
           this.tail.setTexture(tailKey);
         }
-        if (!this.tag) {
-          const who = this.speaker.who;
-          this.tag = addInkTag(this.scene, 0, 0, NAME_LABEL[who] ?? 'ARTHUR', NAME_CHIP[who] ?? 0x556b7f);
-          this.content.add(this.tag);
-        }
+      }
+      if (!this.narrator && this.speaker && !this.tag) {
+        const who = this.speaker.who;
+        this.tag = addInkTag(this.scene, 0, 0, NAME_LABEL[who] ?? 'ARTHUR', NAME_CHIP[who] ?? 0x556b7f);
+        this.content.add(this.tag);
       }
     }
 
     if (!this.narrator && this.speaker) {
-      const tx = Phaser.Math.Clamp(this.speaker.x, bx + 26, bx + bw - 26);
-      this.tail?.setPosition(tx - 13, by + bh - 5);
+      if (!this.cinematic) {
+        const tx = Phaser.Math.Clamp(this.speaker.x, bx + 26, bx + bw - 26);
+        this.tail?.setPosition(tx - 13, by + bh - 5);
+      }
       this.tag?.setPosition(bx + 12, by - 9);
     }
 
@@ -161,6 +172,9 @@ export class ComicBubble {
     if (this.narrator) {
       const widest = lines.length ? Math.max(...lines.map((l) => measureText(l, spec.font))) : 0;
       this.bodyText.setPosition(GAME_WIDTH / 2 - widest / 2, by + 15);
+    } else if (this.cinematic) {
+      const textBlockH = Math.max(spec.lh, layoutLines.length * spec.lh);
+      this.bodyText.setPosition(bx + 22, by + (bh - textBlockH) / 2);
     } else {
       this.bodyText.setPosition(bx + 15, by + 10);
     }

@@ -15,11 +15,32 @@ import type { WorldAction, WorldState } from '../world/worldTypes';
 import type { DialogueSceneData } from './DialogueScene';
 import { EraSpeakerRig } from './eraSpeakerRig';
 import type { UIScene } from './UIScene';
-import { playArrivalSequence } from './playArrivalSequence';
+import { playArrivalSequence, type ArrivalBackdropFrame } from './playArrivalSequence';
 
 type EraData = { run: RunState; playerX?: number; intro?: boolean };
 
 const AUTOSAVE_MS = 750;
+const VIEW_WIDTH = 960;
+const VIEW_HEIGHT = 540;
+const FIGMA_FRAME_SCALE = VIEW_WIDTH / 3233;
+const FIGMA_FRAME_TOP = (VIEW_HEIGHT - 2102 * FIGMA_FRAME_SCALE) / 2;
+const figmaFrame = (x: number, y: number, width: number, height: number): ArrivalBackdropFrame => ({
+  x: x * FIGMA_FRAME_SCALE,
+  y: y * FIGMA_FRAME_SCALE + FIGMA_FRAME_TOP,
+  width: width * FIGMA_FRAME_SCALE,
+  height: height * FIGMA_FRAME_SCALE,
+});
+const FIGMA_1968_LAB_FRAMES: ArrivalBackdropFrame[] = [
+  figmaFrame(-930, 0, 7296, 4075),
+  figmaFrame(-4153, -1800, 10519, 5875),
+  figmaFrame(-354, -52, 3857, 2154),
+];
+const FIGMA_1968_BUNKER_FRAMES: ArrivalBackdropFrame[] = [
+  figmaFrame(-6763, -1029, 11220, 6262),
+  figmaFrame(-6402, -3065, 11220, 6262),
+  figmaFrame(-160, -162, 4195, 2341),
+];
+const FIGMA_1968_ELENA = figmaFrame(-557, 229, 4348, 2492);
 
 export class Era1968Scene extends Phaser.Scene {
   private run!: RunState;
@@ -38,6 +59,8 @@ export class Era1968Scene extends Phaser.Scene {
   private touchControls = false;
   private echo?: LoopEchoTrail;
   private arrivalActive = false;
+  private entryCinematicObjects: Phaser.GameObjects.GameObject[] = [];
+  private entryElena?: Phaser.GameObjects.Image;
 
   constructor() {
     super('Era1968Scene');
@@ -161,61 +184,27 @@ export class Era1968Scene extends Phaser.Scene {
     const bgFarKey = isLab ? 'bg1968B-far' : 'bg1968A-far';
     const bgMidKey = isLab ? 'bg1968B-mid' : 'bg1968A-mid';
     const bgFgKey = isLab ? 'bg1968B-fg' : 'bg1968A-fg';
+    const fullBackdropKey = isLab ? 'lab-military' : 'bunker-underground';
 
     this.add.rectangle(ERA_1968.width / 2, ERA_1968.height / 2, ERA_1968.width, ERA_1968.height, isLab ? 0x111c2e : 0x221a14).setDepth(-30);
 
-    if (this.textures.exists(bgFarKey)) {
-      this.add.image(0, 92, bgFarKey).setOrigin(0).setScale(0.75).setScrollFactor(0.14).setDepth(-25);
+    if (this.textures.exists(fullBackdropKey)) {
+      this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, fullBackdropKey)
+        .setDisplaySize(VIEW_WIDTH, VIEW_HEIGHT)
+        .setScrollFactor(0)
+        .setDepth(-25);
+    } else if (this.textures.exists(bgFarKey)) {
+      this.add.image(0, ERA_1968.height, bgFarKey)
+        .setOrigin(0, 1)
+        .setDisplaySize(ERA_1968.width, ERA_1968.height)
+        .setScrollFactor(0.14)
+        .setDepth(-25);
     }
     if (this.textures.exists(bgMidKey)) {
-      const midScale = isLab ? 0.5 : 0.75;
-      this.add.image(0, ERA_1968.groundY, bgMidKey).setOrigin(0, 1).setScale(midScale).setScrollFactor(0.35).setDepth(-20);
-    }
-
-    // 1:1 Solid Industrial Ground Platform
-    const ground = this.add.graphics().setDepth(-6);
-    if (isLab) {
-      // Lab: Steel composite tiles with hazard yellow-black stripes and cooling vents
-      ground.fillStyle(0x0f1826, 1);
-      ground.fillRect(0, ERA_1968.groundY, ERA_1968.width, ERA_1968.height - ERA_1968.groundY);
-
-      // Steel floor plates
-      for (let x = 0; x < ERA_1968.width; x += 48) {
-        ground.fillStyle(0x182438, 1);
-        ground.fillRect(x + 1, ERA_1968.groundY, 46, 16);
-        ground.fillStyle(0x283d5a, 0.4);
-        ground.fillRect(x + 1, ERA_1968.groundY, 46, 2);
-        // Plate joints & rivets
-        ground.fillStyle(0x0b111c, 0.9);
-        ground.fillRect(x, ERA_1968.groundY, 1, 16);
-        ground.fillRect(x + 5, ERA_1968.groundY + 4, 2, 2);
-        ground.fillRect(x + 41, ERA_1968.groundY + 4, 2, 2);
-      }
-      // Safety hazard border line along bottom walk edge
-      for (let x = 0; x < ERA_1968.width; x += 16) {
-        const isYellow = (x / 16) % 2 === 0;
-        ground.fillStyle(isYellow ? 0xd4a535 : 0x161e2a, 0.85);
-        ground.fillRect(x, ERA_1968.groundY + 16, 16, 4);
-      }
-    } else {
-      // Bunker: Industrial concrete slab with heavy rusted diamond-plate steel runner
-      ground.fillStyle(0x241d18, 1);
-      ground.fillRect(0, ERA_1968.groundY, ERA_1968.width, ERA_1968.height - ERA_1968.groundY);
-
-      // Diamond-plate runner walkway
-      for (let x = 0; x < ERA_1968.width; x += 40) {
-        ground.fillStyle(0x382e26, 1);
-        ground.fillRect(x + 1, ERA_1968.groundY, 38, 15);
-        ground.fillStyle(0x56473c, 0.5);
-        ground.fillRect(x + 1, ERA_1968.groundY, 38, 2);
-        // Rust stains & bolts
-        ground.fillStyle(0x1a1410, 0.9);
-        ground.fillRect(x, ERA_1968.groundY, 1, 15);
-        ground.fillRect(x + 4, ERA_1968.groundY + 3, 2, 2);
-        ground.fillRect(x + 34, ERA_1968.groundY + 3, 2, 2);
-        ground.fillStyle(0x6b3f27, 0.35);
-        ground.fillRect(x + 12, ERA_1968.groundY + 8, 16, 4);
-      }
+      const layer = this.add.image(0, ERA_1968.groundY, bgMidKey).setOrigin(0, 1);
+      const source = layer.texture.getSourceImage() as HTMLImageElement;
+      const fittedHeight = ERA_1968.width * source.height / source.width;
+      layer.setDisplaySize(ERA_1968.width, fittedHeight).setScrollFactor(0.45).setDepth(-20);
     }
 
     if (isLab) {
@@ -227,7 +216,10 @@ export class Era1968Scene extends Phaser.Scene {
     }
 
     if (this.textures.exists(bgFgKey)) {
-      this.add.image(0, ERA_1968.groundY - 14, bgFgKey).setOrigin(0).setDisplaySize(1220, 165).setDepth(445);
+      this.add.image(0, ERA_1968.height, bgFgKey)
+        .setOrigin(0, 1)
+        .setDisplaySize(ERA_1968.width, 140)
+        .setDepth(430);
     }
   }
 
@@ -344,37 +336,109 @@ export class Era1968Scene extends Phaser.Scene {
   }
 
   private openEntryDialogue(): void {
+    const isMilitaryLab = this.run.routeB1 === 'B';
     this.arrivalActive = true;
     this.registry.set('nativeState', 'arrival1968');
     this.controls.setEnabled(false);
     this.player.arcadeBody.setAccelerationX(0).setVelocityX(0);
     this.ui.setModal(true);
+    this.ui.cameras.main.setVisible(false);
     playArrivalSequence(this, {
       caption: era1968Title(this.run.routeB1),
       duration: 4600,
-      startZoom: this.run.routeB1 === 'B' ? 2.18 : 3.25,
-      startFocusX: this.run.routeB1 === 'B' ? 320 : 880,
+      startZoom: isMilitaryLab ? 2.18 : 3.25,
+      startFocusX: isMilitaryLab ? 320 : 880,
       endFocusX: 520,
       groundY: ERA_1968.groundY,
-      backdrop: this.run.routeB1 === 'B' ? 'lab-military' : 'bunker-underground',
+      backdrop: isMilitaryLab ? 'lab-military' : 'bunker-underground',
+      backdropFrames: isMilitaryLab ? FIGMA_1968_LAB_FRAMES : FIGMA_1968_BUNKER_FRAMES,
+      showChrome: isMilitaryLab,
       onComplete: () => this.launchEntryDialogue(),
     });
   }
 
   private launchEntryDialogue(): void {
+    const isMilitaryLab = this.run.routeB1 === 'B';
     this.arrivalActive = false;
     this.cameras.main.startFollow(this.player, true, 0.075, 0.12);
     this.cameras.main.setDeadzone(250, 150);
-    this.ui.setModal(false);
-    this.scene.launch('DialogueScene', this.dialoguePayload(
-      this.run.routeB1 === 'B' ? 'lab_intro' : 'bunker_intro',
+    this.createEntryDialogueBackdrop();
+
+    const payload = this.dialoguePayload(
+      isMilitaryLab ? 'lab_intro' : 'bunker_intro',
       () => {
+        this.destroyEntryDialogueBackdrop();
+        this.ui.cameras.main.setVisible(true);
+        this.ui.setModal(false);
         this.scene.resume();
         this.controls.setEnabled(true);
         this.registry.set('nativeState', 'era1968');
       },
-    ));
+    );
+    payload.cinematicSpeaker = true;
+    payload.speakerAnchor = speaker => speaker === 'elena'
+      ? { x: VIEW_WIDTH / 2, headY: 120 }
+      : null;
+    payload.speakerVisual = speaker => speaker === 'elena' ? this.entryElena ?? null : null;
+    payload.setSpeakerExpression = (who: CharacterId, expr: Expression) => {
+      const arthur = this.objects.find(object => object.definition.id === 'arthur');
+      const rig = new EraSpeakerRig(this.cameras.main, this.player, arthur?.visual, 'dewasa');
+      rig.setExpression(who, expr);
+      if ((who === 'elena' || (who === 'narrator' && isMilitaryLab)) && this.entryElena) {
+        const key = (expr === 'sad' || expr === 'shock') && this.textures.exists('elena-dialog-sad')
+          ? 'elena-dialog-sad'
+          : 'elena-dialog';
+        if (this.textures.exists(key)) this.entryElena.setTexture(key);
+      }
+    };
+    this.scene.launch('DialogueScene', payload);
     this.scene.pause();
+  }
+
+  /** Komposisi frame Figma 72:128 untuk dialog pembuka bunker & laboratorium 1968. */
+  private createEntryDialogueBackdrop(): void {
+    this.destroyEntryDialogueBackdrop();
+    const isMilitaryLab = this.run.routeB1 === 'B';
+    const requestedBgKey = isMilitaryLab ? 'lab-military' : 'bunker-underground';
+    const bgKey = this.textures.exists(requestedBgKey) ? requestedBgKey : undefined;
+    const backgroundFrame = isMilitaryLab
+      ? FIGMA_1968_LAB_FRAMES[FIGMA_1968_LAB_FRAMES.length - 1]
+      : FIGMA_1968_BUNKER_FRAMES[FIGMA_1968_BUNKER_FRAMES.length - 1];
+
+    if (bgKey && backgroundFrame) {
+      const background = this.add.image(backgroundFrame.x, backgroundFrame.y, bgKey)
+        .setOrigin(0)
+        .setDisplaySize(backgroundFrame.width, backgroundFrame.height)
+        .setScrollFactor(0)
+        .setDepth(2998);
+      this.entryCinematicObjects.push(background);
+    }
+
+    const shade = this.add.rectangle(
+      VIEW_WIDTH / 2,
+      VIEW_HEIGHT / 2,
+      VIEW_WIDTH,
+      VIEW_HEIGHT,
+      0x000000,
+      isMilitaryLab ? 0.34 : 0.18,
+    ).setScrollFactor(0).setDepth(2999);
+    this.entryCinematicObjects.push(shade);
+
+    const elenaKey = this.textures.exists('elena-dialog') ? 'elena-dialog' : 'elena-dialog-sad';
+    if (this.textures.exists(elenaKey)) {
+      this.entryElena = this.add.image(FIGMA_1968_ELENA.x, FIGMA_1968_ELENA.y, elenaKey)
+        .setOrigin(0)
+        .setDisplaySize(FIGMA_1968_ELENA.width, FIGMA_1968_ELENA.height)
+        .setScrollFactor(0)
+        .setDepth(3000);
+      this.entryCinematicObjects.push(this.entryElena);
+    }
+  }
+
+  private destroyEntryDialogueBackdrop(): void {
+    this.entryCinematicObjects.forEach(object => object.destroy());
+    this.entryCinematicObjects = [];
+    this.entryElena = undefined;
   }
 
   private openDiary(): void {
@@ -431,6 +495,7 @@ export class Era1968Scene extends Phaser.Scene {
   }
 
   private shutdown(): void {
+    this.destroyEntryDialogueBackdrop();
     if (this.player?.active) {
       this.save.saveCycle('1968', this.run, this.validSpawnX(this.player.x));
     }

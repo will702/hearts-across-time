@@ -31,6 +31,7 @@ type Snapshot = {
     width: number;
     height: number;
     start: { x: number; y: number };
+    patient: { x: number; y: number };
     goal: { x: number; y: number };
     blocked: Array<{ x: number; y: number }>;
   } | null;
@@ -40,6 +41,7 @@ type Snapshot = {
   locked?: boolean[];
   selectedLayer?: number;
   assisted?: boolean;
+  carryingPatient?: boolean;
   system?: number;
   rotations?: number[];
   tiles?: Array<{
@@ -188,15 +190,19 @@ async function solveAssembly(page: Page, expectedPieces: number): Promise<void> 
   }
 }
 
-function shortestEvacuationPath(board: NonNullable<Snapshot['board']>): Array<{ x: number; y: number }> {
+function shortestEvacuationPath(
+  board: NonNullable<Snapshot['board']>,
+  start = board.start,
+  goal = board.goal,
+): Array<{ x: number; y: number }> {
   const key = (point: { x: number; y: number }): string => `${point.x},${point.y}`;
   const blocked = new Set(board.blocked.map(key));
-  const queue: Array<Array<{ x: number; y: number }>> = [[board.start]];
-  const seen = new Set([key(board.start)]);
+  const queue: Array<Array<{ x: number; y: number }>> = [[start]];
+  const seen = new Set([key(start)]);
   while (queue.length) {
     const route = queue.shift()!;
     const current = route[route.length - 1];
-    if (current.x === board.goal.x && current.y === board.goal.y) return route;
+    if (current.x === goal.x && current.y === goal.y) return route;
     for (const [dx, dy] of [[1, 0], [0, -1], [0, 1], [-1, 0]]) {
       const next = { x: current.x + dx, y: current.y + dy };
       const nextKey = key(next);
@@ -210,14 +216,20 @@ function shortestEvacuationPath(board: NonNullable<Snapshot['board']>): Array<{ 
 }
 
 async function solveEvacuation(page: Page): Promise<void> {
-  const cellSize = 62;
-  const top = 126;
+  const cellWidth = 74;
+  const cellHeight = 44;
+  const top = 148;
   for (let round = 0; round < 3; round += 1) {
     const state = await snapshot(page);
     if (!state.board) throw new Error('Snapshot peta evakuasi tidak lengkap');
-    const originX = (GAME_WIDTH - state.board.width * cellSize) / 2;
-    for (const cell of shortestEvacuationPath(state.board).slice(1)) {
-      const point = await canvasPoint(page, originX + cell.x * cellSize + cellSize / 2, top + cell.y * cellSize + cellSize / 2);
+    const originX = (GAME_WIDTH - state.board.width * cellWidth) / 2;
+    for (const cell of shortestEvacuationPath(state.board, state.board.start, state.board.patient).slice(1)) {
+      const point = await canvasPoint(page, originX + cell.x * cellWidth + cellWidth / 2, top + cell.y * cellHeight + cellHeight / 2);
+      await page.mouse.click(point.x, point.y);
+    }
+    await expect.poll(async () => (await snapshot(page)).carryingPatient).toBe(true);
+    for (const cell of shortestEvacuationPath(state.board, state.board.patient, state.board.goal).slice(1)) {
+      const point = await canvasPoint(page, originX + cell.x * cellWidth + cellWidth / 2, top + cell.y * cellHeight + cellHeight / 2);
       await page.mouse.click(point.x, point.y);
     }
     if (round < 2) await expect.poll(async () => (await snapshot(page)).round).toBe(round + 1);
@@ -225,14 +237,28 @@ async function solveEvacuation(page: Page): Promise<void> {
 }
 
 async function solveMicrofilm(page: Page): Promise<void> {
-  for (let layer = 0; layer < 3; layer += 1) {
-    const state = await snapshot(page);
-    const current = state.positions?.[layer];
-    const target = state.targets?.[layer];
-    if (typeof current !== 'number' || typeof target !== 'number') throw new Error('Snapshot mikrofilm tidak lengkap');
-    const key = current < target ? 'ArrowRight' : 'ArrowLeft';
-    for (let move = 0; move < Math.abs(target - current); move += 1) await page.keyboard.press(key);
+  const solveOrder = [1, 0, 2];
+  for (let step = 0; step < solveOrder.length; step += 1) {
+    const layer = solveOrder[step];
+    const target = (await snapshot(page)).targets?.[layer];
+    if (typeof target !== 'number') throw new Error('Snapshot mikrofilm tidak lengkap');
+    while (true) {
+      const state = await snapshot(page);
+      if (state.selectedLayer === layer) break;
+      await page.keyboard.press('ArrowDown');
+      await page.waitForTimeout(30);
+    }
+    while (true) {
+      const current = (await snapshot(page)).positions?.[layer];
+      if (typeof current !== 'number' || current === target) break;
+      const key = current < target ? 'ArrowRight' : 'ArrowLeft';
+      await page.keyboard.press(key);
+      await expect.poll(async () => (await snapshot(page)).positions?.[layer]).not.toBe(current);
+    }
     await page.keyboard.press('Space');
+    if (step < solveOrder.length - 1) {
+      await expect.poll(async () => (await snapshot(page)).locked?.[layer]).toBe(true);
+    }
   }
 }
 
@@ -314,8 +340,8 @@ test.describe('Phaser Native Full Port E2E', () => {
     const evacuation = await snapshot(page);
     if (!evacuation.board) throw new Error('Peta evakuasi tidak tersedia');
     const invalid = evacuation.board.blocked[0];
-    const evacuationOriginX = (GAME_WIDTH - evacuation.board.width * 62) / 2;
-    const invalidPoint = await canvasPoint(page, evacuationOriginX + invalid.x * 62 + 31, 126 + invalid.y * 62 + 31);
+    const evacuationOriginX = (GAME_WIDTH - evacuation.board.width * 74) / 2;
+    const invalidPoint = await canvasPoint(page, evacuationOriginX + invalid.x * 74 + 37, 148 + invalid.y * 44 + 22);
     await page.mouse.click(invalidPoint.x, invalidPoint.y);
     await page.mouse.click(invalidPoint.x, invalidPoint.y);
     await expect.poll(async () => (await snapshot(page)).assisted).toBe(true);
@@ -563,7 +589,10 @@ test.describe('Phaser Native Full Port E2E', () => {
 
     await openBonusNode(page, 4);
     await attachCanvas(page, testInfo, 'bonus-chemistry-native');
-    for (let i = 0; i < 3; i++) await page.keyboard.press('Enter');
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('Enter');
+      await expect.poll(async () => (await snapshot(page)).progress?.chemistry?.length).toBe(i + 1);
+    }
     await expect.poll(async () => (await snapshot(page)).completedNodes).toBe(5);
     await page.keyboard.press('Escape');
 

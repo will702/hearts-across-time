@@ -29,16 +29,22 @@ export class EraSpeakerRig {
     private readonly arthurWho: CharacterId = 'muda',
   ) {}
 
+  private isArthur(who: CharacterId): boolean {
+    return who === 'muda' || who === 'dewasa' || who === 'buron' || who === 'tua';
+  }
+
   /** Posisi kepala pembicara dalam koordinat layar (kamera era diam saat dialog). */
   anchor(who: CharacterId): SpeakerAnchor | null {
     if (who === 'elena') {
+      const playerH = this.player.displayHeight || 180;
       return {
         x: this.player.x - this.camera.scrollX,
-        headY: this.player.y - this.player.displayHeight - this.camera.scrollY - 6,
+        headY: this.player.y - playerH - this.camera.scrollY - 6,
       };
     }
-    if (who === this.arthurWho && this.arthur) {
-      const top = this.arthur.y - this.arthur.displayHeight;
+    if (this.isArthur(who) && this.arthur) {
+      const arthurH = this.arthur.displayHeight || 180;
+      const top = this.arthur.y - arthurH;
       return { x: this.arthur.x - this.camera.scrollX, headY: top - this.camera.scrollY - 6 };
     }
     return null;
@@ -47,7 +53,7 @@ export class EraSpeakerRig {
   /** Visual dunia pembicara (untuk animasi bounce bicara di DialogueScene). */
   visual(who: CharacterId): Phaser.GameObjects.Sprite | Phaser.GameObjects.Image | null {
     if (who === 'elena') return this.player;
-    if (who === this.arthurWho && this.arthur) return this.arthur;
+    if (this.isArthur(who) && this.arthur) return this.arthur;
     return null;
   }
 
@@ -60,7 +66,7 @@ export class EraSpeakerRig {
       }
       return;
     }
-    if (who === this.arthurWho && this.arthur && this.arthur.texture.key.startsWith('arthur-')) {
+    if (this.isArthur(who) && this.arthur && this.arthur.texture.key.startsWith('arthur-')) {
       this.arthur.setFrame(frame);
     }
   }

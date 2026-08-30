@@ -336,14 +336,23 @@ export class TitleScene extends Phaser.Scene {
     const body = this.add.text(GAME_WIDTH / 2, 308, 'Progres siklus saat ini akan dimulai ulang dari 1944.', {
       color: CSS.body, fontFamily: FONT.UI, fontSize: '15px',
     }).setOrigin(0.5);
-    const yes = this.confirmButton(320, 338, 160, 38, 'YA, MULAI BARU', () => this.closeConfirmation(true));
-    const no = this.confirmButton(530, 338, 160, 38, 'BATAL', () => this.closeConfirmation(false));
-    yes.on('pointerover', () => { this.confirmChoice = 'yes'; this.refreshConfirmation(); });
-    no.on('pointerover', () => { this.confirmChoice = 'no'; this.refreshConfirmation(); });
+    const yes = this.confirmButton(308, 338, 160, 38, 'YA, MULAI BARU', () => this.closeConfirmation(true));
+    const no = this.confirmButton(492, 338, 160, 38, 'BATAL', () => this.closeConfirmation(false));
+    yes.rect.on('pointerover', () => { this.confirmChoice = 'yes'; this.refreshConfirmation(); });
+    no.rect.on('pointerover', () => { this.confirmChoice = 'no'; this.refreshConfirmation(); });
     this.confirmChoice = 'no';
-    this.confirmYes = yes;
-    this.confirmNo = no;
-    this.confirmPanel = this.add.container(0, 0, [shade, paper, title, body, yes, no]);
+    this.confirmYes = yes.rect;
+    this.confirmNo = no.rect;
+    this.confirmPanel = this.add.container(0, 0, [
+      shade,
+      paper,
+      title,
+      body,
+      yes.rect,
+      yes.label,
+      no.rect,
+      no.label,
+    ]);
     this.refreshConfirmation();
   }
 
@@ -392,14 +401,21 @@ export class TitleScene extends Phaser.Scene {
     if (startNewCycle) this.scene.start('PrologueScene');
   }
 
-  private confirmButton(x: number, y: number, w: number, h: number, label: string, action: () => void): Phaser.GameObjects.Rectangle {
+  private confirmButton(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    label: string,
+    action: () => void,
+  ): { rect: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text } {
     const rect = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x6a5b4b)
       .setInteractive({ useHandCursor: true })
       .on('pointerup', action);
-    this.add.text(x + w / 2, y + h / 2, label, {
+    const labelText = this.add.text(x + w / 2, y + h / 2, label, {
       color: '#FFF8EA', fontFamily: FONT.UI, fontSize: '13px',
     }).setOrigin(0.5);
-    return rect;
+    return { rect, label: labelText };
   }
 
   private start1944(run: RunState, playerX?: number): void {
