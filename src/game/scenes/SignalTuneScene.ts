@@ -141,8 +141,8 @@ export class SignalTuneScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.choicePanel.add(prompt);
     const definitions = [
-      { x: 245, title: '1. EMPATI', desc: 'Cari jejak pribadi Arthur\ndi antara bingkai yang rusak.' },
-      { x: 565, title: '2. LOGIKA', desc: 'Cocokkan nomor registrasi\ndan tanda optik.' },
+      { x: 320, title: '1. EMPATI', desc: 'Cari jejak pribadi Arthur\ndi antara bingkai yang rusak.' },
+      { x: 640, title: '2. LOGIKA', desc: 'Cocokkan nomor registrasi\ndan tanda optik.' },
     ];
     definitions.forEach((entry, index) => {
       const bg = this.add.rectangle(entry.x, 265, 290, 130, 0x5a4a3c, 0.06)
@@ -199,11 +199,33 @@ export class SignalTuneScene extends Phaser.Scene {
   }
 
   private shiftLayer(index: number, direction: number): void {
-    if (this.locked[index]) return;
+    if (direction === 0) return;
     this.selectedLayer = index;
-    this.positions[index] = Phaser.Math.Clamp(this.positions[index] + direction, 0, 6);
-    this.soundManager?.playGearTick(0.85 + index * 0.1);
-    this.renderFilms();
+
+    // Aturan coupling gerakan lapisan:
+    // Lapisan 1 (Paling atas, index 0)  → Lapisan 1 & Lapisan 3 (Paling bawah, index 2) ikut
+    // Lapisan 2 (Kedua/Tengah, index 1) → Lapisan 2 & Lapisan 1 (Paling atas, index 0) ikut
+    // Lapisan 3 (Paling bawah, index 2) → Lapisan 3 saja yang gerak
+    const targets: number[] = [index];
+    if (index === 0) targets.push(2);
+    else if (index === 1) targets.push(0);
+
+    let movedAny = false;
+    for (const targetIndex of targets) {
+      const nextPos = Phaser.Math.Clamp(this.positions[targetIndex] + direction, 0, 6);
+      if (nextPos !== this.positions[targetIndex]) {
+        this.positions[targetIndex] = nextPos;
+        movedAny = true;
+        if (this.positions[targetIndex] !== MICROFILM_TARGETS[targetIndex]) {
+          this.locked[targetIndex] = false;
+        }
+      }
+    }
+
+    if (movedAny) {
+      this.soundManager?.playGearTick(0.85 + index * 0.1);
+      this.renderFilms();
+    }
   }
 
   private tryLock(index: number): void {
@@ -227,7 +249,8 @@ export class SignalTuneScene extends Phaser.Scene {
       this.finish();
       return;
     }
-    this.selectedLayer = this.locked.findIndex(locked => !locked);
+    const nextUnlocked = this.locked.findIndex(locked => !locked);
+    if (nextUnlocked >= 0) this.selectedLayer = nextUnlocked;
     this.status?.setText(`LAPISAN ${this.locked.filter(Boolean).length}/3 TERKUNCI — LANJUTKAN REGISTRASI`).setColor(CSS.green);
     this.renderFilms();
   }
@@ -245,7 +268,6 @@ export class SignalTuneScene extends Phaser.Scene {
         .setStrokeStyle(selected ? 3 : 1.6, color, selected ? 1 : 0.55)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-          if (this.locked[index]) return;
           this.selectedLayer = index;
           this.draggingLayer = index;
           this.dragStartX = pointer.x;

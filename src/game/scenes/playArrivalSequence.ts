@@ -1,5 +1,12 @@
 import Phaser from 'phaser';
 
+export type ArrivalBackdropFrame = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 type ArrivalConfig = {
   caption: string;
   duration: number;
@@ -10,7 +17,9 @@ type ArrivalConfig = {
   barColor?: number;
   /** Tekstur lukisan intro era (legacy bunker/lab); menutupi dunia selama sinematik. */
   backdrop?: string;
-  characterPose?: string;
+  /** Crop/zoom berurutan untuk storyboard sinematik layar penuh. */
+  backdropFrames?: ArrivalBackdropFrame[];
+  showChrome?: boolean;
   onComplete: () => void;
 };
 
@@ -23,100 +32,81 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
   camera.setZoom(reduced ? 1 : config.startZoom);
   camera.centerOn(config.startFocusX, config.groundY - 120);
 
-  let barColor = config.barColor ?? 0xd4a535;
-  let defaultBackdrop = config.backdrop;
-  let videoKey: string | undefined;
-  let partColor = 0xf2d6a2;
-
-  if (config.caption.includes('1944')) {
-    barColor = 0xc24a3e;
-    defaultBackdrop = defaultBackdrop || (scene.textures.exists('cutscene-arrival-1944') ? 'cutscene-arrival-1944' : undefined);
-    videoKey = scene.cache.video.exists('cutscene-video-arrival-1944') ? 'cutscene-video-arrival-1944' : undefined;
-    partColor = 0xffc48a;
-  } else if (config.caption.includes('1968')) {
-    barColor = 0x5d91a9;
-    defaultBackdrop = defaultBackdrop || (scene.textures.exists('cutscene-arrival-1968') ? 'cutscene-arrival-1968' : undefined);
-    videoKey = scene.cache.video.exists('cutscene-video-arrival-1968') ? 'cutscene-video-arrival-1968' : undefined;
-    partColor = 0xd0e8f2;
-  } else if (config.caption.includes('1999')) {
-    barColor = 0x38bdf8;
-    defaultBackdrop = defaultBackdrop || (scene.textures.exists('cutscene-arrival-1999') ? 'cutscene-arrival-1999' : undefined);
-    videoKey = scene.cache.video.exists('cutscene-video-arrival-1999') ? 'cutscene-video-arrival-1999' : undefined;
-    partColor = 0x9be3ff;
+  let barColor = config.barColor ?? 0xa85550;
+  if (!config.barColor) {
+    if (config.caption.includes('1968') && config.caption.includes('BUNKER')) barColor = 0x6b91a8;
+    else if (config.caption.includes('1968')) barColor = 0x5d91a9;
+    else if (config.caption.includes('1999')) barColor = 0x64a3bc;
+    else if (config.caption.includes('1944')) barColor = 0xa85550;
   }
 
-  // Lukisan atau Video sinematik beresolusi tinggi (Ken Burns effect)
+  // lukisan intro era: kamera besar lalu mundur (keyframe legacy)
   let backdrop: Phaser.GameObjects.Image | undefined;
-  let videoObj: Phaser.GameObjects.Video | undefined;
-
-  if (videoKey && !reduced) {
-    try {
-      videoObj = scene.add.video(480, 270, videoKey)
-        .setDisplaySize(960, 540)
-        .setScrollFactor(0)
-        .setDepth(2998);
-      videoObj.play(true);
-    } catch {
-      videoObj = undefined;
-    }
-  }
-
-  if (!videoObj && defaultBackdrop && scene.textures.exists(defaultBackdrop)) {
-    backdrop = scene.add.image(480, 270, defaultBackdrop)
-      .setDisplaySize(960, 540)
+  if (config.backdrop && scene.textures.exists(config.backdrop)) {
+    const frames = config.backdropFrames;
+    const firstFrame = frames?.[reduced ? frames.length - 1 : 0];
+    backdrop = scene.add.image(firstFrame?.x ?? 480, firstFrame?.y ?? 270, config.backdrop)
+      .setOrigin(firstFrame ? 0 : 0.5)
+      .setDisplaySize(firstFrame?.width ?? 960, firstFrame?.height ?? 540)
       .setScrollFactor(0)
       .setDepth(2998);
-    if (!reduced) {
-      backdrop.setScale(backdrop.scaleX * 1.12, backdrop.scaleY * 1.12);
+    if (!reduced && !frames?.length) {
+      backdrop.setScale(backdrop.scaleX * 2.2, backdrop.scaleY * 2.2);
     }
   }
 
-  // Partikel atmosferik khusus per era
-  const particles = scene.add.graphics().setScrollFactor(0).setDepth(2999);
-  const particleDots: Array<{ x: number; y: number; r: number; vy: number; vx: number; alpha: number }> = [];
-  if (!reduced) {
-    for (let i = 0; i < 34; i++) {
-      particleDots.push({
-        x: Math.random() * 960,
-        y: Math.random() * 540,
-        r: 1 + Math.random() * 2.2,
-        vy: -(0.25 + Math.random() * 0.5),
-        vx: (Math.random() - 0.5) * 0.4,
-        alpha: 0.2 + Math.random() * 0.5,
-      });
-    }
-    particles.fillStyle(partColor, 1);
-  }
+  // Top linear gradient dark vignette
+  const topGrad = scene.add.graphics().setScrollFactor(0).setDepth(2999);
+  topGrad.fillGradientStyle(0x040405, 0x040405, 0x040405, 0x040405, 0.85, 0.85, 0, 0);
+  topGrad.fillRect(0, 0, 960, 190);
 
-  // Anamorphic 21:9 Cinematic Letterbox Bars
-  const letterbox = scene.add.graphics().setScrollFactor(0).setDepth(3000);
-  letterbox.fillStyle(0x060504, 0.94);
-  letterbox.fillRect(0, 0, 960, 52);
-  letterbox.fillRect(0, 540 - 72, 960, 72);
-  // Gold dividing line
-  letterbox.fillStyle(0xd4a535, 0.5);
-  letterbox.fillRect(40, 52, 880, 1.5);
-  letterbox.fillRect(40, 540 - 72, 880, 1.5);
+  const caption = scene.add.text(480, 490, config.caption, {
+    color: '#f5f0e8', fontFamily: 'Cinzel, Georgia, serif', fontSize: '15px', fontStyle: 'italic',
+    stroke: '#080604', strokeThickness: 4, letterSpacing: 2,
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(3000);
 
-  const caption = scene.add.text(480, 488, config.caption, {
-    color: '#fbf7ee',
-    fontFamily: 'Cinzel, Georgia, serif',
-    fontSize: '17px',
-    fontStyle: 'bold',
-    stroke: '#080604',
-    strokeThickness: 3,
-    letterSpacing: 2.2,
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
-
-  const track = scene.add.rectangle(375, 514, 210, 3, 0xf5f0e8, 0.22)
-    .setOrigin(0, 0.5).setScrollFactor(0).setDepth(3001);
+  const track = scene.add.rectangle(375, 514, 210, 3, 0xf5f0e8, 0.2)
+    .setOrigin(0, 0.5).setScrollFactor(0).setDepth(3000);
   const bar = scene.add.rectangle(375, 514, 1, 3, barColor, 1)
-    .setOrigin(0, 0.5).setScrollFactor(0).setDepth(3002);
-  const hint = scene.add.text(480, 528, 'ENTER / SPACE / SENTUH UNTUK MELEWATI', {
-    color: 'rgba(245,240,232,0.65)', fontFamily: 'Poppins, sans-serif', fontSize: '9.5px', letterSpacing: 0.9,
-  }).setOrigin(0.5).setScrollFactor(0).setDepth(3001);
+    .setOrigin(0, 0.5).setScrollFactor(0).setDepth(3001);
+  const hint = scene.add.text(480, 526, 'ENTER / SPACE / SENTUH UNTUK MELEWATI', {
+    color: '#f5f0e899', fontFamily: 'Poppins, sans-serif', fontSize: '10px', letterSpacing: 0.5,
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(3000);
 
-  const baseScale = backdrop ? backdrop.scaleX / (reduced ? 1 : 1.12) : 1;
+  const showChrome = config.showChrome !== false;
+  topGrad.setVisible(showChrome);
+  caption.setVisible(showChrome);
+  track.setVisible(showChrome);
+  bar.setVisible(showChrome);
+  hint.setVisible(showChrome);
+
+  const baseScale = backdrop && !config.backdropFrames?.length
+    ? backdrop.scaleX / (reduced ? 1 : 2.2)
+    : 1;
+
+  const applyBackdropFrame = (value: number): void => {
+    const frames = config.backdropFrames;
+    if (!backdrop || !frames?.length) return;
+    if (frames.length === 1 || reduced) {
+      const frame = frames[frames.length - 1];
+      if (frame) backdrop.setPosition(frame.x, frame.y).setDisplaySize(frame.width, frame.height);
+      return;
+    }
+    const frameProgress = Phaser.Math.Clamp(value, 0, 1) * (frames.length - 1);
+    const fromIndex = Math.min(Math.floor(frameProgress), frames.length - 2);
+    const from = frames[fromIndex];
+    const to = frames[fromIndex + 1];
+    if (!from || !to) return;
+    const local = frameProgress - fromIndex;
+    backdrop
+      .setPosition(Phaser.Math.Linear(from.x, to.x, local), Phaser.Math.Linear(from.y, to.y, local))
+      .setDisplaySize(
+        Phaser.Math.Linear(from.width, to.width, local),
+        Phaser.Math.Linear(from.height, to.height, local),
+      );
+  };
+
+  applyBackdropFrame(reduced ? 1 : 0);
 
   const finish = (): void => {
     if (finished) return;
@@ -125,14 +115,12 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
     scene.input.keyboard?.off('keydown-ENTER', finish);
     scene.input.keyboard?.off('keydown-SPACE', finish);
     scene.input.off('pointerdown', finish);
-    letterbox.destroy();
-    particles.destroy();
+    topGrad.destroy();
     caption.destroy();
     track.destroy();
     bar.destroy();
     hint.destroy();
     backdrop?.destroy();
-    videoObj?.destroy();
     camera.setZoom(1);
     config.onComplete();
   };
@@ -146,31 +134,17 @@ export function playArrivalSequence(scene: Phaser.Scene, config: ArrivalConfig):
       const value = progress.value;
       if (!reduced) camera.setZoom(Phaser.Math.Linear(config.startZoom, 1, value));
       camera.centerOn(Phaser.Math.Linear(config.startFocusX, config.endFocusX, value), config.groundY - 120);
-      if (backdrop && !reduced) {
-        const s = Phaser.Math.Linear(1.12, 1.0, value) * baseScale;
+      if (config.backdropFrames?.length) {
+        applyBackdropFrame(value);
+      } else if (backdrop && !reduced) {
+        const s = Phaser.Math.Linear(2.2, 1, value) * baseScale;
         backdrop.setScale(s, s);
       }
       bar.width = Math.max(1, 210 * value);
-
-      // Animasi partikel atmosferik
-      if (!reduced && particleDots.length) {
-        particles.clear();
-        particles.fillStyle(partColor, 1);
-        particleDots.forEach(p => {
-          p.y += p.vy;
-          p.x += p.vx;
-          if (p.y < 0) p.y = 540;
-          if (p.x < 0) p.x = 960;
-          if (p.x > 960) p.x = 0;
-          particles.fillCircle(p.x, p.y, p.r);
-        });
-      }
     },
     onComplete: finish,
   });
-
   scene.input.keyboard?.on('keydown-ENTER', finish);
   scene.input.keyboard?.on('keydown-SPACE', finish);
   scene.input.on('pointerdown', finish);
 }
-

@@ -120,7 +120,9 @@ export class VortexScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (!this.registry.get('reduceMotion')) this.elapsed += delta / 1000;
+    // Progress waktu adalah state transisi, bukan dekorasi. Ia harus tetap maju
+    // saat reduced motion aktif agar angka tahun dan white-out tidak membeku.
+    this.elapsed += delta / 1000;
     const p = Phaser.Math.Clamp(this.elapsed / (DURATION / 1000), 0, 1);
     this.drawRings();
     this.drawSwarm();

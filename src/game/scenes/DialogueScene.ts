@@ -20,6 +20,7 @@ export type DialogueSceneData = {
   speakerAnchor?: SpeakerAnchorResolver;
   setSpeakerExpression?: SpeakerExpressionSetter;
   speakerVisual?: SpeakerVisualAccessor;
+  cinematicSpeaker?: boolean;
   resetSpeakers?: () => void;
   onComplete: (nextAction?: { type: string; [key: string]: unknown }) => void;
 };
@@ -266,7 +267,12 @@ export class DialogueScene extends Phaser.Scene {
 
     const anchor = this.dataPayload.speakerAnchor?.(op.who) ?? null;
     const speaker: SpeechInfo | null = anchor && op.who !== 'narrator'
-      ? { who: op.who, x: anchor.x, headY: anchor.headY }
+      ? {
+          who: op.who,
+          x: anchor.x,
+          headY: anchor.headY,
+          cinematic: Boolean(this.dataPayload.cinematicSpeaker),
+        }
       : null;
     const scale = (this.registry.get('options') as GameOptions | undefined)?.textScale ?? 1;
     this.bubble.show(op.text, speaker, scale);

@@ -2,10 +2,11 @@ import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import {
-  EVACUATION_BOARDS,
   applyEvacuationStep,
+  evacuationBoardsForLoop,
   nextEvacuationStep,
   samePoint,
+  type EvacuationBoard,
   type GridPoint,
 } from '../minigames/challengeRules';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
@@ -19,8 +20,8 @@ export type SpotlightChallengeData = {
 };
 
 const CELL_SIZE = 62;
-const MAP_TOP = 126;
-const PANEL = { x: 150, y: 56, w: 660, h: 424 };
+const MAP_TOP = 182;
+const PANEL = { x: 150, y: 88, w: 660, h: 380 };
 
 export class SpotlightChallengeScene extends Phaser.Scene {
   private challengeData!: SpotlightChallengeData;
@@ -29,8 +30,10 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   private chosenApproach: 'empathy' | 'logic' = 'empathy';
   private selectedChoice = 0;
   private round = 0;
+  private boards: readonly EvacuationBoard[] = [];
   private path: GridPoint[] = [];
   private cursor: GridPoint = { x: 0, y: 0 };
+  private carryingPatient = false;
   private misses = 0;
   private assisted = false;
 
@@ -50,7 +53,9 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.stage = 'choose';
     this.selectedChoice = 0;
     this.round = 0;
+    this.boards = evacuationBoardsForLoop(data.run.loop);
     this.path = [];
+    this.carryingPatient = false;
     this.misses = 0;
     this.assisted = false;
 
@@ -59,18 +64,18 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1944-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.16);
     }
     addPaperPanel(this, PANEL.x, PANEL.y, PANEL.w, PANEL.h, { radius: 9 });
-    this.add.text(GAME_WIDTH / 2, 82, 'PETA EVAKUASI GARIS DEPAN — 1944', {
-      color: CSS.red, fontFamily: FONT.UI, fontSize: '21px', fontStyle: 'bold',
+    this.add.text(GAME_WIDTH / 2, 118, 'PETA EVAKUASI GARIS DEPAN — 1944', {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '23px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 105, 'Bawa tiga korban menuju pos medis tanpa memasuki sektor berbahaya.', {
-      color: '#5A4A3C', fontFamily: FONT.META, fontSize: '12px',
+    this.add.text(GAME_WIDTH / 2, 143, 'Temukan lingkaran pasien, lalu bawa ke titik merah tanpa memasuki sektor berbahaya.', {
+      color: '#5A4A3C', fontFamily: FONT.META, fontSize: '13px',
     }).setOrigin(0.5);
 
     this.boardContainer = this.add.container(0, 0).setVisible(false);
-    this.statusText = this.add.text(GAME_WIDTH / 2, 420, 'Pilih cara membaca medan evakuasi.', {
+    this.statusText = this.add.text(GAME_WIDTH / 2, 444, 'Pilih cara membaca medan evakuasi.', {
       color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 452, 'PANAH / WASD — FOKUS   •   SPACE / ENTER — PILIH   •   BACKSPACE — MUNDUR', {
+    this.add.text(GAME_WIDTH / 2, 490, 'PANAH / WASD — FOKUS   •   SPACE / ENTER — PILIH   •   BACKSPACE — MUNDUR', {
       color: '#6A5B4B', fontFamily: FONT.META, fontSize: '11px',
     }).setOrigin(0.5);
 
@@ -114,22 +119,32 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       this.path.pop();
       this.cursor = { ...this.path[this.path.length - 1] };
       this.soundManager?.playSelect();
+      this.updateObjectiveText();
       this.renderBoard();
     }
   }
 
   snapshot(): Record<string, unknown> {
-    const board = EVACUATION_BOARDS[this.round];
+    const board = this.boards[this.round];
     return {
       minigame: 'evacuation_map',
       stage: this.stage,
       round: this.round,
-      board: board ? { width: board.width, height: board.height, start: board.start, goal: board.goal, blocked: board.blocked } : null,
+      loopVariant: this.challengeData.run.loop % 8,
+      board: board ? {
+        width: board.width,
+        height: board.height,
+        start: board.start,
+        patient: board.patient,
+        goal: board.goal,
+        blocked: board.blocked,
+      } : null,
       path: this.path,
       cursor: this.cursor,
+      carryingPatient: this.carryingPatient,
       misses: this.misses,
       assisted: this.assisted,
-      hintCell: this.assisted && board ? nextEvacuationStep(board, this.path) : null,
+      hintCell: this.assisted && board ? nextEvacuationStep(this.objectiveBoard(board), this.path) : null,
     };
   }
 
@@ -140,8 +155,8 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       color: CSS.body, fontFamily: FONT.UI, fontSize: '17px', fontStyle: 'bold',
     }).setOrigin(0.5);
     const entries = [
-      { x: 245, title: '1. EMPATI', desc: 'Dahulukan korban paling rentan.\n(Fokus pada keselamatan manusia)' },
-      { x: 565, title: '2. LOGIKA', desc: 'Cari jalur tercepat yang masih aman.\n(Fokus pada efisiensi rute)' },
+      { x: 320, title: '1. EMPATI', desc: 'Dahulukan korban paling rentan.\n(Fokus pada keselamatan manusia)' },
+      { x: 640, title: '2. LOGIKA', desc: 'Cari jalur tercepat yang masih aman.\n(Fokus pada efisiensi rute)' },
     ];
     entries.forEach((entry, index) => {
       const bg = this.add.rectangle(entry.x, 265, 290, 130, 0x5a4a3c, 0.06)
@@ -191,15 +206,16 @@ export class SpotlightChallengeScene extends Phaser.Scene {
   }
 
   private startRound(): void {
-    const board = EVACUATION_BOARDS[this.round];
+    const board = this.boards[this.round];
+    this.carryingPatient = false;
     this.path = [{ ...board.start }];
     this.cursor = { ...board.start };
-    this.statusText?.setText(`EVAKUASI ${this.round + 1}/3 — PILIH PETAK BERSEBELAHAN MENUJU POS MEDIS`).setColor(CSS.body);
+    this.updateObjectiveText();
     this.renderBoard();
   }
 
   private moveCursor(dx: number, dy: number): void {
-    const board = EVACUATION_BOARDS[this.round];
+    const board = this.boards[this.round];
     this.cursor = {
       x: Phaser.Math.Clamp(this.cursor.x + dx, 0, board.width - 1),
       y: Phaser.Math.Clamp(this.cursor.y + dy, 0, board.height - 1),
@@ -210,21 +226,29 @@ export class SpotlightChallengeScene extends Phaser.Scene {
 
   private commit(point: GridPoint): void {
     if (this.stage !== 'play') return;
-    const board = EVACUATION_BOARDS[this.round];
+    const board = this.boards[this.round];
+    if (!this.carryingPatient && samePoint(point, board.goal)) {
+      this.rejectStep('JEMPUT LINGKARAN PASIEN SEBELUM MENUJU TITIK MERAH');
+      return;
+    }
     const result = applyEvacuationStep(board, this.path, point);
     this.path = result.path;
     if (result.result === 'invalid') {
-      this.misses += 1;
-      this.assisted = this.misses >= 2;
-      this.soundManager?.playErrorBuzz();
-      this.statusText?.setText(this.assisted
-        ? 'JALUR TIDAK AMAN — PETAK SARAN DISOROT EMAS'
-        : 'PILIH PETAK TERBUKA YANG BERSEBELAHAN').setColor(CSS.redBright);
+      this.rejectStep('PILIH PETAK TERBUKA YANG BERSEBELAHAN');
     } else {
       this.cursor = { ...this.path[this.path.length - 1] };
       this.soundManager?.playLockSuccess();
-      if (samePoint(this.cursor, board.goal)) {
-        if (this.round === EVACUATION_BOARDS.length - 1) {
+
+      if (!this.carryingPatient && samePoint(this.cursor, board.patient)) {
+        this.carryingPatient = true;
+        this.path = [{ ...board.patient }];
+        this.statusText?.setText('PASIEN DIANGKAT — BAWA LINGKARAN KE TITIK MERAH').setColor(CSS.green);
+        this.renderBoard();
+        return;
+      }
+
+      if (this.carryingPatient && samePoint(this.cursor, board.goal)) {
+        if (this.round === this.boards.length - 1) {
           this.finish();
           return;
         }
@@ -239,13 +263,34 @@ export class SpotlightChallengeScene extends Phaser.Scene {
     this.renderBoard();
   }
 
+  private rejectStep(message: string): void {
+    this.misses += 1;
+    this.assisted = this.misses >= 2;
+    this.soundManager?.playErrorBuzz();
+    this.statusText?.setText(this.assisted
+      ? `${message} — PETAK SARAN DISOROT EMAS`
+      : message).setColor(CSS.redBright);
+    this.renderBoard();
+  }
+
+  private updateObjectiveText(): void {
+    const objective = this.carryingPatient
+      ? 'BAWA PASIEN KE TITIK MERAH'
+      : 'TEMUKAN DAN AMBIL LINGKARAN PASIEN';
+    this.statusText?.setText(`EVAKUASI ${this.round + 1}/3 — ${objective}`).setColor(CSS.body);
+  }
+
+  private objectiveBoard(board: EvacuationBoard): EvacuationBoard {
+    return this.carryingPatient ? board : { ...board, goal: board.patient };
+  }
+
   private renderBoard(): void {
     if (!this.boardContainer || this.stage !== 'play') return;
     this.boardContainer.removeAll(true);
-    const board = EVACUATION_BOARDS[this.round];
+    const board = this.boards[this.round];
     const originX = (GAME_WIDTH - board.width * CELL_SIZE) / 2;
     const graphics = this.add.graphics();
-    graphics.lineStyle(4, 0x567a61, 0.85);
+    graphics.lineStyle(4, this.carryingPatient ? 0x567a61 : 0x55677a, 0.85);
     for (let index = 1; index < this.path.length; index += 1) {
       const from = this.path[index - 1];
       const to = this.path[index];
@@ -257,7 +302,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       );
     }
     this.boardContainer.add(graphics);
-    const hint = this.assisted ? nextEvacuationStep(board, this.path) : null;
+    const hint = this.assisted ? nextEvacuationStep(this.objectiveBoard(board), this.path) : null;
 
     for (let y = 0; y < board.height; y += 1) {
       for (let x = 0; x < board.width; x += 1) {
@@ -267,6 +312,7 @@ export class SpotlightChallengeScene extends Phaser.Scene {
         const blocked = board.blocked.some(cell => samePoint(cell, point));
         const used = this.path.some(cell => samePoint(cell, point));
         const isGoal = samePoint(board.goal, point);
+        const isPatient = samePoint(board.patient, point);
         const isStart = samePoint(board.start, point);
         const isHint = Boolean(hint && samePoint(hint, point));
         const cell = this.add.rectangle(cx, cy, CELL_SIZE - 7, CELL_SIZE - 7,
@@ -276,11 +322,28 @@ export class SpotlightChallengeScene extends Phaser.Scene {
             isHint ? 1 : samePoint(this.cursor, point) ? 1 : 0.35)
           .setInteractive({ useHandCursor: true })
           .on('pointerup', () => { this.cursor = point; this.commit(point); });
-        const label = this.add.text(cx, cy, blocked ? '✕' : isGoal ? '✚' : isStart ? '●' : used ? '•' : '', {
-          color: blocked ? CSS.redBright : isGoal ? CSS.red : isStart ? '#55677A' : CSS.green,
-          fontFamily: FONT.UI, fontSize: isGoal ? '26px' : '19px', fontStyle: 'bold',
+        const patientWaiting = isPatient && !this.carryingPatient;
+        const label = this.add.text(cx, cy, blocked ? '✕' : isStart ? '◆' : used ? '•' : '', {
+          color: blocked ? CSS.redBright : CSS.green,
+          fontFamily: FONT.UI, fontSize: '17px', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.boardContainer.add([cell, label]);
+
+        if (isGoal) {
+          const goalMarker = this.add.circle(cx, cy, 9, 0x94342e, 1)
+            .setStrokeStyle(3, 0xf3eada, 1);
+          this.boardContainer.add(goalMarker);
+        } else if (patientWaiting) {
+          const patientMarker = this.add.circle(cx, cy, 13, 0xf3eada, 0.9)
+            .setStrokeStyle(4, 0x55677a, 1);
+          this.boardContainer.add(patientMarker);
+        }
+
+        if (this.carryingPatient && samePoint(this.cursor, point)) {
+          const carried = this.add.circle(cx + 18, cy - 18, 8, 0x55677a, 1)
+            .setStrokeStyle(3, 0xf3eada, 1);
+          this.boardContainer.add(carried);
+        }
       }
     }
   }

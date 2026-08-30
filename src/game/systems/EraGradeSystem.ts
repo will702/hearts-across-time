@@ -14,7 +14,14 @@ type GradeLayer =
   | Phaser.GameObjects.TileSprite
   | Phaser.GameObjects.Graphics;
 
-type RainDrop = { x: number; y: number; vy: number; w: number; h: number };
+type RainDrop = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  length: number;
+  alpha: number;
+};
 
 const GRADE_DEPTH = 800;
 const GRAIN_SWAP_MS = 100;
@@ -156,14 +163,18 @@ export class EraGradeSystem {
     }
 
     if (this.rain) {
-      this.rain.setVisible(animated);
+      // Dalam reduced motion hujan tetap terbaca sebagai atmosfer, hanya diam.
+      this.rain.setVisible(true);
       if (animated) {
         const dt = this.lastTime >= 0 ? Phaser.Math.Clamp(timeMs - this.lastTime, 0, 100) / 1000 : 0;
         this.drops.forEach((drop) => {
           drop.y += drop.vy * dt;
-          // Goyang legacy: sin(t*.7 + y*.01)*.16 per frame 60fps (terakumulasi +-14px).
-          drop.x += Math.sin(t * 0.7 + drop.y * 0.01) * 0.16 * dt * 60;
-          if (drop.y > GAME_HEIGHT + 12) drop.y -= GAME_HEIGHT + 24;
+          drop.x += drop.vx * dt + Math.sin(t * 0.7 + drop.y * 0.01) * 3 * dt;
+          if (drop.y > GAME_HEIGHT + drop.length) {
+            drop.y -= GAME_HEIGHT + drop.length + 40;
+            drop.x = (drop.x + GAME_WIDTH + 170) % (GAME_WIDTH + 100) - 50;
+          }
+          if (drop.x < -80) drop.x += GAME_WIDTH + 160;
         });
         this.renderRain();
       }
@@ -187,7 +198,7 @@ export class EraGradeSystem {
     this.rain = undefined;
   }
 
-  /** Atmosfer khas era: beku 1999, scanline lab 1968B, tetes hujan lensa 1944. */
+  /** Atmosfer khas era: beku 1999, scanline lab 1968B, hujan deras 1944. */
   private createAtmospherics(): void {
     if (this.era === '1999') {
       this.frost = this.scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, ensureFrostTexture(this.scene))
@@ -207,16 +218,19 @@ export class EraGradeSystem {
     if (this.era === '1944') {
       this.rain = this.scene.add.graphics();
       this.track(this.rain);
-      for (let i = 0; i < 4; i += 1) {
+      // Pola deterministik menjaga hasil QA visual tetap stabil, tetapi cukup rapat
+      // untuk terbaca sebagai hujan yang bergerak di seluruh layar.
+      for (let i = 0; i < 56; i += 1) {
         this.drops.push({
-          x: GAME_WIDTH * (0.14 + 0.24 * i),
-          y: 40 + i * 130,
-          vy: 7 + i * 4,
-          w: 2 + (i % 2),
-          h: 7 + (i % 3) * 2,
+          x: ((i * 173) % (GAME_WIDTH + 100)) - 50,
+          y: ((i * 97) % (GAME_HEIGHT + 80)) - 40,
+          vx: -72 - (i % 5) * 9,
+          vy: 250 + (i % 7) * 24,
+          length: 12 + (i % 6) * 4,
+          alpha: 0.08 + (i % 4) * 0.025,
         });
       }
-      this.rain.setVisible(!this.scene.registry.get('reduceMotion'));
+      this.rain.setVisible(true);
       this.renderRain();
     }
   }
@@ -235,9 +249,9 @@ export class EraGradeSystem {
   private renderRain(): void {
     if (!this.rain) return;
     this.rain.clear();
-    this.rain.fillStyle(0xdee9f0, 0.10);
     this.drops.forEach((drop) => {
-      this.rain?.fillEllipse(drop.x, drop.y, drop.w, drop.h);
+      this.rain?.lineStyle(1, 0xe9f1f4, drop.alpha);
+      this.rain?.lineBetween(drop.x, drop.y, drop.x - 6, drop.y + drop.length);
     });
   }
 }

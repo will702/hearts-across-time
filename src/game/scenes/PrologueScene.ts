@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import type { CharacterId, Expression } from '../narrative/storyScript';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 const INTRO_PAGES = [
@@ -39,6 +40,7 @@ export class PrologueScene extends Phaser.Scene {
   private page = 0;
   private pageContainer?: Phaser.GameObjects.Container;
   private bgImage?: Phaser.GameObjects.Image;
+  private elenaImage?: Phaser.GameObjects.Image;
   private started = false;
   private temporalPulse?: Phaser.GameObjects.Container;
 
@@ -284,6 +286,10 @@ export class PrologueScene extends Phaser.Scene {
     this.scene.launch('DialogueScene', {
       nodeId: 'prologue',
       run: this.run,
+      setSpeakerExpression: (_who: CharacterId, expr: Expression) => this.setElenaExpression(expr),
+      // Narator pada prolog adalah suara batin Elena. Hubungkan visualnya supaya
+      // bounce saat mengetik ikut berjalan seperti dialog sinematik era lain.
+      speakerVisual: (who: CharacterId) => (who === 'narrator' || who === 'elena') ? this.elenaImage ?? null : null,
       onComplete: (action?: { type: string; to?: string }) => {
         this.temporalPulse?.destroy();
         if (action?.type === 'vortex' || action?.to === '1944') {
@@ -295,93 +301,75 @@ export class PrologueScene extends Phaser.Scene {
     });
   }
 
-  /** Adegan prolog: ilustrasi sinematik Elena 2088, Ken Burns zoom,
-      letterbox 21:9, partikel bara waktu merah/emas, denyut detak jantung tiap 2.4 detik. */
+  private setElenaExpression(expr: string): void {
+    if (!this.elenaImage) return;
+    const targetKey = (expr === 'sad' || expr === 'shock') && this.textures.exists('elena-dialog-sad')
+      ? 'elena-dialog-sad'
+      : 'elena-dialog';
+    if (this.textures.exists(targetKey) && this.elenaImage.texture.key !== targetKey) {
+      this.elenaImage.setTexture(targetKey);
+    }
+  }
+
+  /** Adegan prolog legacy: latar narator zoom-out, Elena setengah badan,
+      gradasi gelap, denyut jantung merah tiap 2.4 detik. */
   private stagePrologueScene(): void {
     const soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     const reduce = Boolean(this.registry.get('reduceMotion'));
 
-    const hasVideo = this.cache.video.exists('cutscene-video-prologue-2088');
-    let videoObj: Phaser.GameObjects.Video | undefined;
-
-    if (hasVideo && !reduce) {
-      try {
-        videoObj = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'cutscene-video-prologue-2088')
-          .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
-          .setDepth(4);
-        videoObj.play(true);
-      } catch {
-        videoObj = undefined;
-      }
+    // kamera dimulai besar lalu perlahan mundur (zoom 1.16 → 1, pan -18/+12 → 0)
+    if (this.bgImage && !reduce) {
+      this.tweens.killTweensOf(this.bgImage);
+      this.bgImage.setAlpha(1);
+      const baseScale = Math.max(GAME_WIDTH / this.bgImage.width, GAME_HEIGHT / this.bgImage.height);
+      this.bgImage.setScale(baseScale * 1.16);
+      this.bgImage.setPosition(GAME_WIDTH / 2 - 18, GAME_HEIGHT / 2 + 12);
+      this.tweens.add({
+        targets: this.bgImage,
+        scaleX: baseScale,
+        scaleY: baseScale,
+        x: GAME_WIDTH / 2,
+        y: GAME_HEIGHT / 2,
+        duration: 7500,
+        ease: 'Sine.easeOut',
+      });
+    } else if (this.bgImage) {
+      this.bgImage.setAlpha(1);
     }
 
-    if (!videoObj) {
-      const prologueKey = this.textures.exists('cutscene-prologue-2088') ? 'cutscene-prologue-2088' : 'bgnarator';
-      if (this.textures.exists(prologueKey)) {
-        const art = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, prologueKey)
-          .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
-          .setDepth(4);
+    // Elena setengah badan (skala frame Figma -557, 229, 4348, 2492)
+    const elenaKey = this.textures.exists('elena-dialog-sad') ? 'elena-dialog-sad' : 'elena-dialog';
+    if (this.textures.exists(elenaKey)) {
+      const fScale = GAME_WIDTH / 3233;
+      const fTop = (GAME_HEIGHT - 2102 * fScale) / 2;
+      const ex = -557 * fScale;
+      const ey = 229 * fScale + fTop;
+      const ew = 4348 * fScale;
+      const eh = 2492 * fScale;
 
-        if (!reduce) {
-          art.setScale(art.scaleX * 1.08, art.scaleY * 1.08);
-          this.tweens.add({
-            targets: art,
-            scaleX: art.scaleX / 1.08,
-            scaleY: art.scaleY / 1.08,
-            duration: 9000,
-            ease: 'Sine.easeOut',
-          });
-        }
-      }
-    }
+      this.elenaImage = this.add.image(ex, ey, elenaKey)
+        .setOrigin(0)
+        .setDisplaySize(ew, eh)
+        .setDepth(5);
 
-    // Anamorphic 21:9 Cinematic Letterbox Bars
-    const letterbox = this.add.graphics().setDepth(5);
-    letterbox.fillStyle(0x040304, 0.95);
-    letterbox.fillRect(0, 0, GAME_WIDTH, 48);
-    letterbox.fillRect(0, GAME_HEIGHT - 64, GAME_WIDTH, 64);
-    // Gold ornamental dividing lines
-    letterbox.fillStyle(0xd4a535, 0.45);
-    letterbox.fillRect(40, 48, GAME_WIDTH - 80, 1.5);
-    letterbox.fillRect(40, GAME_HEIGHT - 64, GAME_WIDTH - 80, 1.5);
-
-    // Gradasi gelap bawah untuk keterbacaan teks dialog
-    const gradients = this.add.graphics().setDepth(6);
-    gradients.fillGradientStyle(0x060507, 0x060507, 0x060507, 0x060507, 0, 0, 0.72, 0.72);
-    gradients.fillRect(0, GAME_HEIGHT * 0.52, GAME_WIDTH, GAME_HEIGHT * 0.48);
-
-    // Partikel percikan waktu merah/emas mengambang di sekitar Elena (2088)
-    if (!reduce) {
-      const emberGfx = this.add.graphics().setDepth(6);
-      const embers: Array<{ x: number; y: number; r: number; vy: number; vx: number; alpha: number; color: number }> = [];
-      for (let i = 0; i < 36; i++) {
-        embers.push({
-          x: Math.random() * GAME_WIDTH,
-          y: Math.random() * GAME_HEIGHT,
-          r: 1 + Math.random() * 2.4,
-          vy: -(0.25 + Math.random() * 0.6),
-          vx: (Math.random() - 0.5) * 0.4,
-          alpha: 0.2 + Math.random() * 0.6,
-          color: Math.random() > 0.4 ? 0xd4a535 : 0xe04343,
+      if (!reduce) {
+        this.tweens.add({
+          targets: this.elenaImage,
+          y: `+=4`,
+          duration: 2200,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
         });
       }
-      this.time.addEvent({
-        delay: 30,
-        loop: true,
-        callback: () => {
-          emberGfx.clear();
-          embers.forEach((p) => {
-            p.y += p.vy;
-            p.x += p.vx;
-            if (p.y < 48) p.y = GAME_HEIGHT - 64;
-            if (p.x < 0) p.x = GAME_WIDTH;
-            if (p.x > GAME_WIDTH) p.x = 0;
-            emberGfx.fillStyle(p.color, p.alpha);
-            emberGfx.fillCircle(p.x, p.y, p.r);
-          });
-        },
-      });
     }
+
+    // gradasi bawah + atas (drawPrologueScene legacy)
+    const gradients = this.add.graphics().setDepth(6);
+    gradients.fillGradientStyle(0x080605, 0x080605, 0x080605, 0x080605, 0, 0, 0.64, 0.64);
+    gradients.fillRect(0, GAME_HEIGHT * 0.56, GAME_WIDTH, GAME_HEIGHT * 0.44);
+    gradients.fillGradientStyle(0x040405, 0x040405, 0x050506, 0x050506, 0.82, 0.82, 0, 0);
+    gradients.fillRect(0, 0, GAME_WIDTH, 210);
 
     // vignette denyut merah + SFX jantung tiap 2.4 detik
     const vignette = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, this.ensureRedVignette())
