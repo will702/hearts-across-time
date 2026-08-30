@@ -9,6 +9,7 @@ import {
   isGemAligned,
   normalizedAngleDistance,
   pointInPolygon,
+  randomGemStart,
 } from '../../src/game/minigames/math';
 
 describe('Minigame Math & Physics Algorithms', () => {
@@ -35,6 +36,23 @@ describe('Minigame Math & Physics Algorithms', () => {
       scaleY: expect.closeTo(0.906939, 5),
       rotation: expect.closeTo(-0.1462, 5),
     });
+  });
+
+  it('mengacak orientasi awal permata jauh dari target dan tetap dalam jangkauan kontrol', () => {
+    const target = { rx: 0.62, ry: -0.86 };
+    const first = randomGemStart(target.rx, target.ry, () => 0);
+    const second = randomGemStart(target.rx, target.ry, () => 0.999);
+
+    for (const start of [first, second]) {
+      const rxDistance = gemAngleDistance(start.rx, target.rx);
+      const ryDistance = gemAngleDistance(start.ry, target.ry);
+      expect(rxDistance).toBeGreaterThanOrEqual(0.85);
+      expect(ryDistance).toBeGreaterThanOrEqual(0.85);
+      expect(rxDistance).toBeLessThanOrEqual(1.6);
+      expect(ryDistance).toBeLessThanOrEqual(1.6);
+      expect(isGemAligned(start.rx, start.ry, target.rx, target.ry, true)).toBe(false);
+    }
+    expect(first).not.toEqual(second);
   });
 
   it('detects point in non-convex and convex polygons accurately', () => {

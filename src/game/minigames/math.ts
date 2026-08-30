@@ -27,6 +27,18 @@ export function isGemAligned(
     && gemAngleDistance(ry, targetRy) <= tolerance;
 }
 
+export function randomGemStart(
+  targetRx: number,
+  targetRy: number,
+  random: () => number = Math.random,
+): { rx: number; ry: number } {
+  const offset = (): number => {
+    const magnitude = 0.85 + random() * 0.75;
+    return magnitude * (random() < 0.5 ? -1 : 1);
+  };
+  return { rx: targetRx + offset(), ry: targetRy + offset() };
+}
+
 export function pointInPolygon(poly: [number, number][], x: number, y: number): boolean {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {

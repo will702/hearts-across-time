@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
-import { gemAngleDistance, gemProjection, isGemAligned } from '../minigames/math';
+import { gemAngleDistance, gemProjection, isGemAligned, randomGemStart } from '../minigames/math';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
 export type GemAlignData = {
@@ -49,8 +49,9 @@ export class GemAlignScene extends Phaser.Scene {
     this.misses = 0;
     this.assisted = false;
 
-    this.startRx = GEM_TARGET.rx + 1.42;
-    this.startRy = GEM_TARGET.ry - 1.58;
+    const randomStart = randomGemStart(GEM_TARGET.rx, GEM_TARGET.ry);
+    this.startRx = randomStart.rx;
+    this.startRy = randomStart.ry;
     this.rx = this.startRx;
     this.ry = this.startRy;
 
@@ -93,6 +94,7 @@ export class GemAlignScene extends Phaser.Scene {
       rx: this.rx,
       ry: this.ry,
       target: GEM_TARGET,
+      startRotation: { rx: this.startRx, ry: this.startRy },
       misses: this.misses,
       assisted: this.assisted,
       complete: this.complete,
