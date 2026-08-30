@@ -10,6 +10,7 @@ const ACCELERATION = 900;
 const DECELERATION = 1400;
 const STEP_DISTANCE = 30;
 const WALK_ANIMATION = 'elena-walk-neutral';
+const SPRITE_FEET_ORIGIN_Y = 203 / 210; // 0.9667 to eliminate 7px transparent padding at bottom
 
 export interface PlayerOptions {
   loop?: number;
@@ -29,6 +30,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private groundY: number;
   private readonly onStep?: PlayerOptions['onStep'];
   private readonly surfaceAt?: PlayerOptions['surfaceAt'];
+  private stepParticleGraphics?: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: PlayerOptions = {}) {
     const idleTexture = scene.textures.exists('elena') ? 'elena' : 'elena-fallback';
@@ -45,17 +47,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.surfaceAt = options.surfaceAt;
     this.groundY = y;
 
-    this.shadow = scene.add.ellipse(x, y + 3, 52, 10, 0x0a0806, 0.28).setDepth(y - 1);
+    // Contact shadow resting directly on the ground
+    this.shadow = scene.add.ellipse(x, y, 48, 8, 0x0a0806, 0.35).setDepth(y - 1);
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.setOrigin(0.5, 1).setDisplaySize(80, 112).setDepth(y).setCollideWorldBounds(true);
+    this.setOrigin(0.5, SPRITE_FEET_ORIGIN_Y)
+      .setDisplaySize(80, 112)
+      .setDepth(y)
+      .setCollideWorldBounds(true);
 
     const body = this.arcadeBody;
     const footWidth = 24 / Math.abs(this.scaleX);
-    const footHeight = 12 / Math.abs(this.scaleY);
+    const footHeight = 10 / Math.abs(this.scaleY);
     body.setSize(footWidth, footHeight, false);
-    body.setOffset((this.width - footWidth) / 2, this.height - footHeight);
+    body.setOffset((this.width - footWidth) / 2, 203 - footHeight);
     body.setAllowGravity(true);
     body.setAllowRotation(false);
     body.setBounce(0);
@@ -99,13 +105,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (grounded) this.groundY = body.bottom;
     this.setDepth(body.bottom);
-    this.shadow.setPosition(this.x, this.groundY + 3).setDepth(body.bottom - 1);
-    this.shadow.setAlpha(grounded ? 0.28 : 0.12);
-    this.shadow.setScale(this.reduceMotion || !moving ? 1 : 0.92 + Math.min(Math.abs(velocity) / RUN_SPEED, 1) * 0.08, 1);
+
+    // Stride-based shadow pulsation
+    const strideScale = moving && !this.reduceMotion
+      ? 1 + 0.1 * Math.sin((this.stepDistance / STEP_DISTANCE) * Math.PI * 2)
+      : 1;
+
+    this.shadow.setPosition(this.x, this.groundY).setDepth(body.bottom - 1);
+    this.shadow.setAlpha(grounded ? 0.35 : 0.14);
+    this.shadow.setScale(
+      (this.reduceMotion || !moving ? 1 : 0.94 + Math.min(Math.abs(velocity) / RUN_SPEED, 1) * 0.08) * strideScale,
+      strideScale,
+    );
   }
 
   override destroy(fromScene?: boolean): void {
     this.shadow.destroy();
+    this.stepParticleGraphics?.destroy();
     super.destroy(fromScene);
   }
 
@@ -134,7 +150,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return;
     }
     this.play(WALK_ANIMATION, true);
-    this.anims.timeScale = Phaser.Math.Clamp(Math.abs(velocity) / WALK_SPEED, 0.75, 1.65);
+    this.anims.timeScale = Phaser.Math.Clamp(Math.abs(velocity) / WALK_SPEED, 0.7, 1.75);
   }
 
   private updateSteps(moving: boolean, velocity: number, dt: number): void {
@@ -145,6 +161,36 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.stepDistance += Math.abs(velocity) * dt;
     if (this.stepDistance < STEP_DISTANCE) return;
     this.stepDistance %= STEP_DISTANCE;
-    this.onStep?.(this.surfaceAt?.(this.x, this.arcadeBody.bottom) ?? 'unknown');
+    const material = this.surfaceAt?.(this.x, this.arcadeBody.bottom) ?? 'unknown';
+    this.onStep?.(material);
+    this.spawnFootstepParticle(material);
+  }
+
+  private spawnFootstepParticle(material: SurfaceMaterial): void {
+    if (this.reduceMotion || !this.scene?.sys) return;
+    const footX = this.x + (this.flipX ? 6 : -6);
+    const footY = this.groundY - 1;
+
+    let color = 0x5a412b; // mud
+    if (material === 'metal') color = 0xa5cce0;
+    else if (material === 'concrete') color = 0x8a7b6c;
+    else if (material === 'wood') color = 0x6e4e32;
+
+    const particle = this.scene.add.graphics().setDepth(this.groundY - 1);
+    particle.fillStyle(color, 0.6);
+    particle.fillCircle(0, 0, 2);
+    particle.setPosition(footX, footY);
+
+    this.scene.tweens.add({
+      targets: particle,
+      x: footX + (this.flipX ? 8 : -8) + (Math.random() - 0.5) * 4,
+      y: footY - 3 - Math.random() * 4,
+      alpha: 0,
+      scaleX: 0.4,
+      scaleY: 0.4,
+      duration: 260,
+      ease: 'Sine.easeOut',
+      onComplete: () => particle.destroy(),
+    });
   }
 }

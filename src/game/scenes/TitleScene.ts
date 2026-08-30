@@ -211,14 +211,14 @@ export class TitleScene extends Phaser.Scene {
       },
     ];
 
-    if (!this.save.data.game) this.selected = 1;
+    this.selected = this.save.data.game ? 0 : 1;
 
-    const leftX = 132, leftY = 320, leftW = 250, leftH = 34;
+    const leftX = 132, leftY = 312, leftW = 390, leftH = 34;
     const bonusX = 754, bonusY = 440, bonusW = 188, bonusH = 40;
     this.menuRows = this.items.map((item, index) => {
       const bonus = index === 3;
       const x = bonus ? bonusX : leftX;
-      const y = bonus ? bonusY : leftY + index * 39;
+      const y = bonus ? bonusY : leftY + index * 40;
       const w = bonus ? bonusW : leftW;
       const h = bonus ? bonusH : leftH;
 

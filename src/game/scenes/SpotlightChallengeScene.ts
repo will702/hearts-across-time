@@ -19,8 +19,8 @@ export type SpotlightChallengeData = {
 };
 
 const CELL_SIZE = 62;
-const MAP_TOP = 182;
-const PANEL = { x: 150, y: 88, w: 660, h: 380 };
+const MAP_TOP = 126;
+const PANEL = { x: 150, y: 56, w: 660, h: 424 };
 
 export class SpotlightChallengeScene extends Phaser.Scene {
   private challengeData!: SpotlightChallengeData;
@@ -59,18 +59,18 @@ export class SpotlightChallengeScene extends Phaser.Scene {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg1944-mid').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.16);
     }
     addPaperPanel(this, PANEL.x, PANEL.y, PANEL.w, PANEL.h, { radius: 9 });
-    this.add.text(GAME_WIDTH / 2, 118, 'PETA EVAKUASI GARIS DEPAN — 1944', {
-      color: CSS.red, fontFamily: FONT.UI, fontSize: '23px', fontStyle: 'bold',
+    this.add.text(GAME_WIDTH / 2, 82, 'PETA EVAKUASI GARIS DEPAN — 1944', {
+      color: CSS.red, fontFamily: FONT.UI, fontSize: '21px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 143, 'Bawa tiga korban menuju pos medis tanpa memasuki sektor berbahaya.', {
-      color: '#5A4A3C', fontFamily: FONT.META, fontSize: '13px',
+    this.add.text(GAME_WIDTH / 2, 105, 'Bawa tiga korban menuju pos medis tanpa memasuki sektor berbahaya.', {
+      color: '#5A4A3C', fontFamily: FONT.META, fontSize: '12px',
     }).setOrigin(0.5);
 
     this.boardContainer = this.add.container(0, 0).setVisible(false);
-    this.statusText = this.add.text(GAME_WIDTH / 2, 444, 'Pilih cara membaca medan evakuasi.', {
+    this.statusText = this.add.text(GAME_WIDTH / 2, 420, 'Pilih cara membaca medan evakuasi.', {
       color: CSS.body, fontFamily: FONT.UI, fontSize: '15px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 490, 'PANAH / WASD — FOKUS   •   SPACE / ENTER — PILIH   •   BACKSPACE — MUNDUR', {
+    this.add.text(GAME_WIDTH / 2, 452, 'PANAH / WASD — FOKUS   •   SPACE / ENTER — PILIH   •   BACKSPACE — MUNDUR', {
       color: '#6A5B4B', fontFamily: FONT.META, fontSize: '11px',
     }).setOrigin(0.5);
 

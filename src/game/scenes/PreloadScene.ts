@@ -4,6 +4,7 @@ import {
   CHARACTER_SHEET_ASSETS,
   IMAGE_ASSETS,
   PROP_SHEET_ASSETS,
+  VIDEO_ASSETS,
 } from '../assetManifest';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 
@@ -34,6 +35,9 @@ export class PreloadScene extends Phaser.Scene {
     });
     Object.entries(AUDIO_ASSETS).forEach(([key, url]) => {
       this.load.audio(key, url);
+    });
+    Object.entries(VIDEO_ASSETS).forEach(([key, url]) => {
+      this.load.video(key, url);
     });
 
     this.load.video('intro', 'assets/video/intro.mp4');
@@ -189,5 +193,29 @@ export class PreloadScene extends Phaser.Scene {
     });
     makeObject('arthur-fallback', 0x71624c, (g) => { g.fillCircle(48, 22, 15); g.fillRect(31, 36, 34, 52); });
     makeObject('elena-fallback', 0xd7c4a1, (g) => { g.fillCircle(48, 20, 16); g.fillStyle(0xc4897f); g.fillTriangle(48, 34, 21, 88, 75, 88); });
+
+    // Fallback untuk potret karakter dialog jika file belum dimuat
+    const portraitColors: Record<string, { bg: number; skin: number; hair: number }> = {
+      elena: { bg: 0x8a3832, skin: 0xf5dfc6, hair: 0xd4c29a },
+      muda: { bg: 0x5a6838, skin: 0xf5dfc6, hair: 0x6e5236 },
+      dewasa: { bg: 0x3d5a73, skin: 0xf5dfc6, hair: 0x625a52 },
+      buron: { bg: 0x5a4632, skin: 0xf2d8bd, hair: 0x54402e },
+      tua: { bg: 0x6e6858, skin: 0xf0d8c2, hair: 0xd6d2c4 },
+    };
+    Object.entries(portraitColors).forEach(([char, cols]) => {
+      const fbKey = `portrait-${char}-fallback`;
+      if (!this.textures.exists(fbKey)) {
+        const g = this.make.graphics({ x: 0, y: 0 });
+        g.fillStyle(cols.bg, 1);
+        g.fillRect(0, 0, 128, 160);
+        g.fillStyle(cols.skin, 1);
+        g.fillCircle(64, 58, 32);
+        g.fillRect(44, 90, 40, 70);
+        g.fillStyle(cols.hair, 1);
+        g.fillCircle(64, 46, 34);
+        g.generateTexture(fbKey, 128, 160);
+        g.destroy();
+      }
+    });
   }
 }
