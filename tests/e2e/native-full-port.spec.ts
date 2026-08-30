@@ -216,19 +216,20 @@ function shortestEvacuationPath(
 }
 
 async function solveEvacuation(page: Page): Promise<void> {
-  const cellSize = 62;
-  const top = 182;
+  const cellWidth = 74;
+  const cellHeight = 44;
+  const top = 148;
   for (let round = 0; round < 3; round += 1) {
     const state = await snapshot(page);
     if (!state.board) throw new Error('Snapshot peta evakuasi tidak lengkap');
-    const originX = (GAME_WIDTH - state.board.width * cellSize) / 2;
+    const originX = (GAME_WIDTH - state.board.width * cellWidth) / 2;
     for (const cell of shortestEvacuationPath(state.board, state.board.start, state.board.patient).slice(1)) {
-      const point = await canvasPoint(page, originX + cell.x * cellSize + cellSize / 2, top + cell.y * cellSize + cellSize / 2);
+      const point = await canvasPoint(page, originX + cell.x * cellWidth + cellWidth / 2, top + cell.y * cellHeight + cellHeight / 2);
       await page.mouse.click(point.x, point.y);
     }
     await expect.poll(async () => (await snapshot(page)).carryingPatient).toBe(true);
     for (const cell of shortestEvacuationPath(state.board, state.board.patient, state.board.goal).slice(1)) {
-      const point = await canvasPoint(page, originX + cell.x * cellSize + cellSize / 2, top + cell.y * cellSize + cellSize / 2);
+      const point = await canvasPoint(page, originX + cell.x * cellWidth + cellWidth / 2, top + cell.y * cellHeight + cellHeight / 2);
       await page.mouse.click(point.x, point.y);
     }
     if (round < 2) await expect.poll(async () => (await snapshot(page)).round).toBe(round + 1);
@@ -339,8 +340,8 @@ test.describe('Phaser Native Full Port E2E', () => {
     const evacuation = await snapshot(page);
     if (!evacuation.board) throw new Error('Peta evakuasi tidak tersedia');
     const invalid = evacuation.board.blocked[0];
-    const evacuationOriginX = (GAME_WIDTH - evacuation.board.width * 62) / 2;
-    const invalidPoint = await canvasPoint(page, evacuationOriginX + invalid.x * 62 + 31, 182 + invalid.y * 62 + 31);
+    const evacuationOriginX = (GAME_WIDTH - evacuation.board.width * 74) / 2;
+    const invalidPoint = await canvasPoint(page, evacuationOriginX + invalid.x * 74 + 37, 148 + invalid.y * 44 + 22);
     await page.mouse.click(invalidPoint.x, invalidPoint.y);
     await page.mouse.click(invalidPoint.x, invalidPoint.y);
     await expect.poll(async () => (await snapshot(page)).assisted).toBe(true);
