@@ -124,6 +124,11 @@ regenerasi, atau mengganti aset tanpa permintaan eksplisit.
 Font **Cinzel**, **Poppins**, dan **Patrick Hand** (SIL OFL) dibundle di
 `assets/fonts/`.
 
+Photo Booth memakai **MediaPipe Tasks Vision** dan model BlazeFace short-range
+(Apache 2.0) untuk melacak wajah secara lokal di browser. Runtime WASM dan model
+berada di `assets/mediapipe/` serta `assets/models/`; gambar kamera tidak dikirim
+ke server.
+
 ## 🎵 Musik dan audio
 
 `SoundManager` memiliki musik WebAudio prosedural, bus master/SFX/ambience/music,

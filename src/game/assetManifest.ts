@@ -20,6 +20,7 @@ export const IMAGE_ASSETS: Record<string, string> = {
   'title-bg-mono': 'assets/art/ui/title-bg-mono.png',
   'title-wordmark': 'assets/art/ui/title-wordmark.png',
   'time-vortex': 'assets/art/backgrounds/time-vortex.png',
+  'time-vortex-investigation': 'assets/art/backgrounds/time-vortex-investigation.png',
   'bgnarator': 'assets/art/backgrounds/narrator.png',
   'bunker-underground': 'assets/art/backgrounds/bunker-underground.jpg',
   'lab-military': 'assets/art/backgrounds/lab-military.jpg',
@@ -144,4 +145,9 @@ export const STATIC_ASSETS = [
   'assets/fonts/patrick-hand.woff2',
   'assets/fonts/patrick-hand-ext.woff2',
   'assets/fonts/OFL-Cinzel-Poppins.txt',
+  'assets/models/blaze_face_short_range.tflite',
+  'assets/mediapipe/vision_wasm_internal.js',
+  'assets/mediapipe/vision_wasm_internal.wasm',
+  'assets/mediapipe/vision_wasm_nosimd_internal.js',
+  'assets/mediapipe/vision_wasm_nosimd_internal.wasm',
 ] as const;

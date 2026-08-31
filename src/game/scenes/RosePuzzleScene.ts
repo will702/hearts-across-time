@@ -4,11 +4,12 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { pointInPolygon } from '../minigames/math';
 import {
   randomRoseHomes,
+  randomRoseLayoutSeed,
   ROSE_LAYOUT_VARIANT_COUNT,
   ROSE_SOURCE_CROP,
   ROSE_SOURCE_FRAME,
   ROSE_TARGET,
-  rosePiecesForLoop,
+  rosePiecesForSeed,
 } from '../minigames/roseLayout';
 import type { RunState, SaveSystem } from '../systems/SaveSystem';
 
@@ -40,7 +41,9 @@ export class RosePuzzleScene extends Phaser.Scene {
   private feedbackText?: Phaser.GameObjects.Text;
   private complete = false;
   private roseFrame?: string;
-  private layoutVariant = 0;
+  private layoutSeed = 0;
+  private launchCount = 0;
+  private generatedTextureKeys: string[] = [];
 
   private keys?: Record<string, Phaser.Input.Keyboard.Key>;
 
@@ -54,6 +57,9 @@ export class RosePuzzleScene extends Phaser.Scene {
     this.registry.set('nativeState', 'rosepuzzle');
     this.complete = false;
     this.draggingIndex = -1;
+    this.selectedPiece = 0;
+    this.removeGeneratedTextures();
+    this.launchCount += 1;
     this.roseFrame = this.ensureRoseSourceFrame();
 
     this.createBackground();
@@ -100,7 +106,8 @@ export class RosePuzzleScene extends Phaser.Scene {
     return {
       minigame: 'rose',
       loop: this.puzzleData.run.loop,
-      layoutVariant: this.layoutVariant,
+      layoutVariant: Math.max(0, Math.floor(this.puzzleData.run.loop)) % ROSE_LAYOUT_VARIANT_COUNT,
+      layoutSeed: this.layoutSeed,
       target: ROSE_TARGET,
       pieces: this.pieces.map(piece => ({ poly: piece.poly, ox: piece.ox, oy: piece.oy, placed: piece.placed })),
       selectedPiece: this.selectedPiece,
@@ -145,13 +152,13 @@ export class RosePuzzleScene extends Phaser.Scene {
   }
 
   private initPieces(): void {
-    this.layoutVariant = Math.max(0, Math.floor(this.puzzleData.run.loop)) % ROSE_LAYOUT_VARIANT_COUNT;
-    const pieceDefinitions = rosePiecesForLoop(this.puzzleData.run.loop);
+    this.layoutSeed = randomRoseLayoutSeed(this.puzzleData.run.loop, this.launchCount, Math.random);
+    const pieceDefinitions = rosePiecesForSeed(this.layoutSeed);
     const homes = randomRoseHomes(Math.random, pieceDefinitions);
     this.pieces = pieceDefinitions.map((def, index) => {
       const g = this.add.graphics().setDepth(4);
       const fragmentTexture = this.roseFrame
-        ? this.ensureRosePieceTexture(this.layoutVariant, index, def.poly)
+        ? this.ensureRosePieceTexture(this.layoutSeed, index, def.poly)
         : undefined;
       const image = fragmentTexture
         ? this.add.image(
@@ -375,11 +382,11 @@ export class RosePuzzleScene extends Phaser.Scene {
   }
 
   private ensureRosePieceTexture(
-    layoutVariant: number,
+    layoutSeed: number,
     index: number,
     poly: [number, number][],
   ): string | undefined {
-    const key = `rose-fragment-${layoutVariant}-${index}`;
+    const key = `rose-fragment-${layoutSeed}-${index}`;
     if (this.textures.exists(key)) return key;
 
     const sourceFrame = this.textures.getFrame('rose-bottle-broken', ROSE_SOURCE_FRAME);
@@ -409,7 +416,15 @@ export class RosePuzzleScene extends Phaser.Scene {
     );
     context.restore();
     texture.refresh();
+    this.generatedTextureKeys.push(key);
     return key;
+  }
+
+  private removeGeneratedTextures(): void {
+    for (const key of this.generatedTextureKeys) {
+      if (this.textures.exists(key)) this.textures.remove(key);
+    }
+    this.generatedTextureKeys = [];
   }
 
 }

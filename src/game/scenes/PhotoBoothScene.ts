@@ -1,12 +1,20 @@
 import Phaser from 'phaser';
 import { BONUS_IMAGE_ASSETS } from '../assetManifest';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import {
+  cameraDisplaySize,
+  containCameraTransform,
+  smoothCameraTransform,
+  trackFaceGroupTransform,
+  type CameraTransform,
+  type FaceBox,
+  type FaceSlot,
+} from '../minigames/photoBoothCamera';
+import { createLocalFaceDetector, type LocalFaceDetector } from '../systems/LocalFaceDetector';
 import { CSS, FONT } from '../ui/theme';
 
 type Partner = 'elena' | 'arthur' | 'both';
 type BoothStage = 'choose' | 'requesting' | 'camera';
-type CameraPlacement = { x: number; y: number; width: number; height: number };
-type CameraRect = CameraPlacement;
 
 const PARTNER_OPTIONS: readonly Partner[] = ['elena', 'arthur', 'both'];
 
@@ -18,19 +26,26 @@ const FRAME_BY_PARTNER: Record<Partner, string> = {
   both: 'bonus-photo-couple',
 };
 
-const CAMERA_PLACEMENT: Record<Partner, CameraPlacement> = {
-  // Area maksimal kamera dipusatkan pada lubang wajah; rasio sumber tetap dipertahankan.
-  elena: { x: 610, y: 174, width: 400, height: 225 },
-  arthur: { x: 390, y: 184, width: 400, height: 225 },
-  both: { x: 480, y: 204, width: 620, height: 349 },
+const CAMERA_PLACEMENT: Record<Partner, FaceSlot> = {
+  // Ukuran awal dibuat lebih kecil; tracking kemudian memetakan wajah ke lubang secara seragam.
+  elena: { x: 610, y: 174, width: 300, height: 169 },
+  arthur: { x: 390, y: 184, width: 300, height: 169 },
+  both: { x: 480, y: 214, width: 560, height: 315 },
 };
 
-function containCameraRect(placement: CameraPlacement, sourceWidth: number, sourceHeight: number): CameraRect {
-  const width = sourceWidth > 0 ? sourceWidth : 16;
-  const height = sourceHeight > 0 ? sourceHeight : 9;
-  const scale = Math.min(placement.width / width, placement.height / height);
-  return { x: placement.x, y: placement.y, width: width * scale, height: height * scale };
-}
+const FACE_SLOTS: Record<Partner, readonly FaceSlot[]> = {
+  // Nama partner adalah karakter yang menemani pemain; slot adalah wajah pemain.
+  elena: [{ x: 610, y: 174, width: 112, height: 138 }],
+  arthur: [{ x: 390, y: 184, width: 110, height: 136 }],
+  both: [
+    { x: 354, y: 238, width: 98, height: 122 },
+    { x: 610, y: 194, width: 108, height: 134 },
+  ],
+};
+
+const FACE_OCCUPANCY = 0.74;
+const FACE_DETECTION_INTERVAL = 160;
+const TRACKING_RESPONSE = 8;
 
 export class PhotoBoothScene extends Phaser.Scene {
   private stage: BoothStage = 'choose';
@@ -38,6 +53,13 @@ export class PhotoBoothScene extends Phaser.Scene {
   private stream?: MediaStream;
   private cameraVideo?: Phaser.GameObjects.Video;
   private cameraMetadataHandler?: () => void;
+  private faceDetector?: LocalFaceDetector;
+  private detectorRequest = 0;
+  private detectionPending = false;
+  private nextFaceDetectionAt = 0;
+  private cameraTransform?: CameraTransform;
+  private targetCameraTransform?: CameraTransform;
+  private trackingFaceCount = 0;
   private statusText?: Phaser.GameObjects.Text;
   private keyHandler?: (event: KeyboardEvent) => void;
 
@@ -69,6 +91,8 @@ export class PhotoBoothScene extends Phaser.Scene {
       partner: this.selectedPartner,
       cameraActive: Boolean(this.stream?.active),
       cameraError: this.statusText?.text.startsWith('KAMERA TIDAK') ?? false,
+      faceTrackingAvailable: Boolean(this.faceDetector),
+      trackedFaces: this.trackingFaceCount,
       cameraPlacement: { ...CAMERA_PLACEMENT[this.selectedPartner] },
       cameraGeometry: this.cameraVideo ? {
         width: this.cameraVideo.displayWidth,
@@ -76,7 +100,18 @@ export class PhotoBoothScene extends Phaser.Scene {
         sourceWidth: source?.videoWidth ?? 0,
         sourceHeight: source?.videoHeight ?? 0,
       } : null,
+      cameraTransform: this.cameraTransform ? { ...this.cameraTransform } : null,
     };
+  }
+
+  update(time: number, delta: number): void {
+    if (this.stage !== 'camera' || !this.cameraVideo) return;
+    this.requestFaceDetection(time);
+    if (!this.cameraTransform || !this.targetCameraTransform) return;
+    this.cameraTransform = this.registry.get('reduceMotion')
+      ? { ...this.targetCameraTransform }
+      : smoothCameraTransform(this.cameraTransform, this.targetCameraTransform, delta, TRACKING_RESPONSE);
+    this.applyCameraTransform();
   }
 
   private showPartnerChoice(message = 'Pilih pasangan untuk foto kenangan terakhir.'): void {
@@ -164,6 +199,7 @@ export class PhotoBoothScene extends Phaser.Scene {
       .setFlipX(true)
       .loadMediaStream(this.stream, true)
       .play(true);
+    void this.createFaceDetector();
     this.cameraMetadataHandler = () => this.fitCameraVideo();
     const media = this.cameraVideo.video;
     media?.addEventListener('loadedmetadata', this.cameraMetadataHandler);
@@ -215,17 +251,20 @@ export class PhotoBoothScene extends Phaser.Scene {
     if (!context) return;
     context.fillStyle = '#050505';
     context.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    const rect = containCameraRect(
+    const transform = this.cameraTransform ?? containCameraTransform(
       CAMERA_PLACEMENT[this.selectedPartner],
-      video.videoWidth,
-      video.videoHeight,
+      { width: video.videoWidth, height: video.videoHeight },
     );
-    const left = rect.x - rect.width / 2;
-    const top = rect.y - rect.height / 2;
+    const display = cameraDisplaySize(
+      { width: video.videoWidth, height: video.videoHeight },
+      transform,
+    );
+    const left = transform.x - display.width / 2;
+    const top = transform.y - display.height / 2;
     context.save();
-    context.translate(left + rect.width, top);
+    context.translate(left + display.width, top);
     context.scale(-1, 1);
-    context.drawImage(video, 0, 0, rect.width, rect.height);
+    context.drawImage(video, 0, 0, display.width, display.height);
     context.restore();
     const frame = this.textures.get(FRAME_BY_PARTNER[this.selectedPartner]).getSourceImage() as CanvasImageSource;
     context.drawImage(frame, 0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -281,6 +320,14 @@ export class PhotoBoothScene extends Phaser.Scene {
       this.cameraVideo.video.removeEventListener('resize', this.cameraMetadataHandler);
     }
     this.cameraMetadataHandler = undefined;
+    this.faceDetector?.close();
+    this.faceDetector = undefined;
+    this.detectorRequest += 1;
+    this.detectionPending = false;
+    this.nextFaceDetectionAt = 0;
+    this.cameraTransform = undefined;
+    this.targetCameraTransform = undefined;
+    this.trackingFaceCount = 0;
     this.cameraVideo?.stop();
     this.cameraVideo = undefined;
     this.stream?.getTracks().forEach(track => track.stop());
@@ -291,12 +338,77 @@ export class PhotoBoothScene extends Phaser.Scene {
     const camera = this.cameraVideo;
     const media = camera?.video;
     if (!camera || !media) return;
-    const rect = containCameraRect(
+    const transform = containCameraTransform(
       CAMERA_PLACEMENT[this.selectedPartner],
-      media.videoWidth,
-      media.videoHeight,
+      { width: media.videoWidth, height: media.videoHeight },
     );
-    camera.setPosition(rect.x, rect.y).setDisplaySize(rect.width, rect.height);
+    this.cameraTransform = transform;
+    this.targetCameraTransform = transform;
+    this.applyCameraTransform();
+  }
+
+  private applyCameraTransform(): void {
+    const camera = this.cameraVideo;
+    const transform = this.cameraTransform;
+    if (!camera || !transform) return;
+    camera.setPosition(transform.x, transform.y).setScale(transform.scale);
+  }
+
+  private async createFaceDetector(): Promise<void> {
+    const request = ++this.detectorRequest;
+    try {
+      const detector = await createLocalFaceDetector();
+      if (request !== this.detectorRequest || this.stage !== 'camera' || !this.cameraVideo) {
+        detector.close();
+        return;
+      }
+      this.faceDetector = detector;
+    } catch {
+      this.faceDetector = undefined;
+    }
+  }
+
+  private requestFaceDetection(time: number): void {
+    const detector = this.faceDetector;
+    const video = this.cameraVideo?.video;
+    if (
+      !detector
+      || !video
+      || this.detectionPending
+      || time < this.nextFaceDetectionAt
+      || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+    ) return;
+    this.detectionPending = true;
+    this.nextFaceDetectionAt = time + FACE_DETECTION_INTERVAL;
+    const partner = this.selectedPartner;
+    void detector.detect(video).then((faces) => {
+      if (this.stage !== 'camera' || this.cameraVideo?.video !== video || this.selectedPartner !== partner) return;
+      const boxes: FaceBox[] = faces
+        .map(({ boundingBox }) => ({
+          x: boundingBox.x,
+          y: boundingBox.y,
+          width: boundingBox.width,
+          height: boundingBox.height,
+        }))
+        .filter(box => box.width > 0 && box.height > 0)
+        .sort((a, b) => b.width * b.height - a.width * a.height)
+        .slice(0, partner === 'both' ? 2 : 1);
+      this.trackingFaceCount = boxes.length;
+      const tracked = trackFaceGroupTransform(
+        { width: video.videoWidth, height: video.videoHeight },
+        boxes,
+        FACE_SLOTS[partner],
+        FACE_OCCUPANCY,
+      );
+      if (!tracked) return;
+      this.targetCameraTransform = tracked;
+    }).catch(() => {
+      this.faceDetector?.close();
+      this.faceDetector = undefined;
+      this.trackingFaceCount = 0;
+    }).finally(() => {
+      this.detectionPending = false;
+    });
   }
 
   private shutdown(): void {

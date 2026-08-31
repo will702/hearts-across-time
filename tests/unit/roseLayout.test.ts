@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   randomRoseHomes,
+  randomRoseLayoutSeed,
   ROSE_LAYOUT_VARIANT_COUNT,
   ROSE_PIECES_DEF,
   ROSE_TARGET,
   rosePiecesForLoop,
+  rosePiecesForSeed,
   rosePieceScreenBounds,
   roseRectsOverlap,
 } from '../../src/game/minigames/roseLayout';
@@ -78,6 +80,20 @@ describe('randomRoseHomes', () => {
 
     expect(signatures.size).toBe(ROSE_LAYOUT_VARIANT_COUNT);
     expect(rosePiecesForLoop(ROSE_LAYOUT_VARIANT_COUNT)).toEqual(rosePiecesForLoop(0));
+  });
+
+  it('mengubah bentuk pecahan pada setiap pembukaan di loop yang sama', () => {
+    const seeds = Array.from({ length: 80 }, (_, launch) => randomRoseLayoutSeed(2, launch, () => 0.25));
+    expect(new Set(seeds).size).toBe(seeds.length);
+
+    const signatures = new Set(seeds.map(seed => JSON.stringify(rosePiecesForSeed(seed))));
+    expect(signatures.size).toBe(seeds.length);
+    seeds.forEach((seed) => {
+      const pieces = rosePiecesForSeed(seed);
+      expect(pieces.reduce((sum, piece) => sum + polygonArea(piece.poly), 0))
+        .toBe(ROSE_TARGET.w * ROSE_TARGET.h);
+      pieces.forEach(({ poly }) => expect(polygonArea(poly)).toBeGreaterThan(1));
+    });
   });
 
   it('tetap menempatkan variasi pecahan loop di luar papan tanpa bertumpuk', () => {

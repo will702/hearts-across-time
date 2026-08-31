@@ -63,6 +63,8 @@ type Snapshot = {
   partner?: 'elena' | 'arthur' | 'both';
   cameraActive?: boolean;
   cameraError?: boolean;
+  faceTrackingAvailable?: boolean;
+  trackedFaces?: number;
   cameraGeometry?: { width: number; height: number; sourceWidth: number; sourceHeight: number } | null;
   system?: number;
   rotations?: number[];
@@ -735,6 +737,7 @@ test.describe('Phaser Native Full Port E2E', () => {
     await expect.poll(async () => (await snapshot(page)).stage).toBe('camera');
     await expect.poll(async () => (await snapshot(page)).partner).toBe('elena');
     await expect.poll(async () => (await snapshot(page)).cameraActive).toBe(true);
+    await expect.poll(async () => (await snapshot(page)).faceTrackingAvailable, { timeout: 10_000 }).toBe(true);
     await expect.poll(async () => {
       const geometry = (await snapshot(page)).cameraGeometry;
       if (!geometry || geometry.sourceWidth <= 0 || geometry.sourceHeight <= 0) return false;

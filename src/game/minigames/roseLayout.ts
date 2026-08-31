@@ -69,16 +69,43 @@ function roseNodeForVariant(point: RosePoint, nodeIndex: number, variant: number
 }
 
 /**
+ * Menggabungkan loop, urutan pembukaan puzzle, dan sumber acak menjadi seed
+ * baru. Bahkan bila sumber acaknya sama, pembukaan berikutnya tetap mendapat
+ * pola yang berbeda.
+ */
+export function randomRoseLayoutSeed(
+  loop: number,
+  launch: number,
+  random: () => number = Math.random,
+): number {
+  const safeLoop = Math.max(0, Math.floor(Number.isFinite(loop) ? loop : 0));
+  const safeLaunch = Math.max(0, Math.floor(Number.isFinite(launch) ? launch : 0));
+  const fraction = Math.min(0.999_999_999_999, Math.max(0, random()));
+  let value = (Math.floor(fraction * 0x1_0000_0000)
+    ^ Math.imul(safeLoop + 1, 0x45d9f3b)
+    ^ Math.imul(safeLaunch + 1, 0x27d4eb2d)) >>> 0;
+  value = Math.imul(value ^ (value >>> 16), 0x7feb352d);
+  value = Math.imul(value ^ (value >>> 15), 0x846ca68b);
+  return ((value ^ (value >>> 16)) >>> 0) || 1;
+}
+
+/** Membentuk delapan keping dari satu seed dengan simpul tepi yang sama. */
+export function rosePiecesForSeed(seed: number): RosePieceDefinition[] {
+  const safeSeed = Math.max(0, Math.floor(Number.isFinite(seed) ? seed : 0)) >>> 0;
+  const nodes = ROSE_LAYOUT_NODES.map((point, index) => roseNodeForVariant(point, index, safeSeed));
+  return ROSE_PIECE_NODE_IDS.map(nodeIds => ({
+    poly: nodeIds.map(nodeId => [...nodes[nodeId]] as RosePoint),
+  }));
+}
+
+/**
  * Menghasilkan retakan deterministik dari nomor loop. Semua keping memakai
  * simpul bersama yang sama, sehingga bentuk berubah tanpa menciptakan celah.
  */
 export function rosePiecesForLoop(loop: number): RosePieceDefinition[] {
   const safeLoop = Math.max(0, Math.floor(Number.isFinite(loop) ? loop : 0));
   const variant = safeLoop % ROSE_LAYOUT_VARIANT_COUNT;
-  const nodes = ROSE_LAYOUT_NODES.map((point, index) => roseNodeForVariant(point, index, variant));
-  return ROSE_PIECE_NODE_IDS.map(nodeIds => ({
-    poly: nodeIds.map(nodeId => [...nodes[nodeId]] as RosePoint),
-  }));
+  return rosePiecesForSeed(variant);
 }
 
 export const ROSE_PIECES_DEF: RosePieceDefinition[] = rosePiecesForLoop(0);
