@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PPT Presentation — Hearts Across Time: Break The Loop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: rgba(22, 30, 49, 0.75);
+      --border-card: rgba(255, 255, 255, 0.1);
+      --accent-cyan: #38bdf8;
+      --accent-rose: #fb7185;
+      --accent-amber: #fbbf24;
+      --accent-emerald: #34d399;
+      --accent-purple: #c084fc;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Background Ambient Glows */
+    .glow-bg {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.25;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: var(--accent-cyan); }
+    .glow-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vw; background: var(--accent-rose); }
+    .glow-3 { top: 40%; left: 40%; width: 35vw; height: 35vw; background: var(--accent-purple); }
+
+    /* Top Header & Bar */
+    header {
+      position: relative;
+      z-index: 10;
+      height: 60px;
+      padding: 0 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(9, 13, 22, 0.8);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #fff;
+    }
+
+    .brand span {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .slide-counter {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border-card);
+    }
+
+    /* Main Presentation Stage */
+    main.stage {
+      position: relative;
+      z-index: 5;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .slide {
+      position: absolute;
+      width: 100%;
+      max-width: 1200px;
+      height: 100%;
+      max-height: 680px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(20px) scale(0.98);
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Glassmorphism Slide Content Box */
+    .glass-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 24px;
+      padding: 3rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(16px);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow-y: auto;
+    }
+
+    /* Typography & Headers */
+    .slide-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .slide-tag {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent-cyan);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .slide-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .slide-subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    /* Grid Layouts */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+    /* Feature Cards */
+    .card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 16px;
+      padding: 1.25rem;
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-3px);
+    }
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .card-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Pill Badges */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-cyan { background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-rose { background: rgba(251, 113, 133, 0.15); color: var(--accent-rose); border: 1px solid rgba(251, 113, 133, 0.3); }
+    .badge-amber { background: rgba(251, 191, 36, 0.15); color: var(--accent-amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+    .badge-emerald { background: rgba(52, 211, 153, 0.15); color: var(--accent-emerald); border: 1px solid rgba(52, 211, 153, 0.3); }
+
+    /* Tables */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+    table.data-table th {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--accent-cyan);
+      text-align: left;
+      padding: 10px 14px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    table.data-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+    }
+    table.data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-main);
+    }
+
+    /* Speaker Notes Bar */
+    .speaker-notes {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 1000px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent-amber);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      color: #fef08a;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 20;
+    }
+    .speaker-notes.visible { display: block; }
+    .notes-title { font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 0.75rem; color: var(--accent-amber); margin-bottom: 4px; }
+
+    /* Bottom Navigation Bar */
+    footer.nav-bar {
+      position: relative;
+      z-index: 10;
+      height: 65px;
+      padding: 0 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(12px);
+    }
+
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-cyan), #0284c7);
+      border: none;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+    }
+
+    .progress-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .dot.active {
+      width: 24px;
+      border-radius: 10px;
+      background: var(--accent-cyan);
+    }
+
+    /* Cover Special Layout */
+    .cover-layout {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      padding: 2rem;
+    }
+    .cover-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 3.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 30%, var(--accent-cyan) 70%, var(--accent-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.15;
+    }
+    .cover-pitch {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 750px;
+      font-style: italic;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient Glow Backgrounds -->
+  <div class="glow-bg glow-1"></div>
+  <div class="glow-bg glow-2"></div>
+  <div class="glow-bg glow-3"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      ⏳ <span>Hearts Across Time</span> — Break The Loop
+    </div>
+    <div class="slide-counter" id="slide-counter">Slide 01 / 12</div>
+  </header>
+
+  <!-- Stage -->
+  <main class="stage">
+
+    <!-- SLIDE 1: COVER -->
+    <div class="slide active">
+      <div class="glass-box cover-layout">
+        <span class="badge badge-rose">Executive Summary Presentation</span>
+        <h1 class="cover-title">Hearts Across Time<br><span style="font-size:0.7em; font-weight:600; color:var(--accent-cyan);">Break The Loop</span></h1>
+        <p class="cover-pitch">"Satu keputusan kecil di masa lalu dapat memutus lingkaran takdir yang mengurung cinta dan masa depan manusia."</p>
+        <div style="display:flex; gap:1rem; margin-top:1rem;">
+          <span class="badge badge-cyan">2D Narrative Puzzle</span>
+          <span class="badge badge-amber">Psychological Time-Loop</span>
+          <span class="badge badge-emerald">WebGL / HTML5 (Itch.io)</span>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-top:1.5rem;">COMPFEST Indie Game Competition Proposal Deck</p>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: OVERVIEW & PITCH -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">01 / Overview & Core Concept</span>
+          <h2 class="slide-title">Executive Summary & Game Pitch</h2>
+          <p class="slide-subtitle">Sebuah perjalanan melintasi 3 era sejarah demi melawan wabah masa depan.</p>
+        </div>
+        <div class="grid-2" style="flex:1; align-items:center;">
+          <div class="card" style="height:100%;">
+            <div class="card-title">📖 Ringkasan Premis</div>
+            <p class="card-desc">Tahun 2088, Virus Crimson membunuh 99% manusia. Elena menggunakan kapsul waktu darurat untuk melompati 3 era (1944, 1968, 1999) demi bimbingan eksperimen Arthur—kekasihnya yang sekarat—agar formula penawar murni berhasil diciptakan sebelum terlampau lambat.</p>
+          </div>
+          <div class="card" style="height:100%;">
+            <div class="card-title">⚙️ Core Gameplay Loop</div>
+            <p class="card-desc"><strong>Eksplorasi Traversal 2D ➔ Dialog & Opsi Tersembunyi ➔ Mini-Game Puzzle Gate ➔ Percabangan Era ➔ Loop Realitas / True Ending.</strong><br><br>Setiap kegagalan memicu <em>Timeline Collapse</em>, melempar Elena kembali ke 1944 dengan nomor loop yang bertambah (<code>loop_count++</code>).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: UNIQUE SELLING POINTS -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">02 / Value Proposition</span>
+          <h2 class="slide-title">5 Unique Selling Points (USP)</h2>
+        </div>
+        <div class="grid-3" style="flex:1;">
+          <div class="card">
+            <div class="card-title">❤️ Hidden Affinity</div>
+            <p class="card-desc">Opsi ucapan membentuk skor tersembunyi <strong>Empati vs Logika</strong> tanpa HUD angka. Perlakuan Elena menentukan apakah Arthur tumbuh hangat atau sinis.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🌿 Watercolor Art</div>
+            <p class="card-desc">Estetika <em>Watercolor Storybook</em> 2D, karakter Chibi, garis pensil grafit, dan latar 3-layer parallax seamless yang artistik.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🧩 8 Era Puzzles</div>
+            <p class="card-desc">8 teka-teki taktil yang terintegrasi erat dengan narasi (perbaikan arloji, mikrofilm, botol mawar, sirkuit kriogenik).</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🔀 6 Branching Endings</div>
+            <p class="card-desc">Pohon waktu dinamis yang menghasilkan 6 pecahan ending unik tersimpan di <em>persistent save system</em>.</p>
+          </div>
+          <div class="card" style="grid-column: span 2;">
+            <div class="card-title">📷 Bonus 2088 & Local Face-Tracking Photo Booth</div>
+            <p class="card-desc">Completionist reward mengumpulkan 6 pecahan ending: epilog kota pulih dan fitur Photo Booth berfilter wajah berbasis MediaPipe WASM lokal tanpa pengiriman data server.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: CHARACTERS -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">03 / Character Roster</span>
+          <h2 class="slide-title">Karakter & Dinamika Perkembangan</h2>
+        </div>
+        <div class="grid-2" style="flex:1;">
+          <div class="card">
+            <div class="card-title">👩‍🚀 Elena (2088 Penjelajah Waktu)</div>
+            <p class="card-desc">Protagonis utama. Wanita tangguh dan penuh dedikasi yang membawa kesadaran masa depan melintasi pusaran waktu demi menyelamatkan Arthur dan umat manusia dari racun Virus Crimson.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">👨‍🔬 Arthur Muda (1944 — PD II)</div>
+            <p class="card-desc">Asisten laboratorium medis parit perang yang lugu, penakut, dan terguncang trauma perang. Ia memegang sampel patogen pertama.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">👨‍🔬 Arthur Dewasa (1968 — Perang Dingin)</div>
+            <p class="card-desc">Peneliti Perang Dingin. Memiliki 2 wujud berdasarkan pilihan 1944: <strong>Buron Rahasia</strong> (tertekan & bersembunyi) atau <strong>Kepala Ilmuwan Resmi</strong> (diawasi militer).</p>
+          </div>
+          <div class="card">
+            <div class="card-title">👨‍🦳 Arthur Tua (1999 — Abad 20)</div>
+            <p class="card-desc">Penjaga Kapsul Kriogenik selama 55 tahun. Karakter dinamis: <strong>Legowo & Penyayang</strong> (High Empathy) atau <strong>Dendam & Sinis</strong> (High Logic).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: WORLD & SETTING -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">04 / World Building</span>
+          <h2 class="slide-title">Latar Tempat & Tiga Era Sejarah</h2>
+        </div>
+        <div class="grid-3" style="flex:1;">
+          <div class="card">
+            <span class="badge badge-amber" style="margin-bottom:0.5rem;">Era 1944</span>
+            <div class="card-title">Parit PD II</div>
+            <p class="card-desc">Medan perang mencekam, suara hujan deras & ledakan bom. Warna cat air muted cokelat-kelabu dengan 3-layer parallax background.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-cyan" style="margin-bottom:0.5rem;">Era 1968</span>
+            <div class="card-title">Bunker Perang Dingin</div>
+            <p class="card-desc">Laboratorium rahasia bawah tanah. Nada warna teal/hijau desaturasi, instrumen mikrofilm, dan statik gelombang radio.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-rose" style="margin-bottom:0.5rem;">Era 1999</span>
+            <div class="card-title">Kapsul Kriogenik</div>
+            <p class="card-desc">Ruang observasi beku sub-zero. Warna biru es kristal, dengung sirkuit mekanis, dan kapsul pembeku tempat serum disimpan.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: NARRATIVE & LOOP MECHANICS -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">05 / Narrative System</span>
+          <h2 class="slide-title">Sistem Time-Loop & True Ending</h2>
+        </div>
+        <div class="grid-2" style="flex:1;">
+          <div class="card">
+            <div class="card-title">🌀 Mekanisme Loop & Collapse</div>
+            <p class="card-desc">Pilihan egois atau rute kegagalan memicu <em>Timeline Collapse</em>. Layar ber-glitch, realitas pecah, dan Elena terlempar kembali ke 1944.<br><br>Setiap loop menambah memori Elena dan catatan buku harian untuk memandu siklus berikutnya.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🌟 Kunci True Ending (Keikhlasan)</div>
+            <p class="card-desc">Syarat memutus rantai loop (<em>Break The Loop</em>):<br>
+            1. Poin <strong>Empati Tinggi</strong> di dialog.<br>
+            2. Memilih <strong>Rute Militer (1944)</strong> & <strong>Rute Kriogenik (1968)</strong>.<br>
+            3. Memilih untuk <strong>ikhlas merelakan Arthur tua bereinkarnasi</strong> di 1999 (bukan memaksanya ikut ke 2088).<br><br>
+            Serum dibawa ke 2088, Arthur sembuh, dan epidemi berhenti.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: GAMEPLAY MECHANICS -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">06 / Mechanics</span>
+          <h2 class="slide-title">Hidden Personality System</h2>
+        </div>
+        <div class="grid-2" style="flex:1;">
+          <div class="card" style="border-left: 4px solid var(--accent-rose);">
+            <div class="card-title" style="color:var(--accent-rose);">❤️ Jalur Empati (+Empathy)</div>
+            <p class="card-desc">Elena mendengarkan, menggenggam tangan, dan menenangkan ketakutan Arthur. Membangun kehangatan jiwa dan rasa percaya pada kemanusiaan. Menjadi kunci utama untuk membuka jalur keselamatan True Ending.</p>
+          </div>
+          <div class="card" style="border-left: 4px solid var(--accent-cyan);">
+            <div class="card-title" style="color:var(--accent-cyan);">⚡ Jalur Logika (+Logic)</div>
+            <p class="card-desc">Elena bersikap dingin, fokus murni pada efisiensi misi, dan mengabaikan emosi Arthur. Membentuk Arthur dewasa & tua menjadi sosok ilmuwan yang sinis, realistis, dan berjarak.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: PUZZLES -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">07 / Mini-Games</span>
+          <h2 class="slide-title">8 Teka-Teki Interaktif Lintas Era</h2>
+        </div>
+        <div class="grid-4" style="flex:1;">
+          <div class="card">
+            <span class="badge badge-amber">1944</span>
+            <div class="card-title" style="margin-top:0.4rem; font-size:0.95rem;">⌚ Arloji Mekanis</div>
+            <p class="card-desc" style="font-size:0.8rem;">Menyetel jarum jam tua untuk membuka memori awal.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-amber">1944</span>
+            <div class="card-title" style="margin-top:0.4rem; font-size:0.95rem;">🗺️ Peta Evakuasi</div>
+            <p class="card-desc" style="font-size:0.8rem;">Menentukan rute aman melintasi barikade perang.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-cyan">1968</span>
+            <div class="card-title" style="margin-top:0.4rem; font-size:0.95rem;">🧪 Botol Mawar</div>
+            <p class="card-desc" style="font-size:0.8rem;">Menyusun konsentrasi formulasi cairan lab.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-cyan">1968</span>
+            <div class="card-title" style="margin-top:0.4rem; font-size:0.95rem;">📜 Mikrofilm Arsip</div>
+            <p class="card-desc" style="font-size:0.8rem;">Memindai dokumen militer rahasia.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-cyan">1968</span>
+            <div class="card-title" style="margin-top:0.4rem; font-size:0.95rem;">📖 Buku Harian</div>
+            <p class="card-desc" style="font-size:0.8rem;">Membaca halaman catatan emosional Arthur.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-rose">1999</span>
+            <div class="card-title" style="margin-top:0.4rem; font-size:0.95rem;">💎 Permata Air</div>
+            <p class="card-desc" style="font-size:0.8rem;">Cocokkan posisi refraksi bayangan kristal.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-rose">1999</span>
+            <div class="card-title" style="margin-top:0.4rem; font-size:0.95rem;">🖼️ Rekonstruksi Foto</div>
+            <p class="card-desc" style="font-size:0.8rem;">Menyusun kepingan foto kenangan manis.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-rose">1999</span>
+            <div class="card-title" style="margin-top:0.4rem; font-size:0.95rem;">⚡ Sirkuit Kriogenik</div>
+            <p class="card-desc" style="font-size:0.8rem;">Menyeimbangkan suhu pendingin sub-zero.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: ART & SOUND DESIGN -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">08 / Audio Visual</span>
+          <h2 class="slide-title">Estetika Visual & Audio Design</h2>
+        </div>
+        <div class="grid-2" style="flex:1;">
+          <div class="card">
+            <div class="card-title">🎨 Art & UI Direction</div>
+            <p class="card-desc">
+              • <strong>Gaya Cat Air Storybook:</strong> Garis grafit & muted wash.<br>
+              • <strong>Speech Bubble UI:</strong> Balon kata di atas kepala karakter.<br>
+              • <strong>Tipografi Elegan:</strong> Cinzel (Title), Poppins (UI), & Patrick Hand (Dialog).<br>
+              • <strong>Responsive Canvas:</strong> 960×540 dengan kontrol sentuh & keyboard.
+            </p>
+          </div>
+          <div class="card">
+            <div class="card-title">🎵 Soundscape & Audio Architecture</div>
+            <p class="card-desc">
+              • <strong>Prosedural WebAudio Engine:</strong> <code>SoundManager</code> dengan bus terpisah.<br>
+              • <strong>Dynamic Ducking:</strong> Musik meredup saat dialog berlangsung.<br>
+              • <strong>Ambience 3 Era:</strong> Hujan parit (1944), dengung radio (1968), & pendingin sub-zero (1999).<br>
+              • <strong>Lisensi Aman:</strong> Aset audio CC0 Kenney & OpenGameArt.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: DEVELOPMENT TIMELINE -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">09 / Schedule</span>
+          <h2 class="slide-title">Waktu Development (4 Minggu)</h2>
+        </div>
+        <div class="grid-4" style="flex:1;">
+          <div class="card">
+            <span class="badge badge-cyan">Minggu 1</span>
+            <div class="card-title" style="margin-top:0.4rem;">Konsep & Architecture</div>
+            <p class="card-desc">Narrative tree design, GDD finalization, Phaser 4 & Vite engine setup, core state system.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-amber">Minggu 2</span>
+            <div class="card-title" style="margin-top:0.4rem;">Visual & Dialogue</div>
+            <p class="card-desc">Asset pipeline generation, character sheets, 3-layer parallax backgrounds, dialogue engine integration.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-rose">Minggu 3</span>
+            <div class="card-title" style="margin-top:0.4rem;">Puzzle & Audio</div>
+            <p class="card-desc">Implementation of 8 mini-games, SoundManager audio sync, persistent save v2 system, puzzle gates.</p>
+          </div>
+          <div class="card">
+            <span class="badge badge-emerald">Minggu 4</span>
+            <div class="card-title" style="margin-top:0.4rem;">Polish & Release</div>
+            <p class="card-desc">Glitch VFX, screenshake polish, automated QA Playwright suite testing, itch.io WebGL build release.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: BUDGET BREAKDOWN -->
+    <div class="slide">
+      <div class="glass-box">
+        <div class="slide-header">
+          <span class="slide-tag">10 / Finance</span>
+          <h2 class="slide-title">Anggaran & Budget Breakdown</h2>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Kategori Pengeluaran</th>
+              <th>Deskripsi Komponen</th>
+              <th>Estimasi Biaya (IDR)</th>
+              <th>Status / Lisensi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Engine & Software</td>
+              <td>Phaser 4, Vite, TypeScript, MediaPipe, VS Code</td>
+              <td>Rp 0,-</td>
+              <td>Free & Open Source (MIT/Apache 2.0)</td>
+            </tr>
+            <tr>
+              <td>Aset Visual & Font</td>
+              <td>Pipeline Watercolor Internal, Font Cinzel, Poppins, Patrick Hand</td>
+              <td>Rp 0,-</td>
+              <td>SIL Open Font License</td>
+            </tr>
+            <tr>
+              <td>Audio & SFX</td>
+              <td>Kenney RPG Audio, OpenGameArt Soundscapes</td>
+              <td>Rp 0,-</td>
+              <td>CC0 Public Domain</td>
+            </tr>
+            <tr>
+              <td>Hosting & Distribution</td>
+              <td>Itch.io WebGL Distribution</td>
+              <td>Rp 0,-</td>
+              <td>Free Platform</td>
+            </tr>
+            <tr>
+              <td>Operasional & Sweat Equity</td>
+              <td>Perangkat uji, konsumsi tim, kuota internet, operasional (1 bulan)</td>
+              <td>Rp 12.000.000,-</td>
+              <td>Internal Bootstrapping</td>
+            </tr>
+            <tr>
+              <td>Cadangan & QA Testing</td>
+              <td>Pengujian otomatis Playwright CI & Visual Review</td>
+              <td>Rp 3.000.000,-</td>
+              <td>Cadangan Operasional</td>
+            </tr>
+            <tr style="font-weight:700; color:#fff; background:rgba(56,189,248,0.1);">
+              <td>TOTAL ESTIMASI BUDGET</td>
+              <td>Total Alokasi Rencana Pengembangan Game Jam</td>
+              <td>Rp 15.000.000,-</td>
+              <td>(Direct Out-of-Pocket: IDR 0,-)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: CLOSING -->
+    <div class="slide">
+      <div class="glass-box cover-layout">
+        <span class="badge badge-emerald">COMPFEST Indie Game Proposal</span>
+        <h1 class="cover-title" style="font-size:2.8rem;">Hearts Across Time<br><span style="font-size:0.6em; color:var(--accent-emerald);">Break The Loop</span></h1>
+        <p class="cover-pitch">"Terima kasih untuk seluruh hidup yang kau korbankan demi masa depanku. Sampai bertemu di masa depan."</p>
+        <div style="margin-top:1rem;">
+          <a href="#" class="btn btn-primary" style="font-size:1.1rem; padding:12px 28px; text-decoration:none;">🎮 Mainkan Demo (Itch.io)</a>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-top:1rem;">Terima kasih atas perhatian Dewan Juri!</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Speaker Notes Box -->
+  <div class="speaker-notes" id="speaker-notes">
+    <div class="notes-title">💡 Speaker Notes (Catatan Presenter)</div>
+    <div id="notes-content">Gunakan tombol panah kiri/kanan di keyboard untuk berpindah slide. Tekan 'N' untuk sembunyikan/tampilkan catatan ini.</div>
+  </div>
+
+  <!-- Navigation Footer -->
+  <footer class="nav-bar">
+    <div class="nav-controls">
+      <button class="btn" id="btn-prev">◀ Prev</button>
+      <button class="btn" id="btn-next">Next ▶</button>
+      <button class="btn" id="btn-notes">💡 Speaker Notes (N)</button>
+    </div>
+    <div class="progress-dots" id="dots-container"></div>
+    <div class="nav-controls">
+      <button class="btn btn-primary" id="btn-fullscreen">Fullscreen (F)</button>
+    </div>
+  </footer>
+
+  <!-- Slide Control Logic -->
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const dotsContainer = document.getElementById('dots-container');
+    const slideCounter = document.getElementById('slide-counter');
+    const notesBox = document.getElementById('speaker-notes');
+    const notesContent = document.getElementById('notes-content');
+
+    let currentSlide = 0;
+
+    const speakerNotesText = [
+      "Selamat pagi/siang Dewan Juri. Hari ini kami mempresentasikan proposal game Hearts Across Time — Break The Loop untuk COMPFEST Indie Game Jam.",
+      "Game ini mengusung genre 2D Side-Scroller Narrative Puzzle dengan tema time-loop psikologis di mana setiap tindakan di masa lalu memengaruhi masa depan.",
+      "Berikut adalah 5 keunggulan utama game kami: Hidden Personality System, Visual Cat Air Storybook, 8 Teka-teki Era, 6 Branching Endings, dan Bonus Photo Booth lokal.",
+      "Karakter utama kami adalah Elena dan Arthur. Arthur mengalami transformasi kepribadian dinamis melintasi 4 era berdasarkan cara pemain memperlakukannya.",
+      "Game terbagi dalam 3 era sejarah: Parit PD II 1944, Bunker Perang Dingin 1968, dan Kapsul Kriogenik 1999 dengan atmosfer visual dan audio yang unik.",
+      "Sistem time-loop memicu Glitch dan Timeline Collapse saat kegagalan terjadi, membawa pemain kembali ke 1944 untuk mencoba strategi rute baru.",
+      "Hidden Personality System tidak menggunakan indikator angka di layar agar immersion cerita tetap terjaga antara Empati dan Logika.",
+      "Terdapat 8 mini-game teka-teki taktil yang terintegrasi secara organik di setiap era tanpa merusak ritme penceritaan.",
+      "Desain visual menggabungkan estetika cat air storybook dengan soundscape prosedural WebAudio yang memiliki fitur dynamic ducking saat dialog.",
+      "Waktu pengembangan diselesaikan dalam 4 minggu game jam sprint dengan pipeline testing Playwright otomatis.",
+      "Anggaran operasional total diperkirakan Rp 15 Juta untuk sweat equity tim, dengan biaya lisensi out-of-pocket Rp 0 karena berbasis open-source.",
+      "Terima kasih atas perhatian Dewan Juri! Mari bersama-sama kita putus lingkaran takdir dalam Hearts Across Time: Break The Loop."
+    ];
+
+    // Build Dots
+    slides.forEach((_, idx) => {
+      const dot = document.createElement('div');
+      dot.classList.add('dot');
+      if (idx === 0) dot.classList.add('active');
+      dot.addEventListener('click', () => goToSlide(idx));
+      dotsContainer.appendChild(dot);
+    });
+
+    const dots = document.querySelectorAll('.dot');
+
+    function updateSlide() {
+      slides.forEach((slide, idx) => {
+        slide.classList.toggle('active', idx === currentSlide);
+      });
+      dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === currentSlide);
+      });
+      slideCounter.textContent = `Slide ${String(currentSlide + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+      notesContent.textContent = speakerNotesText[currentSlide] || "";
+    }
+
+    function goToSlide(idx) {
+      if (idx >= 0 && idx < slides.length) {
+        currentSlide = idx;
+        updateSlide();
+      }
+    }
+
+    document.getElementById('btn-prev').addEventListener('click', () => goToSlide(currentSlide - 1));
+    document.getElementById('btn-next').addEventListener('click', () => goToSlide(currentSlide + 1));
+    
+    document.getElementById('btn-notes').addEventListener('click', () => {
+      notesBox.classList.toggle('visible');
+    });
+
+    document.getElementById('btn-fullscreen').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // Keyboard Controls
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') {
+        goToSlide(currentSlide + 1);
+      } else if (e.key === 'ArrowLeft') {
+        goToSlide(currentSlide - 1);
+      } else if (e.key === 'n' || e.key === 'N') {
+        notesBox.classList.toggle('visible');
+      } else if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      }
+    });
+
+    updateSlide();
+  </script>
+</body>
+</html>

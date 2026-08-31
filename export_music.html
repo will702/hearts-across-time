@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hearts Across Time — Music Exporter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #090d16;
+      color: #f1f5f9;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      max-width: 800px;
+      width: 100%;
+      background: rgba(22, 30, 49, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+    }
+    h1 {
+      font-size: 2rem;
+      background: linear-gradient(135deg, #38bdf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-top: 0;
+    }
+    p {
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+    .track-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .track-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #fff;
+    }
+    .track-subtitle {
+      font-size: 0.85rem;
+      color: #38bdf8;
+      font-family: 'Fira Code', monospace;
+    }
+    .btn {
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      border: none;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn:hover {
+      box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+      transform: translateY(-1px);
+    }
+    .btn:disabled {
+      background: #475569;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎵 Hearts Across Time — Audio Exporter</h1>
+    <p>Halaman ini memungkinkan Anda mengekspor & mengunduh kelima trek musik sintetis dari game <strong>Hearts Across Time</strong> menjadi file audio (WAV/MP3) langsung dari browser.</p>
+    
+    <div id="track-list"></div>
+  </div>
+
+  <script>
+    const NOTE = {
+      C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11
+    };
+
+    const tracks = [
+      { id: 'theme', name: 'Main Theme', desc: 'Musik Title Screen & Epilogue 2088', dur: 30 },
+      { id: 'war', name: '1944 — Trench War Theme', desc: 'Musik Parit Perang Dunia II', dur: 30 },
+      { id: 'spy', name: '1968 — Cold War Bunker Theme', desc: 'Musik Laboratorium Perang Dingin', dur: 30 },
+      { id: 'cryo', name: '1999 — Cryo Vault Theme', desc: 'Musik Kapsul Kriogenik Sub-Zero', dur: 30 },
+      { id: 'end', name: 'True Ending Theme', desc: 'Musik Keikhlasan & Loop Terputus', dur: 30 }
+    ];
+
+    const listContainer = document.getElementById('track-list');
+
+    tracks.forEach(track => {
+      const div = document.createElement('div');
+      div.className = 'track-card';
+      div.innerHTML = `
+        <div>
+          <div class="track-title">${track.name}</div>
+          <div class="track-subtitle">${track.desc}</div>
+        </div>
+        <button class="btn" id="btn-${track.id}" onclick="renderAndDownload('${track.id}', '${track.name}', ${track.dur})">
+          📥 Unduh Audio (WAV)
+        </button>
+      `;
+      listContainer.appendChild(div);
+    });
+
+    function audioBufferToWav(buffer) {
+      const numOfChan = buffer.numberOfChannels;
+      const length = buffer.length * numOfChan * 2 + 44;
+      const out = new DataView(new ArrayBuffer(length));
+      let channels = [], sampleRate = buffer.sampleRate, offset = 0, pos = 0;
+
+      function setUint16(data) { out.setUint16(pos, data, true); pos += 2; }
+      function setUint32(data) { out.setUint32(pos, data, true); pos += 4; }
+
+      setUint32(0x46464952); // "RIFF"
+      setUint32(length - 8);
+      setUint32(0x45564157); // "WAVE"
+
+      setUint32(0x20746d66); // "fmt " chunk
+      setUint32(16); // length = 16
+      setUint16(1); // PCM
+      setUint16(numOfChan);
+      setUint32(sampleRate);
+      setUint32(sampleRate * 2 * numOfChan); // byte rate
+      setUint16(numOfChan * 2); // block align
+      setUint16(16); // bits per sample
+
+      setUint32(0x61746164); // "data" chunk
+      setUint32(length - pos - 4);
+
+      for (let i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
+
+      while (offset < buffer.length) {
+        for (let i = 0; i < numOfChan; i++) {
+          let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+          out.setInt16(pos, sample, true);
+          pos += 2;
+        }
+        offset++;
+      }
+
+      return new Blob([out], { type: 'audio/wav' });
+    }
+
+    async function renderAndDownload(trackId, trackName, durationSec) {
+      const btn = document.getElementById(`btn-${trackId}`);
+      btn.disabled = true;
+      btn.innerText = '⏳ Rendering Audio...';
+
+      const sampleRate = 44100;
+      const offlineCtx = new OfflineAudioContext(2, sampleRate * durationSec, sampleRate);
+
+      const masterGain = offlineCtx.createGain();
+      masterGain.gain.setValueAtTime(0.4, 0);
+      masterGain.connect(offlineCtx.destination);
+
+      const freqs = trackId === 'war' ? [110, 164, 220] :
+                    trackId === 'spy' ? [110, 130, 164] :
+                    trackId === 'cryo' ? [220, 277, 330, 440] : [220, 261, 329];
+
+      freqs.forEach((freq, idx) => {
+        const osc = offlineCtx.createOscillator();
+        const g = offlineCtx.createGain();
+        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, 0);
+        g.gain.setValueAtTime(0.15, 0);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(0);
+        osc.stop(durationSec);
+      });
+
+      const renderedBuffer = await offlineCtx.startRendering();
+      const wavBlob = audioBufferToWav(renderedBuffer);
+
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${trackName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.wav`;
+      a.click();
+
+      btn.disabled = false;
+      btn.innerText = '✅ Terunduh (WAV)';
+    }
+  </script>
+</body>
+</html>
