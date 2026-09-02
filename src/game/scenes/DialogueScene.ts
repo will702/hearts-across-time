@@ -72,22 +72,6 @@ export class DialogueScene extends Phaser.Scene {
   private fastForwardButton?: Phaser.GameObjects.Text;
   private advanceZone?: Phaser.GameObjects.Zone;
 
-  // Living atmosphere character portraits (legacy polaroid/journal style)
-  private portraitLeft?: {
-    container: Phaser.GameObjects.Container;
-    image: Phaser.GameObjects.Image;
-    label: Phaser.GameObjects.Text;
-    baseX: number;
-    baseY: number;
-  };
-  private portraitRight?: {
-    container: Phaser.GameObjects.Container;
-    image: Phaser.GameObjects.Image;
-    label: Phaser.GameObjects.Text;
-    baseX: number;
-    baseY: number;
-  };
-
   private backlogModal?: Phaser.GameObjects.Container;
   private backlogOpen = false;
   private backlogOffset = 0;
@@ -108,7 +92,7 @@ export class DialogueScene extends Phaser.Scene {
     this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
     this.registry.set('nativeState', 'dialogue');
 
-    this.bubble = new ComicBubble(this, 10);
+    this.bubble = new ComicBubble(this, 0);
     this.createUI();
     this.createInputHandlers();
 
@@ -119,7 +103,6 @@ export class DialogueScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     const scale = (this.registry.get('options') as GameOptions | undefined)?.textScale ?? 1;
     this.applyTextScale(scale);
-    this.updatePortraitBob(time);
     if (this.keys) {
       const backlogKey = Phaser.Input.Keyboard.JustDown(this.keys.tab)
         || Phaser.Input.Keyboard.JustDown(this.keys.b)
@@ -279,7 +262,6 @@ export class DialogueScene extends Phaser.Scene {
 
     this.dataPayload.setSpeakerExpression?.(op.who, op.expr || 'neutral');
     this.startTalkingBounce(op.who);
-    this.updatePortraits(op.who, op.expr || 'neutral');
   }
 
   private showChoice(opts: StoryChoiceOption[]): void {
@@ -293,7 +275,6 @@ export class DialogueScene extends Phaser.Scene {
 
     this.bubble.hide();
     this.stopTalkingBounce();
-    this.hidePortraits();
     this.fastForwardButton?.setVisible(false);
     this.buildChoicePanel(opts);
   }
@@ -538,9 +519,6 @@ export class DialogueScene extends Phaser.Scene {
       if (this.currentSay && !this.backlogOpen) this.advanceDialogue();
     });
 
-    this.portraitLeft = this.buildPortraitCard('left');
-    this.portraitRight = this.buildPortraitCard('right');
-
     this.fastForwardButton = this.add.text(18, GAME_HEIGHT - 31, 'CEPAT', {
       backgroundColor: '#16120edd',
       color: '#f6d57b',
@@ -552,179 +530,6 @@ export class DialogueScene extends Phaser.Scene {
     this.fastForwardButton.on('pointerdown', () => { this.touchFastForward = true; });
     this.fastForwardButton.on('pointerup', () => { this.touchFastForward = false; });
     this.fastForwardButton.on('pointerout', () => { this.touchFastForward = false; });
-  }
-
-  private buildPortraitCard(side: 'left' | 'right'): {
-    container: Phaser.GameObjects.Container;
-    image: Phaser.GameObjects.Image;
-    label: Phaser.GameObjects.Text;
-    baseX: number;
-    baseY: number;
-  } {
-    const isLeft = side === 'left';
-    const cardW = 146;
-    const cardH = 202;
-    const rot = isLeft ? -0.045 : 0.045;
-    const baseX = isLeft ? 96 : GAME_WIDTH - 96;
-    const baseY = GAME_HEIGHT - 120;
-
-    const container = this.add.container(baseX, baseY).setDepth(6).setRotation(rot).setVisible(false);
-
-    // Bayangan lembut
-    const shadow = this.add.rectangle(2, 4, cardW + 4, cardH + 4, 0x060402, 0.35);
-
-    // Kertas foto polaroid / lembar buku harian
-    const paper = this.add.rectangle(0, 0, cardW, cardH, 0xfaf5ea, 0.98)
-      .setStrokeStyle(1.6, 0x2b211a, 0.35);
-    const innerBorder = this.add.rectangle(0, -9, cardW - 12, cardH - 34, 0x000000, 0)
-      .setStrokeStyle(0.8, 0x2b211a, 0.18);
-
-    // Selotip kertas vintage di atas
-    const tape = this.add.rectangle(0, -cardH / 2 + 2, 48, 14, 0xe8dec0, 0.88)
-      .setStrokeStyle(0.8, 0x2b211a, 0.22)
-      .setRotation(isLeft ? -0.05 : 0.05);
-
-    // Gambar potret karakter
-    const defaultKey = isLeft ? 'portrait-elena-neutral' : 'portrait-arthur-muda-warm';
-    const fallbackKey = this.textures.exists(defaultKey) ? defaultKey : 'elena-dialog';
-    const image = this.add.image(0, -9, fallbackKey)
-      .setDisplaySize(cardW - 16, cardH - 38);
-
-    // Label nama di bagian bawah kartu
-    const label = this.add.text(0, cardH / 2 - 15, isLeft ? 'ELENA' : 'ARTHUR', {
-      color: CSS.red,
-      fontFamily: FONT.META,
-      fontSize: '11px',
-      fontStyle: 'bold',
-      letterSpacing: 1,
-    }).setOrigin(0.5);
-
-    container.add([shadow, paper, innerBorder, image, tape, label]);
-    return { container, image, label, baseX, baseY };
-  }
-
-  private getPortraitKey(who: CharacterId, expr: Expression): string | null {
-    if (who === 'narrator') return null;
-
-    if (who === 'elena') {
-      const preferred = `portrait-elena-${expr}`;
-      if (this.textures.exists(preferred)) return preferred;
-      if (expr === 'warm' || expr === 'smile' || expr === 'happy') {
-        if (this.textures.exists('portrait-elena-warm')) return 'portrait-elena-warm';
-      } else if (expr === 'sad') {
-        if (this.textures.exists('portrait-elena-sad')) return 'portrait-elena-sad';
-      } else if (expr === 'shock' || expr === 'mad') {
-        if (this.textures.exists('portrait-elena-shock')) return 'portrait-elena-shock';
-      } else if (expr === 'angry') {
-        if (this.textures.exists('portrait-elena-angry')) return 'portrait-elena-angry';
-        if (this.textures.exists('portrait-elena-shock')) return 'portrait-elena-shock';
-      }
-      if (this.textures.exists('portrait-elena-neutral')) return 'portrait-elena-neutral';
-      if (this.textures.exists('elena-dialog')) return 'elena-dialog';
-      return null;
-    }
-
-    if (who === 'muda') {
-      const preferred = `portrait-arthur-muda-${expr}`;
-      if (this.textures.exists(preferred)) return preferred;
-      if (expr === 'shock' || expr === 'sad') {
-        if (this.textures.exists('portrait-arthur-muda-shock')) return 'portrait-arthur-muda-shock';
-      } else if (expr === 'warm' || expr === 'smile' || expr === 'happy') {
-        if (this.textures.exists('portrait-arthur-muda-warm')) return 'portrait-arthur-muda-warm';
-      }
-      if (this.textures.exists('portrait-arthur-muda-neutral')) return 'portrait-arthur-muda-neutral';
-      if (this.textures.exists('portrait-arthur-muda-warm')) return 'portrait-arthur-muda-warm';
-      return null;
-    }
-
-    if (who === 'dewasa') {
-      const preferred = `portrait-arthur-dewasa-${expr}`;
-      if (this.textures.exists(preferred)) return preferred;
-      if (this.textures.exists('portrait-arthur-dewasa-neutral')) return 'portrait-arthur-dewasa-neutral';
-      return null;
-    }
-
-    if (who === 'buron') {
-      const preferred = `portrait-arthur-buron-${expr}`;
-      if (this.textures.exists(preferred)) return preferred;
-      if (this.textures.exists('portrait-arthur-buron-neutral')) return 'portrait-arthur-buron-neutral';
-      return null;
-    }
-
-    if (who === 'tua') {
-      const preferred = `portrait-arthur-tua-${expr}`;
-      if (this.textures.exists(preferred)) return preferred;
-      if (expr === 'warm' || expr === 'happy' || expr === 'smile') {
-        if (this.textures.exists('portrait-arthur-tua-warm')) return 'portrait-arthur-tua-warm';
-      }
-      if (this.textures.exists('portrait-arthur-tua-sad')) return 'portrait-arthur-tua-sad';
-      if (this.textures.exists('portrait-arthur-tua-warm')) return 'portrait-arthur-tua-warm';
-      return null;
-    }
-
-    return null;
-  }
-
-  private updatePortraits(who: CharacterId, expr: Expression): void {
-    if (who === 'narrator') {
-      this.hidePortraits();
-      return;
-    }
-
-    const isElena = who === 'elena';
-    const key = this.getPortraitKey(who, expr);
-
-    if (isElena && this.portraitLeft && key) {
-      this.portraitLeft.image.setTexture(key);
-      this.portraitLeft.label.setText('ELENA');
-      this.portraitLeft.container.setVisible(true).setAlpha(1);
-      if (!this.registry.get('reduceMotion')) {
-        this.tweens.killTweensOf(this.portraitLeft.container);
-        this.portraitLeft.container.setScale(0.92);
-        this.tweens.add({
-          targets: this.portraitLeft.container,
-          scale: 1,
-          duration: 180,
-          ease: 'Back.easeOut',
-        });
-      }
-      if (this.portraitRight?.container.visible) {
-        this.portraitRight.container.setAlpha(0.42);
-      }
-    } else if (!isElena && this.portraitRight && key) {
-      this.portraitRight.image.setTexture(key);
-      const name = CHARACTER_NAMES[who] || 'ARTHUR';
-      this.portraitRight.label.setText(name);
-      this.portraitRight.container.setVisible(true).setAlpha(1);
-      if (!this.registry.get('reduceMotion')) {
-        this.tweens.killTweensOf(this.portraitRight.container);
-        this.portraitRight.container.setScale(0.92);
-        this.tweens.add({
-          targets: this.portraitRight.container,
-          scale: 1,
-          duration: 180,
-          ease: 'Back.easeOut',
-        });
-      }
-      if (this.portraitLeft?.container.visible) {
-        this.portraitLeft.container.setAlpha(0.42);
-      }
-    }
-  }
-
-  private hidePortraits(): void {
-    if (this.portraitLeft) this.portraitLeft.container.setVisible(false);
-    if (this.portraitRight) this.portraitRight.container.setVisible(false);
-  }
-
-  private updatePortraitBob(time: number): void {
-    if (this.registry.get('reduceMotion')) return;
-    if (this.portraitLeft?.container.visible) {
-      this.portraitLeft.container.y = this.portraitLeft.baseY + Math.sin(time * 0.0018) * 2.2;
-    }
-    if (this.portraitRight?.container.visible) {
-      this.portraitRight.container.y = this.portraitRight.baseY + Math.sin(time * 0.0018 + 1.2) * 2.2;
-    }
   }
 
   private applyTextScale(scale: number): void {
@@ -852,11 +657,6 @@ export class DialogueScene extends Phaser.Scene {
 
   private cleanup(): void {
     this.stopTalkingBounce();
-    this.hidePortraits();
-    this.portraitLeft?.container.destroy();
-    this.portraitRight?.container.destroy();
-    this.portraitLeft = undefined;
-    this.portraitRight = undefined;
     this.dataPayload.resetSpeakers?.();
     this.bubble?.hide();
     DialogueScene.backlogHistory = DialogueScene.backlogHistory.slice(-30);

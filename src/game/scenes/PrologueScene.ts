@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ASSET_PACKS, loadAssetPacks } from '../assetManifest';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { CharacterId, Expression } from '../narrative/storyScript';
@@ -46,6 +47,10 @@ export class PrologueScene extends Phaser.Scene {
 
   constructor() {
     super('PrologueScene');
+  }
+
+  preload(): void {
+    loadAssetPacks(this, ASSET_PACKS.prologue);
   }
 
   create(): void {

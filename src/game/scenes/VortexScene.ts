@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ASSET_PACKS, ERA_ASSET_PACKS, loadAssetPacks } from '../assetManifest';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import type { RunState } from '../systems/SaveSystem';
@@ -46,6 +47,14 @@ export class VortexScene extends Phaser.Scene {
     super('VortexScene');
   }
 
+  init(data: VortexSceneData): void {
+    this.vortexData = { ...data, intro: data.intro ?? true };
+  }
+
+  preload(): void {
+    loadAssetPacks(this, ASSET_PACKS.vortex, ERA_ASSET_PACKS[this.vortexData.to]);
+  }
+
   create(data: VortexSceneData): void {
     this.vortexData = { ...data, intro: data.intro ?? true };
     this.soundManager = this.registry.get('soundManager') as SoundManager | undefined;
@@ -56,18 +65,7 @@ export class VortexScene extends Phaser.Scene {
     this.soundManager?.playVortex(Boolean(data.rewind));
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050508, 1);
-    const hasVideo = this.cache.video.exists('cutscene-video-vortex');
-    if (hasVideo && !this.registry.get('reduceMotion')) {
-      try {
-        const video = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'cutscene-video-vortex')
-          .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
-          .setDepth(1)
-          .setAlpha(0.88);
-        video.play(true);
-      } catch {
-        // fallback
-      }
-    } else if (this.textures.exists('time-vortex')) {
+    if (this.textures.exists('time-vortex')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'time-vortex')
         .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
         .setAlpha(0.3);

@@ -1,24 +1,10 @@
-export const PORTRAIT_ASSETS: Record<string, string> = {
-  'portrait-elena-neutral': 'assets/art/characters/portrait-elena-neutral.png',
-  'portrait-elena-sad': 'assets/art/characters/portrait-elena-sad.png',
-  'portrait-elena-shock': 'assets/art/characters/portrait-elena-shock.png',
-  'portrait-elena-warm': 'assets/art/characters/portrait-elena-warm.png',
-  'portrait-elena-angry': 'assets/art/characters/portrait-elena-angry.png',
-  'portrait-arthur-muda-neutral': 'assets/art/characters/portrait-arthur-muda-neutral.png',
-  'portrait-arthur-muda-shock': 'assets/art/characters/portrait-arthur-muda-shock.png',
-  'portrait-arthur-muda-warm': 'assets/art/characters/portrait-arthur-muda-warm.png',
-  'portrait-arthur-dewasa-neutral': 'assets/art/characters/portrait-arthur-dewasa-neutral.png',
-  'portrait-arthur-buron-neutral': 'assets/art/characters/portrait-arthur-buron-neutral.png',
-  'portrait-arthur-tua-sad': 'assets/art/characters/portrait-arthur-tua-sad.png',
-  'portrait-arthur-tua-warm': 'assets/art/characters/portrait-arthur-tua-warm.png',
-};
+import type Phaser from 'phaser';
 
-export const IMAGE_ASSETS: Record<string, string> = {
-  ...PORTRAIT_ASSETS,
-  'title-cover': 'assets/art/ui/title-cover.png',
-  'title-bg-color': 'assets/art/ui/title-bg-color.png',
-  'title-bg-mono': 'assets/art/ui/title-bg-mono.png',
-  'title-wordmark': 'assets/art/ui/title-wordmark.png',
+export const IMAGE_ASSETS = {
+  'title-cover': 'assets/art/ui/title-cover.webp',
+  'title-bg-color': 'assets/art/ui/title-bg-color.webp',
+  'title-bg-mono': 'assets/art/ui/title-bg-mono.webp',
+  'title-wordmark': 'assets/art/ui/title-wordmark.webp',
   'time-vortex': 'assets/art/backgrounds/time-vortex.png',
   'bgnarator': 'assets/art/backgrounds/narrator.png',
   'bunker-underground': 'assets/art/backgrounds/bunker-underground.jpg',
@@ -55,13 +41,9 @@ export const IMAGE_ASSETS: Record<string, string> = {
   'cryolog-prop': 'assets/art/props/prop_cryolog1999.png',
   'bonus-puzzle-board': 'assets/art/bonus/puzzle-board.jpg',
   'bonus-city-complete': 'assets/art/bonus/city-complete.jpg',
-  'cutscene-prologue-2088': 'assets/art/cutscenes/prologue_2088.jpg',
-  'cutscene-arrival-1944': 'assets/art/cutscenes/arrival_1944.jpg',
-  'cutscene-arrival-1968': 'assets/art/cutscenes/arrival_1968.jpg',
-  'cutscene-arrival-1999': 'assets/art/cutscenes/arrival_1999.jpg',
-};
+} as const;
 
-export const BONUS_IMAGE_ASSETS: Record<string, string> = {
+export const BONUS_IMAGE_ASSETS = {
   'bg2088-far': 'assets/art/backgrounds/bg2088_far.png',
   'bg2088-near': 'assets/art/backgrounds/bg2088_near.png',
   'bg2088-fg': 'assets/art/backgrounds/bg2088_fg.png',
@@ -76,9 +58,9 @@ export const BONUS_IMAGE_ASSETS: Record<string, string> = {
   'bonus-cats-art': 'assets/art/bonus/cats.jpg',
   'bonus-chem-glass': 'assets/art/bonus/chemistry-glass.jpg',
   'bonus-love-glass': 'assets/art/bonus/love-glass.jpg',
-};
+} as const;
 
-export const PROP_SHEET_ASSETS: Record<string, string> = {
+export const PROP_SHEET_ASSETS = {
   'prop-flag1944': 'assets/art/props/prop_flag1944.png',
   'prop-lantern1944': 'assets/art/props/prop_lantern1944.png',
   'prop-flare1944': 'assets/art/props/prop_flare1944.png',
@@ -88,23 +70,23 @@ export const PROP_SHEET_ASSETS: Record<string, string> = {
   'prop-steam1968B': 'assets/art/props/prop_steam1968B.png',
   'prop-consoleWave1999': 'assets/art/props/prop_consoleWave1999.png',
   'prop-frost1999': 'assets/art/props/prop_frost1999.png',
-};
+} as const;
 
-export const BONUS_PROP_SHEET_ASSETS: Record<string, string> = {
+export const BONUS_PROP_SHEET_ASSETS = {
   'prop-barrel2088': 'assets/art/props/prop_barrel2088.png',
   'prop-poster2088': 'assets/art/props/prop_poster2088.png',
-};
+} as const;
 
-export const CHARACTER_SHEET_ASSETS: Record<string, string> = {
+export const CHARACTER_SHEET_ASSETS = {
   'elena': 'assets/art/characters/elena_sheet.png',
   'elena-walk': 'assets/art/characters/elena-walk.png',
   'arthur-muda': 'assets/art/characters/arthur_muda_sheet.png',
   'arthur-dewasa': 'assets/art/characters/arthur_dewasa_sheet.png',
   'arthur-buron': 'assets/art/characters/arthur_buron_sheet.png',
   'arthur-tua': 'assets/art/characters/arthur_tua_sheet.png',
-};
+} as const;
 
-export const AUDIO_ASSETS: Record<string, string> = {
+export const AUDIO_ASSETS = {
   'step-mud-0': 'assets/audio/footstep00.wav',
   'step-mud-1': 'assets/audio/footstep03.wav',
   'step-mud-2': 'assets/audio/footstep05.wav',
@@ -117,28 +99,138 @@ export const AUDIO_ASSETS: Record<string, string> = {
   'wind': 'assets/audio/wind.wav',
   'fire': 'assets/audio/fire.wav',
   'hum': 'assets/audio/hum.wav',
-};
+} as const;
 
-export const VIDEO_ASSETS: Record<string, string> = {
-  'cutscene-video-prologue-2088': 'assets/video/cutscene_prologue_2088.mp4',
-  'cutscene-video-arrival-1944': 'assets/video/cutscene_arrival_1944.mp4',
-  'cutscene-video-arrival-1968': 'assets/video/cutscene_arrival_1968.mp4',
-  'cutscene-video-arrival-1999': 'assets/video/cutscene_arrival_1999.mp4',
-  'cutscene-video-vortex': 'assets/video/cutscene_vortex.mp4',
-};
+const ALL_IMAGE_ASSETS = { ...IMAGE_ASSETS, ...BONUS_IMAGE_ASSETS } as const;
+const ALL_PROP_SHEET_ASSETS = { ...PROP_SHEET_ASSETS, ...BONUS_PROP_SHEET_ASSETS } as const;
+
+type ImageKey = keyof typeof ALL_IMAGE_ASSETS;
+type PropSheetKey = keyof typeof ALL_PROP_SHEET_ASSETS;
+type CharacterSheetKey = keyof typeof CHARACTER_SHEET_ASSETS;
+type AudioKey = keyof typeof AUDIO_ASSETS;
+
+export type AssetPack = Readonly<{
+  images?: readonly ImageKey[];
+  propSheets?: readonly PropSheetKey[];
+  characterSheets?: readonly CharacterSheetKey[];
+  audio?: readonly AudioKey[];
+}>;
+
+const COMMON_SFX = ['flip', 'flip2', 'click', 'creak'] as const;
+const FOOTSTEPS = ['step-mud-0', 'step-mud-1', 'step-mud-2', 'step-metal'] as const;
+
+export const ASSET_PACKS = {
+  startup: {
+    images: ['title-cover', 'title-bg-color', 'title-bg-mono', 'title-wordmark'],
+  },
+  title: {
+    audio: ['wind'],
+  },
+  prologue: {
+    images: ['bgnarator', 'elena-dialog', 'elena-dialog-sad', 'pose-elena-resolve'],
+    characterSheets: ['elena'],
+    audio: [...COMMON_SFX, 'wind', 'fire'],
+  },
+  vortex: {
+    images: ['time-vortex'],
+  },
+  era1944: {
+    images: [
+      'elena-dialog', 'elena-dialog-sad', 'pose-arthur-muda-vial',
+      'bg1944-far', 'bg1944-mid', 'bg1944-fg',
+      'watch-prop', 'spotlight-prop', 'crate-prop',
+    ],
+    propSheets: ['prop-flag1944', 'prop-lantern1944', 'prop-flare1944'],
+    characterSheets: ['elena', 'elena-walk', 'arthur-muda'],
+    audio: [...COMMON_SFX, ...FOOTSTEPS, 'rain', 'wind'],
+  },
+  era1968: {
+    images: [
+      'bunker-underground', 'lab-military', 'elena-dialog', 'elena-dialog-sad',
+      'bg1968A-far', 'bg1968A-mid', 'bg1968A-fg',
+      'bg1968B-far', 'bg1968B-mid', 'bg1968B-fg',
+      'rose-bottle-broken', 'diary-prop', 'tape-prop',
+    ],
+    propSheets: ['prop-bulb1968A', 'prop-radio1968A', 'prop-beacon1968B', 'prop-steam1968B'],
+    characterSheets: ['elena', 'elena-walk', 'arthur-dewasa', 'arthur-buron'],
+    audio: [...COMMON_SFX, ...FOOTSTEPS, 'hum'],
+  },
+  era1999: {
+    images: [
+      'lab-final', 'elena-dialog', 'elena-dialog-sad', 'pose-elena-hold',
+      'pose-elena-kneel', 'pose-arthur-tua-reach',
+      'bg1999-far', 'bg1999-mid', 'bg1999-fg',
+      'water-gem-art', 'elena-arthur-photo', 'cryolog-prop',
+    ],
+    propSheets: ['prop-consoleWave1999', 'prop-frost1999'],
+    characterSheets: ['elena', 'elena-walk', 'arthur-tua'],
+    audio: [...COMMON_SFX, ...FOOTSTEPS, 'hum'],
+  },
+  watchRepair: {
+    images: ['watch-repair-art'],
+  },
+  puzzleAward: {
+    images: ['lab-final', 'bonus-puzzle-board', 'bonus-city-complete'],
+    characterSheets: ['elena', 'arthur-tua'],
+    audio: COMMON_SFX,
+  },
+  bonus: {
+    images: [
+      ...(Object.keys(BONUS_IMAGE_ASSETS) as ImageKey[]),
+      'watch-repair-art', 'rose-bottle-broken', 'water-gem-art',
+      'bonus-puzzle-board', 'bonus-city-complete',
+    ],
+    propSheets: Object.keys(BONUS_PROP_SHEET_ASSETS) as PropSheetKey[],
+    characterSheets: ['elena', 'elena-walk', 'arthur-tua'],
+    audio: [...COMMON_SFX, ...FOOTSTEPS, 'wind', 'fire'],
+  },
+} as const satisfies Record<string, AssetPack>;
+
+export const ERA_ASSET_PACKS = {
+  '1944': ASSET_PACKS.era1944,
+  '1968': ASSET_PACKS.era1968,
+  '1999': ASSET_PACKS.era1999,
+  '2088': ASSET_PACKS.bonus,
+} as const;
+
+export function loadAssetPacks(scene: Phaser.Scene, ...packs: readonly AssetPack[]): number {
+  const images = new Set(packs.flatMap(pack => pack.images ?? []));
+  const propSheets = new Set(packs.flatMap(pack => pack.propSheets ?? []));
+  const characterSheets = new Set(packs.flatMap(pack => pack.characterSheets ?? []));
+  const audio = new Set(packs.flatMap(pack => pack.audio ?? []));
+  let queued = 0;
+
+  images.forEach((key) => {
+    if (scene.textures.exists(key)) return;
+    scene.load.image(key, ALL_IMAGE_ASSETS[key]);
+    queued += 1;
+  });
+  propSheets.forEach((key) => {
+    if (scene.textures.exists(key)) return;
+    scene.load.spritesheet(key, ALL_PROP_SHEET_ASSETS[key], { frameWidth: 200, frameHeight: 200 });
+    queued += 1;
+  });
+  characterSheets.forEach((key) => {
+    if (scene.textures.exists(key)) return;
+    scene.load.spritesheet(key, CHARACTER_SHEET_ASSETS[key], { frameWidth: 150, frameHeight: 210 });
+    queued += 1;
+  });
+  audio.forEach((key) => {
+    if (scene.cache.audio.exists(key)) return;
+    scene.load.audio(key, AUDIO_ASSETS[key]);
+    queued += 1;
+  });
+
+  return queued;
+}
 
 export const STATIC_ASSETS = [
-  ...Object.values(IMAGE_ASSETS),
-  ...Object.values(BONUS_IMAGE_ASSETS),
-  ...Object.values(PROP_SHEET_ASSETS),
-  ...Object.values(BONUS_PROP_SHEET_ASSETS),
-  ...Object.values(CHARACTER_SHEET_ASSETS),
-  ...Object.values(AUDIO_ASSETS),
-  ...Object.values(VIDEO_ASSETS),
-  'assets/video/intro.mp4',
-  'assets/fonts/cinzel.ttf',
-  'assets/fonts/poppins-regular.ttf',
-  'assets/fonts/patrick-hand.woff2',
-  'assets/fonts/patrick-hand-ext.woff2',
-  'assets/fonts/OFL-Cinzel-Poppins.txt',
+  ...new Set([
+    ...Object.values(ALL_IMAGE_ASSETS),
+    ...Object.values(ALL_PROP_SHEET_ASSETS),
+    ...Object.values(CHARACTER_SHEET_ASSETS),
+    ...Object.values(AUDIO_ASSETS),
+    'assets/video/intro.mp4',
+    'assets/fonts/OFL-Cinzel-Poppins.txt',
+  ]),
 ] as const;

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ASSET_PACKS, loadAssetPacks } from '../assetManifest';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH, GROUND_Y } from '../config';
 import {
@@ -30,6 +31,10 @@ export class PuzzleAwardScene extends Phaser.Scene {
 
   constructor() {
     super('PuzzleAwardScene');
+  }
+
+  preload(): void {
+    loadAssetPacks(this, ASSET_PACKS.puzzleAward);
   }
 
   create(data: PuzzleAwardData): void {

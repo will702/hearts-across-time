@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ASSET_PACKS, loadAssetPacks } from '../assetManifest';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { LORE_IDS } from '../narrative/lore';
@@ -43,6 +44,10 @@ export class TitleScene extends Phaser.Scene {
 
   constructor() {
     super('TitleScene');
+  }
+
+  preload(): void {
+    loadAssetPacks(this, ASSET_PACKS.title);
   }
 
   create(): void {
@@ -211,14 +216,14 @@ export class TitleScene extends Phaser.Scene {
       },
     ];
 
-    this.selected = this.save.data.game ? 0 : 1;
+    if (!this.save.data.game) this.selected = 1;
 
-    const leftX = 132, leftY = 312, leftW = 390, leftH = 34;
+    const leftX = 132, leftY = 320, leftW = 250, leftH = 34;
     const bonusX = 754, bonusY = 440, bonusW = 188, bonusH = 40;
     this.menuRows = this.items.map((item, index) => {
       const bonus = index === 3;
       const x = bonus ? bonusX : leftX;
-      const y = bonus ? bonusY : leftY + index * 40;
+      const y = bonus ? bonusY : leftY + index * 39;
       const w = bonus ? bonusW : leftW;
       const h = bonus ? bonusH : leftH;
 

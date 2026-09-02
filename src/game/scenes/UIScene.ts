@@ -339,23 +339,9 @@ export class UIScene extends Phaser.Scene {
       container.on('pointerout', release);
       this.touchObjects.push(container);
     };
-    pad(60, GAME_HEIGHT - 56, 31, 'left');
-    pad(132, GAME_HEIGHT - 56, 31, 'right');
+    pad(70, GAME_HEIGHT - 65, 31, 'left');
+    pad(GAME_WIDTH - 70, GAME_HEIGHT - 65, 31, 'right');
     pad(GAME_WIDTH - 36, GAME_HEIGHT - 162, 27, 'run');
-
-    // Tombol aksi sentuh kanan (882, 482)
-    const actCircle = this.add.circle(GAME_WIDTH - 78, GAME_HEIGHT - 58, 32, 0x94342e, 0.9)
-      .setStrokeStyle(1.8, 0xf5f0e8, 0.9)
-      .setInteractive({ useHandCursor: true });
-    const actText = this.add.text(GAME_WIDTH - 78, GAME_HEIGHT - 58, 'AKSI', {
-      color: '#fff8ea',
-      fontFamily: FONT.META,
-      fontSize: '11px',
-      fontStyle: 'bold',
-      letterSpacing: 0.8,
-    }).setOrigin(0.5);
-    actCircle.on('pointerdown', () => this.controls?.triggerTouch('interact'));
-    this.touchObjects.push(actCircle, actText);
 
     // tombol kontekstual kertas — label mengikuti prompt dunia
     const actW = 138, actH = 44;
@@ -656,40 +642,11 @@ export class UIScene extends Phaser.Scene {
       return { container, bg, icon };
     };
 
-    const mute = makeButton(GAME_WIDTH - 110, 92, () => {
-      muted = !muted;
-      soundManager?.setMuted(muted);
-      drawMuteIcon(false);
-    });
-    const muteLabel = this.add.text(-6, 0, 'MUSIK', {
+    const pause = makeButton(GAME_WIDTH - 116, 82, () => this.togglePause());
+    const pauseLabel = this.add.text(-3, 0, 'JEDA', {
       color: '#F1D58B',
       fontFamily: FONT.META,
-      fontSize: '10px',
-      fontStyle: 'bold',
-    }).setOrigin(0, 0.5);
-    mute.container.add(muteLabel);
-
-    const drawMuteIcon = (on: boolean): void => {
-      mute.bg.setStrokeStyle(on ? 1.8 : 1.4, on ? 0xfff0a0 : 0xf1d58b, on ? 0.95 : 0.75);
-      muteLabel.setText(muted ? 'MATI' : 'MUSIK');
-      muteLabel.setColor(muted ? '#b8a898' : (on ? '#FFF0A0' : '#F1D58B'));
-      mute.icon.clear();
-      mute.icon.fillStyle(muted ? 0xb8a898 : (on ? 0xfff0a0 : 0xf5f0e8), 1);
-      mute.icon.fillRect(-34, -2.5, 3, 5);
-      mute.icon.fillTriangle(-31, -4, -31, 4, -27, 0);
-      if (muted) mute.icon.lineStyle(1.6, 0xb8a898, 1).lineBetween(-27, -6, -18, 6);
-      else mute.icon.lineStyle(1.4, on ? 0xfff0a0 : 0xf5f0e8, 1).strokeCircle(-25, 0, 5.5);
-    };
-    drawMuteIcon(false);
-    mute.container.on('pointerover', () => drawMuteIcon(true));
-    mute.container.on('pointerout', () => drawMuteIcon(false));
-    this.topHUDObjects.push(mute.container);
-
-    const pause = makeButton(GAME_WIDTH - 36, 54, () => this.togglePause());
-    const pauseLabel = this.add.text(-2, 0, 'JEDA', {
-      color: '#F1D58B',
-      fontFamily: FONT.META,
-      fontSize: '10.5px',
+      fontSize: '11px',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5);
     pause.container.add(pauseLabel);
@@ -698,13 +655,32 @@ export class UIScene extends Phaser.Scene {
       pause.bg.setStrokeStyle(on ? 1.8 : 1.4, on ? 0xfff0a0 : 0xf1d58b, on ? 0.95 : 0.75);
       pauseLabel.setColor(on ? '#FFF0A0' : '#F1D58B');
       pause.icon.clear().fillStyle(on ? 0xfff0a0 : 0xf5f0e8, 1)
-        .fillRect(-18, -5, 3, 10)
-        .fillRect(-13, -5, 3, 10);
+        .fillRect(-22, -5, 3.5, 10)
+        .fillRect(-16, -5, 3.5, 10);
     };
     drawPauseIcon(false);
     pause.container.on('pointerover', () => drawPauseIcon(true));
     pause.container.on('pointerout', () => drawPauseIcon(false));
     this.topHUDObjects.push(pause.container);
+
+    const mute = makeButton(GAME_WIDTH - 36, 40, () => {
+      muted = !muted;
+      soundManager?.setMuted(muted);
+      drawMuteIcon(false);
+    });
+    const drawMuteIcon = (on: boolean): void => {
+      mute.bg.setStrokeStyle(on ? 1.8 : 1.4, on ? 0xfff0a0 : 0xf1d58b, on ? 0.95 : 0.75);
+      mute.icon.clear();
+      mute.icon.fillStyle(muted ? 0xb8a898 : (on ? 0xfff0a0 : 0xf5f0e8), 1);
+      mute.icon.fillRect(-8, -2.5, 3, 5);
+      mute.icon.fillTriangle(-5, -4, -5, 4, -1, 0);
+      if (muted) mute.icon.lineStyle(1.6, 0xb8a898, 1).lineBetween(-1, -6, 8, 6);
+      else mute.icon.lineStyle(1.4, on ? 0xfff0a0 : 0xf5f0e8, 1).strokeCircle(1, 0, 5.5);
+    };
+    drawMuteIcon(false);
+    mute.container.on('pointerover', () => drawMuteIcon(true));
+    mute.container.on('pointerout', () => drawMuteIcon(false));
+    this.topHUDObjects.push(mute.container);
   }
 
   private getActiveGameplayScene(): string {

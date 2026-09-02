@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ASSET_PACKS, loadAssetPacks } from '../assetManifest';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { normalizedAngleDistance } from '../minigames/math';
@@ -39,6 +40,10 @@ export class WatchRepairScene extends Phaser.Scene {
 
   constructor() {
     super('WatchRepairScene');
+  }
+
+  preload(): void {
+    loadAssetPacks(this, ASSET_PACKS.watchRepair);
   }
 
   create(data: WatchData): void {

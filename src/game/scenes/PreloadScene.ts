@@ -1,11 +1,5 @@
 import Phaser from 'phaser';
-import {
-  AUDIO_ASSETS,
-  CHARACTER_SHEET_ASSETS,
-  IMAGE_ASSETS,
-  PROP_SHEET_ASSETS,
-  VIDEO_ASSETS,
-} from '../assetManifest';
+import { ASSET_PACKS, loadAssetPacks } from '../assetManifest';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 
 export class PreloadScene extends Phaser.Scene {
@@ -26,31 +20,14 @@ export class PreloadScene extends Phaser.Scene {
     this.load.on('loaderror', (file: Phaser.Loader.File) => this.failed.add(file.key));
     this.load.once('complete', () => { box.destroy(); bar.destroy(); label.destroy(); });
 
-    Object.entries(IMAGE_ASSETS).forEach(([key, url]) => this.load.image(key, url));
-    Object.entries(PROP_SHEET_ASSETS).forEach(([key, url]) => {
-      this.load.spritesheet(key, url, { frameWidth: 200, frameHeight: 200 });
-    });
-    Object.entries(CHARACTER_SHEET_ASSETS).forEach(([key, url]) => {
-      this.load.spritesheet(key, url, { frameWidth: 150, frameHeight: 210 });
-    });
-    Object.entries(AUDIO_ASSETS).forEach(([key, url]) => {
-      this.load.audio(key, url);
-    });
-    Object.entries(VIDEO_ASSETS).forEach(([key, url]) => {
-      this.load.video(key, url);
-    });
-
-    this.load.video('intro', 'assets/video/intro.mp4');
-    this.load.font('Cinzel', 'assets/fonts/cinzel.ttf', 'truetype');
-    this.load.font('Poppins', 'assets/fonts/poppins-regular.ttf', 'truetype');
-    this.load.font('Patrick Hand', 'assets/fonts/patrick-hand.woff2', 'woff2');
+    loadAssetPacks(this, ASSET_PACKS.startup);
   }
 
   create(): void {
     this.createFallbackTextures();
     this.registry.set('loadErrors', [...this.failed]);
     const query = new URLSearchParams(location.search);
-    const skipIntro = query.get('qa') === '1' || query.get('skipIntro') === '1' || this.failed.has('intro');
+    const skipIntro = query.get('qa') === '1' || query.get('skipIntro') === '1';
     this.scene.start(skipIntro ? 'TitleScene' : 'IntroScene');
   }
 
@@ -193,29 +170,5 @@ export class PreloadScene extends Phaser.Scene {
     });
     makeObject('arthur-fallback', 0x71624c, (g) => { g.fillCircle(48, 22, 15); g.fillRect(31, 36, 34, 52); });
     makeObject('elena-fallback', 0xd7c4a1, (g) => { g.fillCircle(48, 20, 16); g.fillStyle(0xc4897f); g.fillTriangle(48, 34, 21, 88, 75, 88); });
-
-    // Fallback untuk potret karakter dialog jika file belum dimuat
-    const portraitColors: Record<string, { bg: number; skin: number; hair: number }> = {
-      elena: { bg: 0x8a3832, skin: 0xf5dfc6, hair: 0xd4c29a },
-      muda: { bg: 0x5a6838, skin: 0xf5dfc6, hair: 0x6e5236 },
-      dewasa: { bg: 0x3d5a73, skin: 0xf5dfc6, hair: 0x625a52 },
-      buron: { bg: 0x5a4632, skin: 0xf2d8bd, hair: 0x54402e },
-      tua: { bg: 0x6e6858, skin: 0xf0d8c2, hair: 0xd6d2c4 },
-    };
-    Object.entries(portraitColors).forEach(([char, cols]) => {
-      const fbKey = `portrait-${char}-fallback`;
-      if (!this.textures.exists(fbKey)) {
-        const g = this.make.graphics({ x: 0, y: 0 });
-        g.fillStyle(cols.bg, 1);
-        g.fillRect(0, 0, 128, 160);
-        g.fillStyle(cols.skin, 1);
-        g.fillCircle(64, 58, 32);
-        g.fillRect(44, 90, 40, 70);
-        g.fillStyle(cols.hair, 1);
-        g.fillCircle(64, 46, 34);
-        g.generateTexture(fbKey, 128, 160);
-        g.destroy();
-      }
-    });
   }
 }

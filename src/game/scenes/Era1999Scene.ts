@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ASSET_PACKS, loadAssetPacks } from '../assetManifest';
 import type { SoundManager } from '../audio/SoundManager';
 import { Player } from '../entities/Player';
 import { LORE_COMPLETION_TEXT, isLoreId, recordLoreInspection } from '../narrative/lore';
@@ -56,6 +57,10 @@ export class Era1999Scene extends Phaser.Scene {
 
   constructor() {
     super('Era1999Scene');
+  }
+
+  preload(): void {
+    loadAssetPacks(this, ASSET_PACKS.era1999);
   }
 
   create(data: EraData): void {

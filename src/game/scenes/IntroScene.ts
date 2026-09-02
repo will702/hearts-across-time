@@ -5,7 +5,10 @@ import type { SaveSystem } from '../systems/SaveSystem';
 export class IntroScene extends Phaser.Scene {
   private video?: Phaser.GameObjects.Video;
   private isPlaying = false;
+  private videoReady = false;
   private preplayContainer?: Phaser.GameObjects.Container;
+  private playButton?: Phaser.GameObjects.Text;
+  private playHint?: Phaser.GameObjects.Text;
   private skipButton?: Phaser.GameObjects.Text;
 
   constructor() {
@@ -14,6 +17,7 @@ export class IntroScene extends Phaser.Scene {
 
   create(): void {
     this.isPlaying = false;
+    this.videoReady = false;
     this.registry.set('nativeState', 'intro');
 
     // Base dark background
@@ -26,7 +30,7 @@ export class IntroScene extends Phaser.Scene {
     }
 
     // Video instance
-    this.video = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'intro');
+    this.video = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2);
     this.fitVideo();
 
     this.video.on(Phaser.GameObjects.Events.VIDEO_CREATED, () => this.fitVideo());
@@ -55,14 +59,15 @@ export class IntroScene extends Phaser.Scene {
       letterSpacing: 4,
     }).setOrigin(0.5);
 
-    const playBtn = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 24, 'PUTAR INTRO', {
+    const playBtn = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 24, 'MEMUAT INTRO…', {
       backgroundColor: '#1b140fee',
       color: '#fffbf0',
       fontFamily: 'Cinzel, serif',
       fontSize: '18px',
       fontStyle: 'bold',
       padding: { x: 36, y: 14 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5);
+    this.playButton = playBtn;
 
     playBtn.setStroke('#d3a848', 2);
 
@@ -86,11 +91,12 @@ export class IntroScene extends Phaser.Scene {
       });
     }
 
-    const hint = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 78, 'Tekan ENTER atau Klik untuk Memutar', {
+    const hint = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 78, 'Intro sedang disiapkan · LEWATI tetap tersedia', {
       color: '#9e9282',
       fontFamily: 'Poppins, sans-serif',
       fontSize: '12px',
     }).setOrigin(0.5);
+    this.playHint = hint;
 
     this.preplayContainer = this.add.container(0, 0, [shade, title, subtitle, playBtn, hint]);
 
@@ -127,6 +133,13 @@ export class IntroScene extends Phaser.Scene {
     });
 
     esc?.on('down', () => this.finish());
+
+    const media = this.video.loadURL('assets/video/intro.mp4').video;
+    media?.addEventListener('canplay', () => this.enablePlayback(), { once: true });
+  }
+
+  snapshot(): Record<string, unknown> {
+    return { introReady: true, videoReady: this.videoReady, introPlaying: this.isPlaying };
   }
 
   update(): void {
@@ -147,11 +160,18 @@ export class IntroScene extends Phaser.Scene {
   }
 
   private startPlayback(): void {
-    if (this.isPlaying) return;
+    if (this.isPlaying || !this.videoReady) return;
     this.isPlaying = true;
     this.preplayContainer?.setVisible(false);
     this.fitVideo();
     this.video?.play(false);
+  }
+
+  private enablePlayback(): void {
+    if (!this.playButton || !this.playHint) return;
+    this.videoReady = true;
+    this.playButton.setText('PUTAR INTRO').setInteractive({ useHandCursor: true });
+    this.playHint.setText('Tekan ENTER atau Klik untuk Memutar');
   }
 
   private finish(done = true): void {

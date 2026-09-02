@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BONUS_IMAGE_ASSETS, BONUS_PROP_SHEET_ASSETS } from '../assetManifest';
+import { ASSET_PACKS, loadAssetPacks } from '../assetManifest';
 import type { SoundManager } from '../audio/SoundManager';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { Player } from '../entities/Player';
@@ -80,10 +80,10 @@ const CHEMISTRY_ITEMS: ReadonlyArray<{
   era: string;
   texture: string;
 }> = [
-  { id: 'watch', label: 'Arloji Arthur', era: '1944', texture: 'watch-repair-art' },
-  { id: 'rose', label: 'Mawar abadi', era: '1968', texture: 'rose-bottle-broken' },
-  { id: 'gem', label: 'Permata air', era: '1999', texture: 'water-gem-art' },
-];
+    { id: 'rose', label: 'Mawar abadi', era: '1968', texture: 'rose-bottle-broken' },
+    { id: 'watch', label: 'Arloji Arthur', era: '1944', texture: 'watch-repair-art' },
+    { id: 'gem', label: 'Permata air', era: '1999', texture: 'water-gem-art' },
+  ];
 
 export class Bonus2088Scene extends Phaser.Scene {
   private save!: SaveSystem;
@@ -119,12 +119,7 @@ export class Bonus2088Scene extends Phaser.Scene {
   }
 
   preload(): void {
-    Object.entries(BONUS_IMAGE_ASSETS).forEach(([key, url]) => {
-      if (!this.textures.exists(key)) this.load.image(key, url);
-    });
-    Object.entries(BONUS_PROP_SHEET_ASSETS).forEach(([key, url]) => {
-      if (!this.textures.exists(key)) this.load.spritesheet(key, url, { frameWidth: 200, frameHeight: 200 });
-    });
+    loadAssetPacks(this, ASSET_PACKS.bonus);
 
     const label = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'MEMUAT KENANGAN 2088…', {
       color: CSS.gold, fontFamily: FONT.META, fontSize: '14px', letterSpacing: 2,
@@ -365,7 +360,7 @@ export class Bonus2088Scene extends Phaser.Scene {
     art.setInteractive({ useHandCursor: true });
 
     const markerLayer = this.add.container(0, 0);
-    const help = this.add.text(GAME_WIDTH / 2, 474, 'Klik perbedaan asli • Keyboard: ←/→ pilih, Enter tandai', {
+    const help = this.add.text(GAME_WIDTH / 2, 474, 'Klik atau sentuh setiap perbedaan pada gambar foto di atas.', {
       backgroundColor: '#0d0a08dd', color: CSS.paper, fontFamily: FONT.META,
       fontSize: '11px', padding: { x: 12, y: 5 },
     }).setOrigin(0.5);
@@ -374,9 +369,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       fontSize: '13px', fontStyle: 'bold', padding: { x: 14, y: 6 },
     }).setOrigin(0.5);
     modal.add([markerLayer, help, status]);
-
-    let focus = this.nextOpenIndex(this.differenceFound, -1, 1);
-    let showKeyboardFocus = false;
 
     const render = (): void => {
       markerLayer.removeAll(true);
@@ -393,17 +385,6 @@ export class Bonus2088Scene extends Phaser.Scene {
         }
       });
 
-      if (showKeyboardFocus && focus >= 0 && !this.differenceFound[focus]) {
-        const point = DIFFERENCE_SPOTS[focus].b;
-        markerLayer.add(this.add.circle(
-          DIFFERENCE_RECT.x + point[0] * DIFFERENCE_RECT.width,
-          DIFFERENCE_RECT.y + point[1] * DIFFERENCE_RECT.height,
-          20,
-          GOLD,
-          0.12,
-        ).setStrokeStyle(2, GOLD));
-      }
-
       const count = this.differenceFound.filter(Boolean).length;
       const isDone = count === DIFFERENCE_SPOTS.length;
       status.setText(isDone
@@ -416,7 +397,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       if (index < 0 || this.differenceFound[index]) return;
       this.differenceFound[index] = true;
       this.soundManager?.playLockSuccess();
-      focus = this.nextOpenIndex(this.differenceFound, index, 1);
       if (this.differenceFound.every(Boolean)) this.completeNode(0);
       render();
     };
@@ -452,17 +432,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       if (event.key === 'Escape' || event.code === 'KeyX') {
         event.preventDefault();
         this.closeModal();
-        return;
-      }
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-        event.preventDefault();
-        showKeyboardFocus = true;
-        focus = this.nextOpenIndex(this.differenceFound, focus, event.key === 'ArrowLeft' ? -1 : 1);
-        render();
-      } else if (event.key === 'Enter' || event.code === 'Space') {
-        event.preventDefault();
-        showKeyboardFocus = true;
-        mark(focus);
       }
     });
 
@@ -607,24 +576,15 @@ export class Bonus2088Scene extends Phaser.Scene {
           return;
         }
       }
-      if (event.key === 'Escape' || event.code === 'KeyX') {
-        event.preventDefault();
-        this.closeModal();
-        return;
-      }
       if (this.roseCollected.every(Boolean)) {
         if (/^\d$/.test(event.key)) pressCode(event.key);
         else if (event.key === 'Backspace' || event.key === 'Delete') pressCode('clear');
         else if (event.key === 'Enter') pressCode('ok');
         return;
       }
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (event.key === 'Escape' || event.code === 'KeyX') {
         event.preventDefault();
-        focus = this.nextOpenIndex(this.roseCollected, focus, event.key === 'ArrowLeft' ? -1 : 1);
-        renderStage();
-      } else if (event.key === 'Enter' || event.code === 'Space') {
-        event.preventDefault();
-        collectRose(focus);
+        this.closeModal();
       }
     });
 
@@ -841,30 +801,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       }));
     };
 
-    const cyclePerson = (): void => {
-      const current = this.dinnerPeople[this.dinnerFocusSeat];
-      const start = DINNER_PEOPLE.indexOf(current as DinnerPerson);
-      for (let step = 1; step <= DINNER_PEOPLE.length; step++) {
-        const next = DINNER_PEOPLE[(start + step) % DINNER_PEOPLE.length];
-        if (!this.dinnerPeople.some((value, seat) => seat !== this.dinnerFocusSeat && value === next)) {
-          assignPersonToSeat(next, this.dinnerFocusSeat);
-          return;
-        }
-      }
-    };
-
-    const cycleFood = (): void => {
-      const current = this.dinnerFoods[this.dinnerFocusSeat];
-      const start = DINNER_FOODS.indexOf(current as DinnerFood);
-      for (let step = 1; step <= DINNER_FOODS.length; step++) {
-        const next = DINNER_FOODS[(start + step) % DINNER_FOODS.length];
-        if (!this.dinnerFoods.some((value, seat) => seat !== this.dinnerFocusSeat && value === next)) {
-          assignFoodToSeat(next, this.dinnerFocusSeat);
-          return;
-        }
-      }
-    };
-
     this.bindModalKey((event) => {
       if (this.litNodes[2]) {
         if (event.code === 'Space' || event.key === 'Enter' || event.key === 'Escape' || event.code === 'KeyX') {
@@ -873,24 +809,12 @@ export class Bonus2088Scene extends Phaser.Scene {
           return;
         }
       }
-      if (event.key === 'Escape' || event.code === 'KeyX') {
-        event.preventDefault();
-        this.closeModal();
-        return;
-      }
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
         this.dinnerFocusSeat = Phaser.Math.Wrap(
           this.dinnerFocusSeat + (event.key === 'ArrowLeft' ? -1 : 1), 0, 4,
         );
-        this.dinnerMessage = `Kursi ${this.dinnerFocusSeat + 1} dipilih.`;
         render();
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        cyclePerson();
-      } else if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        cycleFood();
       } else if (event.key === 'Enter' || event.code === 'Space') {
         event.preventDefault();
         checkDinner();
@@ -904,7 +828,7 @@ export class Bonus2088Scene extends Phaser.Scene {
     const art = this.addArtwork(modal, 'bonus-cats-art', CAT_RECT, 'Ilustrasi 18 kucing tidak tersedia');
     art.setInteractive({ useHandCursor: true });
     const markerLayer = this.add.container(0, 0);
-    const help = this.add.text(GAME_WIDTH / 2, 466, 'Temukan semua kucing • Keyboard: ←/→ pilih, Enter tandai', {
+    const help = this.add.text(GAME_WIDTH / 2, 466, 'Klik atau sentuh setiap kucing pada gambar untuk menemukannya (bebas urutan).', {
       backgroundColor: '#0d0a08dd', color: CSS.paper, fontFamily: FONT.META,
       fontSize: '11px', padding: { x: 12, y: 5 },
     }).setOrigin(0.5);
@@ -913,9 +837,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       fontSize: '13px', fontStyle: 'bold', padding: { x: 14, y: 6 },
     }).setOrigin(0.5);
     modal.add([markerLayer, help, status]);
-
-    let focus = this.nextOpenIndex(this.catFound, -1, 1);
-    let showKeyboardFocus = false;
 
     const render = (): void => {
       markerLayer.removeAll(true);
@@ -929,18 +850,6 @@ export class Bonus2088Scene extends Phaser.Scene {
           0.25,
         ).setStrokeStyle(3, GREEN_BRIGHT));
       });
-
-      if (showKeyboardFocus && focus >= 0 && !this.catFound[focus]) {
-        const spot = CAT_SPOTS[focus];
-        markerLayer.add(this.add.circle(
-          CAT_RECT.x + spot[0] * CAT_RECT.width,
-          CAT_RECT.y + spot[1] * CAT_RECT.height,
-          18,
-          GOLD,
-          0.12,
-        ).setStrokeStyle(2, GOLD));
-      }
-
       const count = this.catFound.filter(Boolean).length;
       const isDone = count === CAT_SPOTS.length;
       status.setText(isDone
@@ -953,7 +862,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       if (index < 0 || this.catFound[index]) return;
       this.catFound[index] = true;
       this.soundManager?.playLockSuccess();
-      focus = this.nextOpenIndex(this.catFound, index, 1);
       if (this.catFound.every(Boolean)) this.completeNode(3);
       render();
     };
@@ -990,17 +898,6 @@ export class Bonus2088Scene extends Phaser.Scene {
       if (event.key === 'Escape' || event.code === 'KeyX') {
         event.preventDefault();
         this.closeModal();
-        return;
-      }
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-        event.preventDefault();
-        showKeyboardFocus = true;
-        focus = this.nextOpenIndex(this.catFound, focus, event.key === 'ArrowLeft' ? -1 : 1);
-        render();
-      } else if (event.key === 'Enter' || event.code === 'Space') {
-        event.preventDefault();
-        showKeyboardFocus = true;
-        mark(focus);
       }
     });
 
