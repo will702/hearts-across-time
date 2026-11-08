@@ -1,0 +1,16 @@
+.DS_Store
+.idea/
+node_modules/
+dist/
+.refs/
+*.log
+.env
+.venv/
+assets/gen/
+qa/artifacts/
+playwright-report/
+test-results/
+__pycache__/
+*.pyc
+*.zip
+
